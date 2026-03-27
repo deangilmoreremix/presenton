@@ -6,7 +6,6 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from utils.asset_directory_utils import get_app_data_directory_env
-import uuid
 
 try:
     from fontTools.ttLib import TTFont

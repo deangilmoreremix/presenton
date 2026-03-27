@@ -55,7 +55,7 @@ const presentationGenerationSlice = createSlice({
       state.presentation_id = action.payload;
       state.error = null;
     },
-    // Slides rendereimport { useEffect } from "react"d
+    // Slides rendered
     setSlidesRendered: (state, action: PayloadAction<boolean>) => {
       state.isSlidesRendered = action.payload;
     },

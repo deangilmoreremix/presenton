@@ -1,4 +1,4 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 import os
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Body, File, UploadFile

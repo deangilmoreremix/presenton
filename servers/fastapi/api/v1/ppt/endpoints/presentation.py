@@ -490,9 +490,15 @@ async def check_if_api_request_is_valid(
 async def generate_presentation_handler(
     request: GeneratePresentationRequest,
     presentation_id: uuid.UUID,
-    async_status: Optional[AsyncPresentationGenerationTaskModel],
-    sql_session: AsyncSession = Depends(get_async_session),
+    async_status: Optional[AsyncPresentationGenerationTaskModel] = None,
+    sql_session: Optional[AsyncSession] = None,
 ):
+    owns_session = sql_session is None
+    if owns_session:
+        async for session in get_async_session():
+            sql_session = session
+            break
+    assert sql_session is not None
     try:
         using_slides_markdown = False
 
@@ -840,7 +846,6 @@ async def generate_presentation_async(
             request,
             presentation_id,
             async_status=async_status,
-            sql_session=sql_session,
         )
         return async_status
 

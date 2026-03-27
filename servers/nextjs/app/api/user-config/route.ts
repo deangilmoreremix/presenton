@@ -7,16 +7,16 @@ const canChangeKeys = process.env.CAN_CHANGE_KEYS !== "false";
 
 export async function GET() {
   if (!canChangeKeys) {
-    return NextResponse.json({
-      error: "You are not allowed to access this resource",
-      status: 403,
-    });
+    return NextResponse.json(
+      { error: "You are not allowed to access this resource" },
+      { status: 403 }
+    );
   }
   if (!userConfigPath) {
-    return NextResponse.json({
-      error: "User config path not found",
-      status: 500,
-    });
+    return NextResponse.json(
+      { error: "User config path not found" },
+      { status: 500 }
+    );
   }
 
   if (!fs.existsSync(userConfigPath)) {
@@ -28,9 +28,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!canChangeKeys) {
-    return NextResponse.json({
-      error: "You are not allowed to access this resource",
-    });
+    return NextResponse.json(
+      { error: "You are not allowed to access this resource" },
+      { status: 403 }
+    );
   }
 
   const userConfig = await request.json();

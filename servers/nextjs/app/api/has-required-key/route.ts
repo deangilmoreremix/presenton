@@ -15,10 +15,7 @@ export async function GET() {
     } catch {}
   }
 
-  console.log(keyFromFile);
-
   const keyFromEnv = process.env.OPENAI_API_KEY || "";
-  console.log(keyFromEnv);
   const hasKey = Boolean((keyFromFile || keyFromEnv).trim());
 
   return NextResponse.json({ hasKey });
