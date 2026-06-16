@@ -5,7 +5,9 @@ import json
 import logging
 import os
 import re
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from json import JSONDecodeError
 from time import perf_counter
 from typing import Any, Callable
@@ -26,7 +28,7 @@ from pydantic import (
     model_validator,
 )
 
-from templates.v2.models.elements import SlideElement
+from templates.v2.models.elements import Position, Size, SlideElement
 from templates.v2.models.layouts import SlideLayouts
 from utils.llm_config import get_llm_config
 from utils.llm_provider import get_model
@@ -103,6 +105,8 @@ class DesignVariable(BaseModel):
 class Component(BaseModel):
     id: str = Field(min_length=1, max_length=80)
     description: str = Field(min_length=10, max_length=300)
+    position: Position
+    size: Size
     design_variables: list[DesignVariable] = Field(default_factory=list)
     elements: list[SlideElement] = Field(min_length=1)
 
@@ -198,6 +202,12 @@ class _CandidateRecord(BaseModel):
     elements: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class ContentElementMatch:
+    element: dict[str, Any]
+    bounds: dict[str, float]
+
+
 GENERATE_CLUSTER_CANDIDATES_SYSTEM_PROMPT = """
 Identify reusable visual component candidates in one slide.
 The user message contains slide elements with stable 0-based source indices.
@@ -258,15 +268,20 @@ Use the source elements as ground truth and return one raw JSON object matching 
 # Steps
 1. Compare the candidate structures, roles, styling, and layout intent.
 2. Choose candidate 0 as the base geometry unless another candidate better represents the shared structure.
-3. Build one generalized component using valid SlideElement objects.
-4. Mark literal content as editable placeholders.
-5. Add design variables for meaningful reusable visual differences, plus content-related design variables only when candidate content differs.
-6. Check that the final JSON matches the Component schema exactly.
+3. Set the component `position` and `size` from the chosen base candidate bounds.
+4. Build one generalized component using valid SlideElement objects whose coordinates are local to the component origin.
+5. Mark literal content as editable placeholders or fixed static content based on role.
+6. Add design variables only for meaningful reusable visual differences, with the narrow fixed text/image exception below.
+7. Check that the final JSON matches the Component schema exactly.
 
 # Layout Rules
 - Preserve source element roles, stacking order, visible styling, images, typography, and layout intent.
 - Normalize repeated instances to one component geometry.
 - Do not create variables for absolute slide placement.
+- The top-level Component must include required `position` and `size`.
+- `position` is the selected base candidate's absolute slide position; `size` is its bounding box size.
+- Every element inside `elements` must use coordinates local to the Component origin: local `{x: 0, y: 0}` means the component's top-left corner.
+- The source candidate payload already localizes candidate `elements`; keep output element coordinates in that same local coordinate system.
 - Prefer `flex` for rows, columns, stacks, headers, footers, icon/text pairs, menus, timelines, and card internals.
 - Prefer `grid` for columns, dashboards, card decks, metric areas, asymmetric regions, and repeated grids.
 - Use `container` or `group` only for real semantic structure.
@@ -280,6 +295,7 @@ Use the source elements as ground truth and return one raw JSON object matching 
 - Use `table`, `chart`, and `text-list` for tabular, chart, and list content.
 
 # Editable Content Rules
+- Source candidates intentionally omit `fixed`; decide `fixed` from each element's role.
 - Set `fixed: true` for static or decorative content.
 - Set `fixed: false` for replaceable content placeholders.
 - Decorative content is visual chrome that defines the component style and is not meant to be edited per instance: background shapes, dividers, borders, shadows, decorative icons, ornaments, brand marks, static labels, and layout helper geometry.
@@ -289,21 +305,21 @@ Use the source elements as ground truth and return one raw JSON object matching 
 - Every `min_*` must equal half of the matching `max_*`, rounded up.
 
 # Design Variable Rules
-- Use `design_variables` for both visual differences and same-role content differences between candidates.
+- Use `design_variables` for reusable visual differences, not for user-replaceable content differences.
 - Create visual variables only for meaningful reusable visual differences: icon choice, colors, opacity, stroke, shadow, font styling, size, rotation, child count, layout spacing, and relative layout variants.
-- Create content-related design variables only when same-role replaceable content differs between candidates: text strings, text-list items, table cells, chart labels or values, chart title, content photos, illustrations, logos, and user-selected content icons.
-- Editable content alone is not a reason to create a design variable; the content must vary across candidates.
-- Do not create content-related design variables when candidates have the same content or when there is only one observed content option.
+- Do not create design variables for replaceable content differences: headings, body text, metric values, list items, table cells, chart labels or values, chart titles, user photos, illustrations, logos, or user-selected icons.
+- Text strings and image data may be design variables only when the target element is `fixed: true` and the literal text or image is static visual chrome, not user-replaceable instance content.
+- Never create content-related design variables for `text-list`, `table`, or `chart` content.
+- Editable content alone is not a reason to create a design variable.
 - A design variable may include only properties whose values actually change across candidate options; unchanged properties must stay in the base `elements`.
 - For object or array options, include only the varying nested fields needed by the effects. Do not copy full objects, rich text runs, font objects, geometry, or other attributes into each option when those attributes are identical across options.
 - Before adding a variable, compare every candidate option after removing unchanged nested fields. If the remaining option values are all identical or empty, do not create the variable.
-- Do not create variables for decorative/static content marked `fixed: true` or for absolute slide position.
-- Image variables are allowed for visual icon choices and for differing replaceable content images.
+- Do not create variables for absolute slide position.
+- Image variables are allowed for visual icon choices and for fixed decorative/static image choices only.
 - Use position variables only for meaningful relative movement inside the component.
 - Ignore tiny accidental coordinate differences when shared geometry works.
 - Combine correlated changes into one semantic variable, such as `scale_variant`, `density`, `card_size`, or `typography_scale`.
 - If correlated values are not a simple scale, use an `object` option such as `{"width": 240, "height": 120, "font_size": 28}`.
-- For correlated content values, use an `object` option such as `{"title": "Revenue", "value": "$2.4M"}`.
 - Avoid variables that allow impossible combinations not observed in the source candidates.
 - Names must be unique lower_snake_case.
 - Types must be one of: string, number, integer, boolean, color, image, enum, array, object.
@@ -565,6 +581,7 @@ def build_template_layouts(
         )
         template_layout = copy.deepcopy(layout)
         template_layout.pop("elements", None)
+        template_layout["id"] = str(uuid.uuid4())
         template_layout["components"] = components_for_slide
         template_layouts.append(template_layout)
         replaced_count += stats.replaced_candidates
@@ -653,19 +670,35 @@ def _component_payload(cluster: ComponentCluster) -> dict[str, Any]:
             "id": cluster.id,
             "candidate_count": len(cluster.candidates),
             "candidates": [
-                {
-                    "index": index,
-                    "id": candidate.id,
-                    "slide_index": candidate.slide_index,
-                    "description": candidate.description,
-                    "elements": _SLIDE_ELEMENTS_ADAPTER.dump_python(
-                        candidate.elements,
-                        mode="json",
-                    ),
-                }
+                _component_candidate_payload(index, candidate)
                 for index, candidate in enumerate(cluster.candidates)
             ],
         }
+    }
+
+
+def _component_candidate_payload(
+    index: int,
+    candidate: ComponentClusterCandidate,
+) -> dict[str, Any]:
+    elements = _SLIDE_ELEMENTS_ADAPTER.dump_python(candidate.elements, mode="json")
+    bounds = _elements_bounds(elements) or {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 0.0,
+        "height": 0.0,
+    }
+    localized_elements = _localize_elements(elements, bounds)
+    _strip_fixed_fields(localized_elements)
+
+    return {
+        "index": index,
+        "id": candidate.id,
+        "slide_index": candidate.slide_index,
+        "description": candidate.description,
+        "position": {"x": bounds["x"], "y": bounds["y"]},
+        "size": {"width": bounds["width"], "height": bounds["height"]},
+        "elements": localized_elements,
     }
 
 
@@ -782,6 +815,7 @@ def _template_components_for_slide(
     skipped_count = 0
 
     for candidate in candidates:
+        candidate = _parent_candidate_for(candidate, candidates)
         if consumed_element_indices.intersection(candidate.element_indices):
             skipped_count += 1
             continue
@@ -827,22 +861,68 @@ def _template_components_for_slide(
     )
 
 
+def _parent_candidate_for(
+    candidate: _CandidateRecord,
+    candidates: list[_CandidateRecord],
+) -> _CandidateRecord:
+    candidate_element_indices = set(candidate.element_indices)
+    selected_candidate = candidate
+    selected_element_count = len(candidate_element_indices)
+
+    for possible_parent in candidates:
+        if possible_parent.index == candidate.index:
+            continue
+
+        possible_parent_element_indices = set(possible_parent.element_indices)
+        if not candidate_element_indices < possible_parent_element_indices:
+            continue
+
+        possible_parent_element_count = len(possible_parent_element_indices)
+        if possible_parent_element_count > selected_element_count:
+            selected_candidate = possible_parent
+            selected_element_count = possible_parent_element_count
+        elif (
+            possible_parent_element_count == selected_element_count
+            and possible_parent.index < selected_candidate.index
+        ):
+            selected_candidate = possible_parent
+
+    return selected_candidate
+
+
 def _component_for_candidate(
     component: dict[str, Any],
     candidate: _CandidateRecord,
 ) -> dict[str, Any]:
     template_component = copy.deepcopy(component)
+    _ensure_component_frame(template_component)
     component_elements = template_component.get("elements", [])
     if not isinstance(component_elements, list) or not component_elements:
         raise ValueError(f"component {component.get('id')} must contain elements")
 
+    candidate_bounds = _elements_bounds(candidate.elements) or _component_frame(
+        template_component
+    )
+    localized_candidate_elements = _localize_elements(
+        candidate.elements,
+        candidate_bounds,
+    )
+
     _apply_best_design_variables(
         component_elements,
         component.get("design_variables", []),
-        candidate.elements,
+        localized_candidate_elements,
     )
-    _align_component_to_candidate(component_elements, candidate.elements)
-    _copy_candidate_content(component_elements, candidate.elements)
+    _align_component_to_candidate(component_elements, localized_candidate_elements)
+    _copy_candidate_content(component_elements, localized_candidate_elements)
+    template_component["position"] = {
+        "x": candidate_bounds["x"],
+        "y": candidate_bounds["y"],
+    }
+    template_component["size"] = {
+        "width": candidate_bounds["width"],
+        "height": candidate_bounds["height"],
+    }
     _SLIDE_ELEMENTS_ADAPTER.validate_python(component_elements)
     Component.model_validate(template_component)
     return template_component
@@ -858,14 +938,23 @@ def _component_for_untouched_element(
             f"slide {slide_index} element {element_index} must be a JSON object"
         )
 
+    source_elements = [copy.deepcopy(element)]
+    bounds = _elements_bounds(source_elements) or {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 0.0,
+        "height": 0.0,
+    }
     component = {
         "id": f"slide_{slide_index + 1}_element_{element_index + 1}",
         "description": (
             "Fallback component for a source element not covered by any "
             "non-overlapping candidate."
         ),
+        "position": {"x": bounds["x"], "y": bounds["y"]},
+        "size": {"width": bounds["width"], "height": bounds["height"]},
         "design_variables": [],
-        "elements": [copy.deepcopy(element)],
+        "elements": _localize_elements(source_elements, bounds),
     }
     Component.model_validate(component)
     return component
@@ -1079,26 +1168,18 @@ def _copy_candidate_content(
     component_elements: list[dict[str, Any]],
     candidate_elements: list[dict[str, Any]],
 ) -> None:
-    sources_by_type: dict[str, list[dict[str, Any]]] = {
+    sources_by_type: dict[str, list[ContentElementMatch]] = {
         element_type: [] for element_type in CONTENT_ELEMENT_TYPES
     }
-    for source in _flatten_elements(candidate_elements):
-        element_type = source.get("type")
+    for source in _content_element_matches(candidate_elements, fixed=None):
+        element_type = source.element.get("type")
         if element_type in CONTENT_ELEMENT_TYPES:
             sources_by_type[element_type].append(source)
 
     used_source_indices = {element_type: set() for element_type in CONTENT_ELEMENT_TYPES}
     copied_target_ids: set[int] = set()
 
-    for target in _content_elements(component_elements, fixed=False):
-        _copy_best_candidate_content(
-            target,
-            sources_by_type,
-            used_source_indices,
-            copied_target_ids,
-        )
-
-    for target in _content_elements(component_elements, fixed=True):
+    for target in _content_element_matches(component_elements, fixed=False):
         _copy_best_candidate_content(
             target,
             sources_by_type,
@@ -1108,16 +1189,16 @@ def _copy_candidate_content(
 
 
 def _copy_best_candidate_content(
-    target: dict[str, Any],
-    sources_by_type: dict[str, list[dict[str, Any]]],
+    target: ContentElementMatch,
+    sources_by_type: dict[str, list[ContentElementMatch]],
     used_source_indices: dict[str, set[int]],
     copied_target_ids: set[int],
 ) -> None:
-    target_id = id(target)
+    target_id = id(target.element)
     if target_id in copied_target_ids:
         return
 
-    element_type = target.get("type")
+    element_type = target.element.get("type")
     if element_type not in CONTENT_ELEMENT_TYPES:
         return
 
@@ -1129,14 +1210,14 @@ def _copy_best_candidate_content(
     if source_index is None:
         return
 
-    _copy_content_value(target, sources_by_type[element_type][source_index])
+    _copy_content_value(target.element, sources_by_type[element_type][source_index].element)
     used_source_indices[element_type].add(source_index)
     copied_target_ids.add(target_id)
 
 
 def _best_content_source_index(
-    target: dict[str, Any],
-    sources: list[dict[str, Any]],
+    target: ContentElementMatch,
+    sources: list[ContentElementMatch],
     used_indices: set[int],
 ) -> int | None:
     available_indices = [
@@ -1147,25 +1228,14 @@ def _best_content_source_index(
     if not available_indices:
         return None
 
-    target_bounds = _elements_bounds([target])
-    if target_bounds is None:
-        return available_indices[0]
-
     scored_indices: list[tuple[float, int]] = []
     for source_index in available_indices:
-        source_bounds = _elements_bounds([sources[source_index]])
-        if source_bounds is None:
-            continue
-
         scored_indices.append(
             (
-                _content_match_score(target_bounds, source_bounds),
+                _content_match_score(target.bounds, sources[source_index].bounds),
                 source_index,
             )
         )
-
-    if not scored_indices:
-        return available_indices[0]
 
     return min(scored_indices)[1]
 
@@ -1186,41 +1256,330 @@ def _content_match_score(
     )
 
 
-def _content_elements(
+def _content_element_matches(
     elements: list[dict[str, Any]],
     *,
-    fixed: bool,
-) -> list[dict[str, Any]]:
-    content_elements: list[dict[str, Any]] = []
+    fixed: bool | None,
+) -> list[ContentElementMatch]:
+    matches: list[ContentElementMatch] = []
     for element in elements:
-        content_elements.extend(
-            _content_elements_for_element(element, fixed=fixed),
+        matches.extend(
+            _content_element_matches_for_element(
+                element,
+                mode="absolute",
+                origin={"x": 0.0, "y": 0.0},
+                flow_frame=None,
+                fixed=fixed,
+            )
         )
-    return content_elements
+    return matches
 
 
-def _content_elements_for_element(
+def _content_element_matches_for_element(
     element: dict[str, Any],
     *,
-    fixed: bool,
-) -> list[dict[str, Any]]:
-    content_elements: list[dict[str, Any]] = []
-    if element.get("type") in CONTENT_ELEMENT_TYPES and element.get("fixed") is fixed:
-        content_elements.append(element)
+    mode: str,
+    origin: dict[str, float],
+    flow_frame: dict[str, float] | None,
+    fixed: bool | None,
+) -> list[ContentElementMatch]:
+    frame = _render_frame(element, mode=mode, flow_frame=flow_frame)
+    element_origin = {
+        "x": origin["x"] + frame["x"],
+        "y": origin["y"] + frame["y"],
+    }
+    matches: list[ContentElementMatch] = []
 
-    child = element.get("child")
-    if isinstance(child, dict):
-        content_elements.extend(_content_elements_for_element(child, fixed=fixed))
+    if element.get("type") in CONTENT_ELEMENT_TYPES and (
+        fixed is None or element.get("fixed") is fixed
+    ):
+        matches.append(
+            ContentElementMatch(
+                element=element,
+                bounds={
+                    "x": element_origin["x"],
+                    "y": element_origin["y"],
+                    "width": frame["width"],
+                    "height": frame["height"],
+                },
+            )
+        )
+
+    child_origin = element_origin
+    element_type = element.get("type")
+
+    if element_type == "container":
+        child = element.get("child")
+        if isinstance(child, dict):
+            child_mode = "absolute" if _has_explicit_frame(child) else "flow"
+            matches.extend(
+                _content_element_matches_for_element(
+                    child,
+                    mode=child_mode,
+                    origin=child_origin,
+                    flow_frame=(
+                        _child_flow_frame(frame, element.get("padding"))
+                        if child_mode == "flow"
+                        else None
+                    ),
+                    fixed=fixed,
+                )
+            )
+        return matches
 
     children = element.get("children")
-    if isinstance(children, list):
-        for child_element in children:
-            if isinstance(child_element, dict):
-                content_elements.extend(
-                    _content_elements_for_element(child_element, fixed=fixed),
-                )
+    if not isinstance(children, list):
+        return matches
 
-    return content_elements
+    if element_type == "flex":
+        child_frames = _flex_child_frames(
+            children,
+            frame,
+            str(element.get("direction", "row")),
+            {
+                "gap": element.get("gap"),
+                "column_gap": element.get("column_gap"),
+                "row_gap": element.get("row_gap"),
+            },
+            element.get("align_items"),
+            element.get("justify_content"),
+        )
+        for child, child_frame in zip(children, child_frames, strict=False):
+            if isinstance(child, dict):
+                matches.extend(
+                    _content_element_matches_for_element(
+                        child,
+                        mode="flow",
+                        origin=child_origin,
+                        flow_frame=child_frame,
+                        fixed=fixed,
+                    )
+                )
+        return matches
+
+    if element_type == "grid":
+        child_frames = _grid_child_frames(
+            children,
+            frame,
+            int(element.get("columns", 1)),
+            element.get("rows"),
+            {
+                "gap": element.get("gap"),
+                "column_gap": element.get("column_gap"),
+                "row_gap": element.get("row_gap"),
+            },
+            element.get("align_items"),
+            element.get("justify_items"),
+        )
+        for child, child_frame in zip(children, child_frames, strict=False):
+            if isinstance(child, dict):
+                matches.extend(
+                    _content_element_matches_for_element(
+                        child,
+                        mode="flow",
+                        origin=child_origin,
+                        flow_frame=child_frame,
+                        fixed=fixed,
+                    )
+                )
+        return matches
+
+    for child in children:
+        if isinstance(child, dict):
+            matches.extend(
+                _content_element_matches_for_element(
+                    child,
+                    mode="absolute",
+                    origin=child_origin,
+                    flow_frame=None,
+                    fixed=fixed,
+                )
+            )
+
+    return matches
+
+
+def _render_frame(
+    element: dict[str, Any],
+    *,
+    mode: str,
+    flow_frame: dict[str, float] | None,
+) -> dict[str, float]:
+    if mode == "flow" and flow_frame is not None:
+        return flow_frame
+
+    position = _element_position(element)
+    size = _element_size(element)
+    return {
+        "x": _numeric_or(position.get("x") if position else None, 0.0),
+        "y": _numeric_or(position.get("y") if position else None, 0.0),
+        "width": _numeric_or(
+            size.get("width") if size else None,
+            flow_frame["width"] if flow_frame else 0.0,
+        ),
+        "height": _numeric_or(
+            size.get("height") if size else None,
+            flow_frame["height"] if flow_frame else 0.0,
+        ),
+    }
+
+
+def _element_position(element: dict[str, Any]) -> dict[str, Any] | None:
+    position = element.get("position")
+    return position if isinstance(position, dict) else None
+
+
+def _element_size(element: dict[str, Any]) -> dict[str, Any] | None:
+    size = element.get("size")
+    return size if isinstance(size, dict) else None
+
+
+def _has_explicit_frame(element: dict[str, Any]) -> bool:
+    return _element_position(element) is not None or _element_size(element) is not None
+
+
+def _child_flow_frame(
+    frame: dict[str, float],
+    padding: Any,
+) -> dict[str, float]:
+    padding = padding if isinstance(padding, dict) else {}
+    left = _numeric_or(padding.get("left"), 0.0)
+    top = _numeric_or(padding.get("top"), 0.0)
+    right = _numeric_or(padding.get("right"), 0.0)
+    bottom = _numeric_or(padding.get("bottom"), 0.0)
+    return {
+        "x": left,
+        "y": top,
+        "width": max(frame["width"] - left - right, 0.0),
+        "height": max(frame["height"] - top - bottom, 0.0),
+    }
+
+
+def _flex_child_frames(
+    children: list[Any],
+    frame: dict[str, float],
+    direction: str,
+    gaps: dict[str, Any],
+    align_items: Any,
+    justify_content: Any,
+) -> list[dict[str, float]]:
+    count = len(children)
+    is_row = direction == "row"
+    gap = _numeric_or(
+        gaps.get("column_gap" if is_row else "row_gap"),
+        _numeric_or(gaps.get("gap"), 0.0),
+    )
+    total_gap = max(count - 1, 0) * gap
+    fixed_main = 0.0
+    flexible_count = 0
+
+    for child in children:
+        size = _element_size(child) if isinstance(child, dict) else None
+        main_size = size.get("width" if is_row else "height") if size else None
+        if isinstance(main_size, (int, float)):
+            fixed_main += float(main_size)
+        else:
+            flexible_count += 1
+
+    available_main = frame["width"] if is_row else frame["height"]
+    flexible_main = (
+        max((available_main - fixed_main - total_gap) / flexible_count, 0.0)
+        if flexible_count > 0
+        else 0.0
+    )
+    occupied_main = fixed_main + flexible_main * flexible_count + total_gap
+    cursor = _alignment_offset(justify_content, max(available_main - occupied_main, 0.0))
+    frames: list[dict[str, float]] = []
+
+    for child in children:
+        size = _element_size(child) if isinstance(child, dict) else None
+        width = _numeric_or(
+            size.get("width") if size else None,
+            flexible_main if is_row else frame["width"],
+        )
+        height = _numeric_or(
+            size.get("height") if size else None,
+            frame["height"] if is_row else flexible_main,
+        )
+        cross_limit = frame["height"] if is_row else frame["width"]
+        cross_size = height if is_row else width
+        cross_space = max(cross_limit - cross_size, 0.0)
+        cross_offset = _alignment_offset(align_items, cross_space)
+        frames.append(
+            {
+                "x": cursor if is_row else cross_offset,
+                "y": cross_offset if is_row else cursor,
+                "width": width,
+                "height": height,
+            }
+        )
+        cursor += (width if is_row else height) + gap
+
+    return frames
+
+
+def _grid_child_frames(
+    children: list[Any],
+    frame: dict[str, float],
+    columns: int,
+    rows: Any,
+    gaps: dict[str, Any],
+    align_items: Any,
+    justify_items: Any,
+) -> list[dict[str, float]]:
+    count = len(children)
+    column_count = max(columns, 1)
+    row_count = max(
+        int(rows) if isinstance(rows, int) else 0,
+        (count + column_count - 1) // column_count,
+        1,
+    )
+    column_gap = _numeric_or(gaps.get("column_gap"), _numeric_or(gaps.get("gap"), 0.0))
+    row_gap = _numeric_or(gaps.get("row_gap"), _numeric_or(gaps.get("gap"), 0.0))
+    cell_width = max((frame["width"] - column_gap * (column_count - 1)) / column_count, 0.0)
+    cell_height = max((frame["height"] - row_gap * (row_count - 1)) / row_count, 0.0)
+    frames: list[dict[str, float]] = []
+
+    for index, child in enumerate(children):
+        size = _element_size(child) if isinstance(child, dict) else None
+        width = (
+            cell_width
+            if justify_items == "stretch" or not _has_numeric_size(size, "width")
+            else min(float(size["width"]), cell_width)
+        )
+        height = (
+            cell_height
+            if align_items == "stretch" or not _has_numeric_size(size, "height")
+            else min(float(size["height"]), cell_height)
+        )
+        cell_x = (index % column_count) * (cell_width + column_gap)
+        cell_y = (index // column_count) * (cell_height + row_gap)
+        frames.append(
+            {
+                "x": cell_x + _alignment_offset(justify_items, max(cell_width - width, 0.0)),
+                "y": cell_y + _alignment_offset(align_items, max(cell_height - height, 0.0)),
+                "width": width,
+                "height": height,
+            }
+        )
+
+    return frames
+
+
+def _alignment_offset(alignment: Any, available_space: float) -> float:
+    if alignment == "flex-end":
+        return available_space
+    if alignment == "center":
+        return available_space / 2
+    return 0.0
+
+
+def _has_numeric_size(size: dict[str, Any] | None, key: str) -> bool:
+    return isinstance(size, dict) and isinstance(size.get(key), (int, float))
+
+
+def _numeric_or(value: Any, fallback: float) -> float:
+    return float(value) if isinstance(value, (int, float)) else fallback
 
 
 def _copy_content_value(target: dict[str, Any], source: dict[str, Any]) -> None:
@@ -1351,7 +1710,49 @@ def _score_element(component: dict[str, Any], candidate: dict[str, Any]) -> floa
     score += _score_size(component.get("size"), candidate.get("size"))
     score += _score_font(component.get("font"), candidate.get("font"))
     score += _score_alignment(component.get("alignment"), candidate.get("alignment"))
+    score += _score_content(component, candidate)
     return score
+
+
+def _score_content(component: dict[str, Any], candidate: dict[str, Any]) -> float:
+    component_type = component.get("type")
+    if component_type != candidate.get("type"):
+        return 0.0
+
+    if component_type == "text":
+        return 0.0 if _text_content(component) == _text_content(candidate) else 25.0
+    if component_type == "image":
+        return 0.0 if component.get("data") == candidate.get("data") else 25.0
+    if component_type == "text-list":
+        return 0.0 if component.get("items") == candidate.get("items") else 25.0
+    if component_type == "table":
+        return (
+            0.0
+            if component.get("columns") == candidate.get("columns")
+            and component.get("rows") == candidate.get("rows")
+            else 25.0
+        )
+    if component_type == "chart":
+        return (
+            0.0
+            if component.get("data") == candidate.get("data")
+            and component.get("title") == candidate.get("title")
+            else 25.0
+        )
+
+    return 0.0
+
+
+def _text_content(element: dict[str, Any]) -> str:
+    runs = element.get("runs")
+    if not isinstance(runs, list):
+        return ""
+
+    return "".join(
+        run.get("text", "")
+        for run in runs
+        if isinstance(run, dict) and isinstance(run.get("text"), str)
+    )
 
 
 def _score_size(component_size: Any, candidate_size: Any) -> float:
@@ -1387,6 +1788,63 @@ def _numeric_diff(first: Any, second: Any) -> float:
     if not isinstance(first, (int, float)) or not isinstance(second, (int, float)):
         return 0.0
     return abs(first - second)
+
+
+def _ensure_component_frame(component: dict[str, Any]) -> None:
+    elements = component.get("elements")
+    if not isinstance(elements, list):
+        return
+
+    position = component.get("position")
+    size = component.get("size")
+    if _valid_position(position) and _valid_size(size):
+        return
+
+    bounds = _elements_bounds(elements) or {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 0.0,
+        "height": 0.0,
+    }
+    component["position"] = {"x": bounds["x"], "y": bounds["y"]}
+    component["size"] = {"width": bounds["width"], "height": bounds["height"]}
+    component["elements"] = _localize_elements(elements, bounds)
+
+
+def _component_frame(component: dict[str, Any]) -> dict[str, float]:
+    position = component.get("position")
+    size = component.get("size")
+    return {
+        "x": float(position.get("x", 0.0)) if isinstance(position, dict) else 0.0,
+        "y": float(position.get("y", 0.0)) if isinstance(position, dict) else 0.0,
+        "width": float(size.get("width", 0.0)) if isinstance(size, dict) else 0.0,
+        "height": float(size.get("height", 0.0)) if isinstance(size, dict) else 0.0,
+    }
+
+
+def _valid_position(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("x"), (int, float))
+        and isinstance(value.get("y"), (int, float))
+    )
+
+
+def _valid_size(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("width"), (int, float))
+        and isinstance(value.get("height"), (int, float))
+    )
+
+
+def _localize_elements(
+    elements: list[dict[str, Any]],
+    bounds: dict[str, float],
+) -> list[dict[str, Any]]:
+    localized = copy.deepcopy(elements)
+    _translate_elements(localized, -bounds["x"], -bounds["y"])
+    return localized
 
 
 def _elements_bounds(elements: list[dict[str, Any]]) -> dict[str, float] | None:
@@ -1605,6 +2063,25 @@ def _get_object_path_value(value: Any, path: list[str]) -> Any:
 
 def _is_array_index(value: Any) -> bool:
     return isinstance(value, str) and ARRAY_INDEX_RE.match(value) is not None
+
+
+def _strip_fixed_fields(value: Any) -> None:
+    if isinstance(value, list):
+        for item in value:
+            _strip_fixed_fields(item)
+        return
+
+    if not isinstance(value, dict):
+        return
+
+    value.pop("fixed", None)
+    child = value.get("child")
+    if isinstance(child, dict):
+        _strip_fixed_fields(child)
+
+    children = value.get("children")
+    if isinstance(children, list):
+        _strip_fixed_fields(children)
 
 
 def _cluster_candidates_artifact(
@@ -1967,10 +2444,36 @@ def _model_validation_repair_prompt(
     invalid_response: dict[str, Any],
     error: ValidationError,
 ) -> str:
-    return "\n".join(
+    parts = [
+        f"The previous {label} JSON did not match the required schema.",
+        "Return a complete corrected replacement JSON object.",
+    ]
+
+    if output_model is Component:
+        parts.extend(
+            [
+                (
+                    "The Component must include required `position` and `size`, "
+                    "keep every element coordinate local to the component origin, "
+                    "use design_variables for reusable visual differences, and "
+                    "never turn absolute slide placement or replaceable content "
+                    "differences into variables."
+                ),
+                (
+                    "Do not create design variables, object option fields, or "
+                    "array option entries for values that are identical across "
+                    "candidate options; keep unchanged attributes in base elements."
+                ),
+                (
+                    "Text strings and image data may be variables only when the "
+                    "element is fixed static visual chrome, not editable instance "
+                    "content."
+                ),
+            ]
+        )
+
+    parts.extend(
         [
-            f"The previous {label} JSON did not match the required schema.",
-            "Return a complete corrected replacement JSON object.",
             "Return raw JSON only. Do not include markdown fences, comments, explanations, or any text before or after the JSON object.",
             "",
             "validation_errors:",
@@ -1983,6 +2486,7 @@ def _model_validation_repair_prompt(
             _json_dumps_for_prompt(output_model.model_json_schema()),
         ]
     )
+    return "\n".join(parts)
 
 
 def _format_error_for_prompt(error: Exception) -> str:

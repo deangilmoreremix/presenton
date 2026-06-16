@@ -15,7 +15,7 @@ from models.api_error_model import APIErrorModel
 from models.image_prompt import ImagePrompt
 from models.presentation_outline_model import PresentationOutlineModel, SlideOutlineModel
 from models.presentation_structure_model import PresentationStructureModel
-from models.sql.presentation import PresentationModel
+from models.sql.presentation import PresentationModel, PresentationVersion
 from models.sql.slide import SlideModel
 from models.sse_response import (
     SSECompleteResponse,
@@ -184,6 +184,7 @@ def test_presentation_model_get_new_and_typed_getters(theme):
     outline, layout_payload, structure_payload = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",
@@ -193,7 +194,10 @@ def test_presentation_model_get_new_and_typed_getters(theme):
         structure=structure_payload,
         theme=theme,
     )
-    assert p.get_new_presentation().content == "c"
+    new_presentation = p.get_new_presentation()
+    assert p.version == PresentationVersion.V1_STANDARD
+    assert new_presentation.version == PresentationVersion.V1_STANDARD
+    assert new_presentation.content == "c"
     assert isinstance(p.get_presentation_outline(), PresentationOutlineModel)
     assert isinstance(p.get_layout(), PresentationLayoutModel)
     assert isinstance(p.get_structure(), PresentationStructureModel)
@@ -203,6 +207,7 @@ def test_presentation_model_set_layout_updates_stored_dict():
     _, layout_payload, _ = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",
@@ -223,6 +228,7 @@ def test_presentation_model_set_layout_updates_stored_dict():
 def test_presentation_model_missing_outline_and_structure_returns_none():
     ghost = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=0,
         language="English",
@@ -238,6 +244,7 @@ def test_presentation_model_set_structure_updates_slides():
     _, _, structure_payload = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",

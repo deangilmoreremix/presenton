@@ -10,7 +10,7 @@ from models.generate_presentation_request import GeneratePresentationRequest
 from models.presentation_and_path import PresentationAndPath
 from models.presentation_outline_model import SlideOutlineModel
 from models.presentation_structure_model import PresentationStructureModel
-from models.sql.presentation import PresentationModel
+from models.sql.presentation import PresentationModel, PresentationVersion
 from templates.presentation_layout import PresentationLayoutModel, SlideLayoutModel
 from tests.conftest import FakeAsyncSession
 
@@ -123,6 +123,7 @@ def test_prepare_presentation_preserves_payload_icon_weight():
     presentation_id = uuid.uuid4()
     presentation = PresentationModel(
         id=presentation_id,
+        version=PresentationVersion.V1_STANDARD,
         content="deck",
         n_slides=1,
         language="English",

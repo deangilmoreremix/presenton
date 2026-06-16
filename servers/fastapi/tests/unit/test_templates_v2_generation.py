@@ -1,3 +1,5 @@
+import uuid
+
 from llmai.shared import AssistantMessage, SystemMessage, UserMessage
 from pydantic import BaseModel, Field, ValidationError
 
@@ -5,6 +7,9 @@ from templates.v2.generation import (
     Cluster,
     ClusterCandidate,
     Component,
+    ComponentCluster,
+    ComponentClusterCandidate,
+    _component_payload,
     _messages_for_json_repair_retry,
     _messages_for_model_validation_retry,
     build_template_layouts,
@@ -64,11 +69,13 @@ def test_build_template_layouts_replaces_candidates_and_keeps_fallbacks():
         Component(
             id="card_component",
             description="Reusable rectangle card component.",
+            position={"x": 0, "y": 0},
+            size={"width": 100, "height": 80},
             design_variables=[],
             elements=[
                 {
                     "type": "rectangle",
-                    "position": {"x": 10, "y": 20},
+                    "position": {"x": 0, "y": 0},
                     "size": {"width": 100, "height": 80},
                     "fill": {"color": "#ffffff"},
                 }
@@ -89,9 +96,196 @@ def test_build_template_layouts_replaces_candidates_and_keeps_fallbacks():
         "card_component",
         "slide_1_element_2",
     ]
+    assert layout["components"][0]["position"] == {"x": 10.0, "y": 20.0}
+    assert layout["components"][0]["size"] == {"width": 100.0, "height": 80.0}
+    assert layout["components"][0]["elements"][0]["position"] == {"x": 0.0, "y": 0.0}
+    assert layout["components"][1]["position"] == {"x": 200.0, "y": 20.0}
+    assert layout["components"][1]["elements"][0]["position"] == {"x": 0.0, "y": 0.0}
     assert stats.replaced_candidates == 1
     assert stats.skipped_overlapping_candidates == 0
     assert stats.untouched_elements == 1
+
+
+def test_build_template_layouts_assigns_uuid_layout_ids(monkeypatch):
+    layout_ids = iter(
+        [
+            uuid.UUID("00000000-0000-0000-0000-000000000101"),
+            uuid.UUID("00000000-0000-0000-0000-000000000102"),
+        ]
+    )
+    monkeypatch.setattr(
+        "templates.v2.generation.uuid.uuid4",
+        lambda: next(layout_ids),
+    )
+    raw_layouts = SlideLayouts.model_validate(
+        {
+            "layouts": [
+                {"id": "slide_1", "description": "First slide.", "elements": []},
+                {"id": "slide_2", "description": "Second slide.", "elements": []},
+            ]
+        }
+    )
+
+    template, stats = build_template_layouts(raw_layouts, [], [], [])
+
+    assert [layout["id"] for layout in template["layouts"]] == [
+        "00000000-0000-0000-0000-000000000101",
+        "00000000-0000-0000-0000-000000000102",
+    ]
+    assert stats.replaced_candidates == 0
+    assert stats.skipped_overlapping_candidates == 0
+    assert stats.untouched_elements == 0
+
+
+def test_build_template_layouts_promotes_overlapping_child_to_parent_candidate():
+    raw_layouts = SlideLayouts.model_validate(
+        {
+            "layouts": [
+                {
+                    "id": "slide_1",
+                    "description": "Raw slide.",
+                    "elements": [
+                        {
+                            "type": "rectangle",
+                            "position": {"x": 20, "y": 30},
+                            "size": {"width": 180, "height": 90},
+                            "fill": {"color": "#f4f4f4"},
+                        },
+                        {
+                            "type": "text",
+                            "position": {"x": 40, "y": 50},
+                            "size": {"width": 120, "height": 30},
+                            "fixed": False,
+                            "name": "title",
+                            "max_length": 40,
+                            "min_length": 20,
+                            "runs": [{"text": "Original title"}],
+                        },
+                    ],
+                }
+            ]
+        }
+    )
+    candidates = [
+        ClusterCandidate(
+            id="title_only",
+            description="Standalone title text component.",
+            slide_index=0,
+            elements=[1],
+        ),
+        ClusterCandidate(
+            id="title_card",
+            description="Card with background rectangle and title text.",
+            slide_index=0,
+            elements=[0, 1],
+        ),
+    ]
+    clusters = [
+        Cluster(id="title_cluster", candidates=[0]),
+        Cluster(id="card_cluster", candidates=[1]),
+    ]
+    components = [
+        Component(
+            id="title_component",
+            description="Reusable standalone title component.",
+            position={"x": 0, "y": 0},
+            size={"width": 120, "height": 30},
+            design_variables=[],
+            elements=[
+                {
+                    "type": "text",
+                    "position": {"x": 0, "y": 0},
+                    "size": {"width": 120, "height": 30},
+                    "fixed": False,
+                    "name": "title",
+                    "max_length": 40,
+                    "min_length": 20,
+                    "runs": [{"text": "Placeholder"}],
+                }
+            ],
+        ),
+        Component(
+            id="card_component",
+            description="Reusable card with title component.",
+            position={"x": 0, "y": 0},
+            size={"width": 180, "height": 90},
+            design_variables=[],
+            elements=[
+                {
+                    "type": "rectangle",
+                    "position": {"x": 0, "y": 0},
+                    "size": {"width": 180, "height": 90},
+                    "fill": {"color": "#f4f4f4"},
+                },
+                {
+                    "type": "text",
+                    "position": {"x": 20, "y": 20},
+                    "size": {"width": 120, "height": 30},
+                    "fixed": False,
+                    "name": "title",
+                    "max_length": 40,
+                    "min_length": 20,
+                    "runs": [{"text": "Placeholder"}],
+                },
+            ],
+        ),
+    ]
+
+    template, stats = build_template_layouts(
+        raw_layouts,
+        candidates,
+        clusters,
+        components,
+    )
+
+    layout_components = template["layouts"][0]["components"]
+    assert [component["id"] for component in layout_components] == ["card_component"]
+    assert layout_components[0]["position"] == {"x": 20.0, "y": 30.0}
+    assert layout_components[0]["size"] == {"width": 180.0, "height": 90.0}
+    assert layout_components[0]["elements"][1]["runs"] == [{"text": "Original title"}]
+    assert stats.replaced_candidates == 1
+    assert stats.skipped_overlapping_candidates == 1
+    assert stats.untouched_elements == 0
+
+
+def test_component_payload_localizes_candidate_elements_and_strips_fixed_fields():
+    cluster = ComponentCluster(
+        id="cards",
+        candidates=[
+            ComponentClusterCandidate(
+                id="card_one",
+                slide_index=0,
+                description="Card with background and title.",
+                elements=[
+                    {
+                        "type": "rectangle",
+                        "position": {"x": 100, "y": 120},
+                        "size": {"width": 200, "height": 80},
+                        "fill": {"color": "#ffffff"},
+                    },
+                    {
+                        "type": "text",
+                        "position": {"x": 120, "y": 140},
+                        "size": {"width": 160, "height": 30},
+                        "fixed": False,
+                        "name": "title",
+                        "max_length": 40,
+                        "min_length": 20,
+                        "runs": [{"text": "Candidate title"}],
+                    },
+                ],
+            )
+        ],
+    )
+
+    payload = _component_payload(cluster)
+    candidate = payload["cluster"]["candidates"][0]
+
+    assert candidate["position"] == {"x": 100.0, "y": 120.0}
+    assert candidate["size"] == {"width": 200.0, "height": 80.0}
+    assert candidate["elements"][0]["position"] == {"x": 0.0, "y": 0.0}
+    assert candidate["elements"][1]["position"] == {"x": 20.0, "y": 20.0}
+    assert "fixed" not in candidate["elements"][1]
 
 
 def test_json_repair_retry_rebuilds_messages_without_provider_response_items():

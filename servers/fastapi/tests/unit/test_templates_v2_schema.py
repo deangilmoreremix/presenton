@@ -1,5 +1,9 @@
 from templates.v2.models.layouts import SlideLayout
-from templates.v2.schema import extract_slide_schema_from_layout
+from templates.v2.schema import (
+    extract_slide_schema_from_layout,
+    get_component_schema,
+    get_template_schema,
+)
 
 
 def test_extract_slide_schema_from_layout_extracts_editable_content():
@@ -205,3 +209,267 @@ def test_extract_slide_schema_from_layout_collapses_repeated_children_to_array()
         "required": ["cards"],
         "additionalProperties": False,
     }
+
+
+def test_get_component_schema_extracts_generated_component_content():
+    component = {
+        "id": "feature_card",
+        "description": "Reusable feature card component.",
+        "elements": [
+            {
+                "type": "text",
+                "fixed": False,
+                "name": "headline",
+                "min_length": 4,
+                "max_length": 12,
+            },
+            {
+                "type": "image",
+                "fixed": False,
+                "name": "icon",
+                "is_icon": True,
+            },
+            {
+                "type": "table",
+                "fixed": False,
+                "name": "metrics",
+                "min_columns": 2,
+                "max_columns": 4,
+                "min_rows": 1,
+                "max_rows": 3,
+            },
+        ],
+    }
+
+    assert get_component_schema(component) == {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "title": "feature_card",
+        "description": "Reusable feature card component.",
+        "additionalProperties": False,
+        "properties": {
+            "headline": {
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 12,
+                "title": "Headline",
+                "x-element-type": "text",
+                "x-element-path": "elements.0",
+            },
+            "icon": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "icon_query": {
+                        "type": "string",
+                        "description": "Search query for the replacement icon.",
+                    }
+                },
+                "required": ["icon_query"],
+                "title": "Icon",
+                "x-element-type": "image",
+                "x-element-path": "elements.1",
+            },
+            "metrics": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 2,
+                        "maxItems": 4,
+                    },
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "minItems": 2,
+                            "maxItems": 4,
+                        },
+                        "minItems": 1,
+                        "maxItems": 3,
+                    },
+                },
+                "required": ["columns", "rows"],
+                "title": "Metrics",
+                "x-element-type": "table",
+                "x-element-path": "elements.2",
+            },
+        },
+        "required": ["headline", "icon", "metrics"],
+    }
+
+
+def test_get_component_schema_collapses_repeated_component_children_to_array():
+    component = {
+        "id": "card_grid",
+        "description": "Reusable card grid component.",
+        "elements": [
+            {
+                "type": "grid",
+                "name": "cards",
+                "min_children": 2,
+                "max_children": 4,
+                "children": [
+                    {
+                        "type": "group",
+                        "name": "card_1",
+                        "children": [
+                            {
+                                "type": "text",
+                                "fixed": False,
+                                "name": "title_1",
+                                "min_length": 3,
+                                "max_length": 8,
+                            }
+                        ],
+                    },
+                    {
+                        "type": "group",
+                        "name": "card_2",
+                        "children": [
+                            {
+                                "type": "text",
+                                "fixed": False,
+                                "name": "title_2",
+                                "min_length": 5,
+                                "max_length": 12,
+                            }
+                        ],
+                    },
+                ],
+            }
+        ],
+    }
+
+    schema = get_component_schema(component)
+
+    assert schema is not None
+    assert schema["properties"]["cards"] == {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 4,
+        "items": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 12,
+                    "title": "Title",
+                    "x-element-type": "text",
+                }
+            },
+            "required": ["title"],
+        },
+    }
+
+
+def test_get_template_schema_strips_component_metadata():
+    template = {
+        "layouts": [
+            {
+                "id": "intro",
+                "description": "Intro slide.",
+                "components": [
+                    {
+                        "id": "hero",
+                        "description": "Hero image component.",
+                        "elements": [
+                            {
+                                "type": "image",
+                                "fixed": False,
+                                "name": "photo",
+                                "is_icon": False,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+    assert get_template_schema(template) == {
+        "source_file": "template.json",
+        "layout_count": 1,
+        "layouts": [
+            {
+                "slide": 1,
+                "layout_id": "intro",
+                "schema": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "title": "intro",
+                    "description": "Intro slide.",
+                    "additionalProperties": False,
+                    "properties": {
+                        "hero": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "photo": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "image_prompt": {"type": "string"}
+                                    },
+                                    "required": ["image_prompt"],
+                                }
+                            },
+                            "required": ["photo"],
+                        }
+                    },
+                    "required": ["hero"],
+                },
+            }
+        ],
+    }
+
+
+def test_get_template_schema_numbers_duplicate_component_fields_from_zero():
+    template = {
+        "layouts": [
+            {
+                "id": "comparison",
+                "description": "Comparison slide.",
+                "components": [
+                    {
+                        "id": "metric_card",
+                        "description": "Metric card component.",
+                        "elements": [
+                            {
+                                "type": "text",
+                                "fixed": False,
+                                "name": "value",
+                                "min_length": 1,
+                                "max_length": 8,
+                            }
+                        ],
+                    },
+                    {
+                        "id": "metric_card",
+                        "description": "Metric card component.",
+                        "elements": [
+                            {
+                                "type": "text",
+                                "fixed": False,
+                                "name": "value",
+                                "min_length": 1,
+                                "max_length": 8,
+                            }
+                        ],
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema = get_template_schema(template)["layouts"][0]["schema"]
+
+    assert schema is not None
+    assert list(schema["properties"]) == ["metric_card_0", "metric_card_1"]
+    assert schema["required"] == ["metric_card_0", "metric_card_1"]
+    assert schema["properties"]["metric_card_0"] == schema["properties"]["metric_card_1"]

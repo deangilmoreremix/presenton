@@ -48,7 +48,7 @@ from models.sse_response import SSECompleteResponse, SSEErrorResponse, SSERespon
 
 from services.database import get_async_session
 from services.concurrent_service import CONCURRENT_SERVICE
-from models.sql.presentation import PresentationModel
+from models.sql.presentation import PresentationModel, PresentationVersion
 from models.sql.async_presentation_generation_status import (
     AsyncPresentationGenerationTaskModel,
 )
@@ -276,6 +276,7 @@ async def create_presentation(
 
     presentation = PresentationModel(
         id=presentation_id,
+        version=PresentationVersion.V1_STANDARD,
         content=content,
         n_slides=n_slides_to_store,
         language=language_to_store,
@@ -876,6 +877,7 @@ async def generate_presentation_handler(
         # Create PresentationModel
         presentation = PresentationModel(
             id=presentation_id,
+            version=PresentationVersion.V1_STANDARD,
             content=request.content,
             n_slides=final_n_slides,
             language=language_to_use or "",

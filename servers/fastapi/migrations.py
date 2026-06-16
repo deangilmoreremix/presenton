@@ -17,6 +17,7 @@ REVISION_TEMPLATE_CREATE_INFO = "95b5127e93cd"
 REVISION_CHAT_HISTORY = "c7b70d0f31b1"
 REVISION_TEMPLATE_V2 = "4b2c5d6e7f8a"
 REVISION_TEMPLATE_V2_ARTIFACTS = "9f1a2b3c4d5e"
+REVISION_PRESENTATION_VERSION = "2d7c8f9a0b1c"
 
 
 async def migrate_database_on_startup() -> None:
@@ -98,8 +99,12 @@ def _infer_revision_from_schema(inspector, tables: set[str], head_revision: str)
     if "template_v2" in tables:
         cols = {c["name"] for c in inspector.get_columns("template_v2")}
         if {"cluster_candidates", "clusters", "components"}.issubset(cols):
-            return head_revision
+            if _has_presentation_version_column(inspector, tables):
+                return head_revision
+            return REVISION_TEMPLATE_V2_ARTIFACTS
         return REVISION_TEMPLATE_V2
+    if _has_presentation_version_column(inspector, tables):
+        return head_revision
     if "chat_history_messages" in tables:
         return REVISION_CHAT_HISTORY
     if "template_create_infos" in tables:
@@ -109,6 +114,14 @@ def _infer_revision_from_schema(inspector, tables: set[str], head_revision: str)
         if "theme" in cols:
             return REVISION_BEFORE_TEMPLATE_CREATE_INFO
     return LEGACY_BASELINE_REVISION
+
+
+def _has_presentation_version_column(inspector, tables: set[str]) -> bool:
+    if "presentations" not in tables:
+        return False
+
+    cols = {c["name"] for c in inspector.get_columns("presentations")}
+    return "version" in cols
 
 
 def _stamp_legacy_database_if_needed(config: Config, database_url: str) -> None:
