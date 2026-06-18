@@ -14,6 +14,7 @@ const SlideScale = ({
   presentMode = false,
   isClickable = true,
   fixedSize = false,
+  presentationLayout,
 }: {
   slide: any;
   theme?: any;
@@ -22,6 +23,7 @@ const SlideScale = ({
   presentMode?: boolean;
   isClickable?: boolean;
   fixedSize?: boolean;
+  presentationLayout?: unknown;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -109,6 +111,7 @@ const SlideScale = ({
               slide={slide}
               isEditMode={isEditMode}
               theme={theme}
+              presentationLayout={presentationLayout}
             />
           </div>
         </div>

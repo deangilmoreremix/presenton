@@ -56,6 +56,13 @@ const SlideContent = ({
   // Use the centralized group layouts hook
 
   const pathname = usePathname();
+  const slideLayoutGroup =
+    typeof slide.layout_group === "string" ? slide.layout_group : "";
+  const slideTemplateId = slideLayoutGroup.startsWith("template-v2")
+    ? slideLayoutGroup
+    : typeof slide.layout === "string"
+      ? slide.layout.split(":")[0]
+      : slideLayoutGroup;
 
   const handleSubmit = async () => {
     if (!editPrompt.trim()) {
@@ -217,7 +224,7 @@ const SlideContent = ({
                 >
                   <NewSlide
                     index={index}
-                    templateID={`${slide.layout.split(":")[0]}`}
+                    templateID={slideTemplateId}
                     setShowNewSlideSelection={setShowNewSlideSelection}
                     presentationId={presentationId}
                   />

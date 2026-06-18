@@ -48,7 +48,7 @@ type AdaptedRequiredBaseElement = AdaptedBaseElement & {
   size: AdaptedSize;
 };
 
-type TemplateV2Layout = {
+export type TemplateV2Layout = {
   id?: unknown;
   description?: unknown;
   elements?: unknown;
@@ -159,7 +159,7 @@ export function adaptGeneratedTemplateV2PresentationToDeck(
 ): Deck {
   const presentationRecord = asRecord(presentation) ?? {};
   const layoutPayload = readValue(presentationRecord, "layout");
-  const layouts = extractLayouts(layoutPayload);
+  const layouts = extractTemplateV2Layouts(layoutPayload);
   if (layouts.length === 0) {
     throw new Error("Generated presentation did not include template v2 layouts.");
   }
@@ -213,7 +213,7 @@ export function adaptGeneratedTemplateV2PresentationToDeck(
   return parsed.data;
 }
 
-function extractLayouts(value: unknown): TemplateV2Layout[] {
+export function extractTemplateV2Layouts(value: unknown): TemplateV2Layout[] {
   if (Array.isArray(value)) {
     return value.filter(isRecord) as TemplateV2Layout[];
   }
@@ -233,9 +233,9 @@ function extractLayouts(value: unknown): TemplateV2Layout[] {
 function extractRenderableLayouts(
   template: TemplateV2ImportResponse,
 ): TemplateV2Layout[] {
-  const layouts = extractLayouts(template.layouts);
+  const layouts = extractTemplateV2Layouts(template.layouts);
   if (layouts.length > 0) return layouts;
-  return extractLayouts(template.raw_layouts);
+  return extractTemplateV2Layouts(template.raw_layouts);
 }
 
 function adaptLayoutToSlide(layout: TemplateV2Layout, index: number): Slide {
@@ -434,9 +434,9 @@ function localizeRawElementToFrame(
   return localized;
 }
 
-function applyGeneratedSlideContentToLayout(
+export function applyGeneratedSlideContentToLayout(
   layout: TemplateV2Layout,
-  content: UnknownRecord,
+  content: Record<string, unknown>,
 ): TemplateV2Layout {
   const rawLayout = asRecord(layout);
   if (!rawLayout) return layout;

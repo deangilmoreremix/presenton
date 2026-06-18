@@ -8,33 +8,68 @@ import { validate as uuidValidate } from 'uuid';
 import { getLayoutByLayoutId } from "@/app/presentation-templates";
 import { useCustomTemplateDetails } from "@/app/hooks/useCustomTemplates";
 import { updateSlideContent } from "@/store/slices/presentationGeneration";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
+import { RootState } from "@/store/store";
+import { TemplateV2LayoutPreview } from "../custom-template/components/EachSlide/TemplateV2LayoutPreview";
+import {
+    applyGeneratedSlideContentToLayout,
+    extractTemplateV2Layouts,
+} from "@/components/slide-editor/lib/template-v2-import";
 
 
 
 
-export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEditMode: boolean, theme?: any, enableEditMode?: boolean }) => {
+export const V1ContentRender = ({ slide, isEditMode, theme, presentationLayout: presentationLayoutOverride }: { slide: any, isEditMode: boolean, theme?: any, enableEditMode?: boolean, presentationLayout?: unknown }) => {
     const dispatch = useDispatch();
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const reduxPresentationLayout = useSelector(
+        (state: RootState) => state.presentationGeneration.presentationData?.layout
+    );
+    const presentationLayout = presentationLayoutOverride ?? reduxPresentationLayout;
 
+    const layoutGroup = typeof slide.layout_group === "string" ? slide.layout_group : "";
+    const slideLayout = typeof slide.layout === "string" ? slide.layout : "";
+    const isTemplateV2Slide = layoutGroup.startsWith("template-v2");
 
-    const customTemplateId = slide.layout_group.startsWith("custom-") ? slide.layout_group.split("custom-")[1] : slide.layout_group;
-    const isCustomTemplate = uuidValidate(customTemplateId) || slide.layout_group.startsWith("custom-");
+    const customTemplateId = layoutGroup.startsWith("custom-") ? layoutGroup.split("custom-")[1] : layoutGroup;
+    const isCustomTemplate = !isTemplateV2Slide && (uuidValidate(customTemplateId) || layoutGroup.startsWith("custom-"));
 
     // Always call the hook (React hooks rule), but with empty id when not a custom template
     const { template: customTemplate, loading: customLoading } = useCustomTemplateDetails({
         id: isCustomTemplate ? customTemplateId : "",
-        name: isCustomTemplate ? slide.layout_group : "",
+        name: isCustomTemplate ? layoutGroup : "",
         description: ""
     });
+
+    const templateV2Layout = useMemo(() => {
+        if (!isTemplateV2Slide) return null;
+
+        const layouts = extractTemplateV2Layouts(presentationLayout);
+        const layoutId = slideLayout.startsWith("template-v2:")
+            ? slideLayout.slice("template-v2:".length)
+            : slideLayout;
+
+        return layouts.find((layout) => layout.id === layoutId) ?? null;
+    }, [isTemplateV2Slide, presentationLayout, slideLayout]);
+
+    const renderedTemplateV2Layout = useMemo(() => {
+        if (!templateV2Layout) return null;
+        return applyGeneratedSlideContentToLayout(
+            templateV2Layout,
+            slide.content && typeof slide.content === "object" ? slide.content : {}
+        );
+    }, [templateV2Layout, slide.content]);
 
 
     // Memoize layout resolution to prevent unnecessary recalculations
     const Layout = useMemo(() => {
+        if (isTemplateV2Slide) {
+            return null;
+        }
         if (isCustomTemplate) {
             if (customTemplate) {
-                const layoutId = slide.layout.startsWith("custom-") ? slide.layout.split(":")[1] : slide.layout;
+                const layoutId = slideLayout.startsWith("custom-") ? slideLayout.split(":")[1] : slideLayout;
 
 
                 const compiledLayout = customTemplate.layouts.find(
@@ -46,10 +81,27 @@ export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEd
             }
             return null;
         } else {
-            const template = getLayoutByLayoutId(slide.layout, slide.layout_group);
+            const template = getLayoutByLayoutId(slideLayout, layoutGroup);
             return template?.component ?? null;
         }
-    }, [isCustomTemplate, customTemplate, slide.layout]);
+    }, [isTemplateV2Slide, isCustomTemplate, customTemplate, slideLayout, layoutGroup]);
+
+    if (isTemplateV2Slide) {
+        if (!renderedTemplateV2Layout) {
+            return (
+                <div className="flex h-full aspect-video flex-col items-center justify-center rounded-lg bg-gray-100">
+                    <Loader2 className="mb-2 h-4 w-4 animate-spin" />
+                    <p className="text-center text-sm text-gray-600">Loading slide layout...</p>
+                </div>
+            );
+        }
+
+        return (
+            <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
+                <TemplateV2LayoutPreview layout={renderedTemplateV2Layout as any} />
+            </SlideErrorBoundary>
+        );
+    }
 
     // Show loading state for custom templates
     if (isCustomTemplate && customLoading) {
@@ -73,8 +125,8 @@ export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEd
         return (
             <div className="flex flex-col items-center justify-center aspect-video h-full bg-gray-100 rounded-lg">
                 <p className="text-gray-600 text-center text-base">
-                    Layout &quot;{slide.layout}&quot; not found in &quot;
-                    {slide.layout_group}&quot; Template
+                    Layout &quot;{slideLayout}&quot; not found in &quot;
+                    {layoutGroup}&quot; Template
                 </p>
             </div>
         );
@@ -145,4 +197,3 @@ export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEd
         </SlideErrorBoundary>
     );
 };
-

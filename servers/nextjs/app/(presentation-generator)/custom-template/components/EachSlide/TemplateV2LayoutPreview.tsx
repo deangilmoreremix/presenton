@@ -194,7 +194,7 @@ function renderTextList(
         }}
       >
         {items.map((item, itemIndex) => {
-          const runs = Array.isArray(item) ? item : [];
+          const runs = readTextListItemRuns(item);
           return (
             <li key={`${key}-item-${itemIndex}`}>
               {runs.map((run, runIndex) => (
@@ -211,6 +211,23 @@ function renderTextList(
       </ListTag>
     </div>
   );
+}
+
+function readTextListItemRuns(item: unknown): TemplateV2TextRun[] {
+  if (Array.isArray(item)) {
+    return item.filter((run): run is TemplateV2TextRun => Boolean(readRecord(run).text));
+  }
+
+  const record = readRecord(item);
+  const text = readString(record.text) ?? readString(item);
+  if (!text) return [];
+
+  return [
+    {
+      text,
+      font: readRecord(record.font) as TemplateV2TextRun["font"],
+    },
+  ];
 }
 
 function renderTable(element: TemplateV2Element, key: string, mode: RenderMode) {

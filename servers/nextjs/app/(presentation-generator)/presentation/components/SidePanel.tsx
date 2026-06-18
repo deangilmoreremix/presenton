@@ -53,9 +53,14 @@ const SidePanel = ({
   const lastSlideIndex = presentationData?.slides?.length
     ? presentationData.slides.length - 1
     : 0;
-  const lastSlideTemplateId = presentationData?.slides?.[lastSlideIndex]?.layout
-    ? presentationData.slides[lastSlideIndex].layout.split(":")[0]
-    : "";
+  const lastSlide = presentationData?.slides?.[lastSlideIndex];
+  const lastSlideLayoutGroup =
+    typeof lastSlide?.layout_group === "string" ? lastSlide.layout_group : "";
+  const lastSlideTemplateId = lastSlideLayoutGroup.startsWith("template-v2")
+    ? lastSlideLayoutGroup
+    : typeof lastSlide?.layout === "string"
+      ? lastSlide.layout.split(":")[0]
+      : "";
 
   const handleAddSlideClick = () => {
     if (!presentationData?.slides?.length || isStreaming) return;

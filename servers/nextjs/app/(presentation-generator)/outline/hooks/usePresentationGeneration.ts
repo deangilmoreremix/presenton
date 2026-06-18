@@ -137,7 +137,7 @@ export const usePresentationGeneration = (
           dispatch(clearPresentationData());
           clearTheme();
           router.replace(
-            `/presentation?id=${presentationId}&stream=true&type=standard&editor=v2`
+            `/presentation?id=${presentationId}&stream=true&type=standard`
           );
         }
         return;

@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addNewSlide } from "@/store/slices/presentationGeneration";
 import { Loader2, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -15,6 +15,12 @@ import { getCustomTemplateDetails } from "@/app/hooks/useCustomTemplates";
 import { getTemplatesByTemplateName } from "@/app/presentation-templates";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { RootState } from "@/store/store";
+import { TemplateV2LayoutPreview } from "../../custom-template/components/EachSlide/TemplateV2LayoutPreview";
+import {
+  extractTemplateV2Layouts,
+  type TemplateV2Layout,
+} from "@/components/slide-editor/lib/template-v2-import";
 
 interface LayoutItemProps {
   layout: any;
@@ -24,6 +30,24 @@ interface LayoutItemProps {
 const PREVIEW_WIDTH = 1280;
 const PREVIEW_HEIGHT = 720;
 
+function createTemplateV2LayoutItem(layout: TemplateV2Layout, layoutIndex: number) {
+  const layoutId =
+    typeof layout.id === "string" && layout.id.trim()
+      ? layout.id
+      : `layout_${layoutIndex + 1}`;
+  const description =
+    typeof layout.description === "string" && layout.description.trim()
+      ? layout.description
+      : null;
+
+  return {
+    layoutId,
+    layoutName: description ?? layoutId,
+    sampleData: {},
+    v2Layout: layout,
+  };
+}
+
 const LayoutItem = memo(({ layout, onSelect }: LayoutItemProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0.2);
@@ -32,6 +56,7 @@ const LayoutItem = memo(({ layout, onSelect }: LayoutItemProps) => {
     sampleData,
     layoutId,
     layoutName,
+    v2Layout,
   } = layout;
 
   useEffect(() => {
@@ -80,7 +105,11 @@ const LayoutItem = memo(({ layout, onSelect }: LayoutItemProps) => {
             transformOrigin: "top left",
           }}
         >
-          <LayoutComponent data={sampleData} />
+          {v2Layout ? (
+            <TemplateV2LayoutPreview layout={v2Layout} />
+          ) : LayoutComponent ? (
+            <LayoutComponent data={sampleData} />
+          ) : null}
         </div>
       </div>
     </div>
@@ -102,10 +131,14 @@ const NewSlideV1 = ({
 }: NewSlideV1Props) => {
   const dispatch = useDispatch();
   const pathname = usePathname();
+  const presentationLayout = useSelector(
+    (state: RootState) => state.presentationGeneration.presentationData?.layout
+  );
   const [layouts, setLayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isCustomTemplate = templateID.startsWith("custom-");
+  const isTemplateV2 = templateID.startsWith("template-v2");
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -135,6 +168,7 @@ const NewSlideV1 = ({
           template_id: templateID,
           layout_id: id,
           is_custom_template: isCustomTemplate,
+          is_template_v2: isTemplateV2,
         });
         setShowNewSlideSelection(false);
       } catch (error: any) {
@@ -149,6 +183,7 @@ const NewSlideV1 = ({
       dispatch,
       setShowNewSlideSelection,
       isCustomTemplate,
+      isTemplateV2,
       pathname,
     ]
   );
@@ -159,7 +194,13 @@ const NewSlideV1 = ({
     const fetchLayouts = async () => {
       try {
         setLoading(true);
-        if (isCustomTemplate) {
+        if (isTemplateV2) {
+          const templateV2Layouts = extractTemplateV2Layouts(presentationLayout);
+          const layoutItems = templateV2Layouts.map((layout, layoutIndex) =>
+            createTemplateV2LayoutItem(layout, layoutIndex)
+          );
+          if (isMounted) setLayouts(layoutItems);
+        } else if (isCustomTemplate) {
           const customTemplateId = templateID.split("custom-")[1];
           const templateDetails = await getCustomTemplateDetails(
             customTemplateId,
@@ -184,7 +225,7 @@ const NewSlideV1 = ({
     return () => {
       isMounted = false;
     };
-  }, [isCustomTemplate, templateID]);
+  }, [isCustomTemplate, isTemplateV2, presentationLayout, templateID]);
 
   const layoutCountText = `${layouts.length} Layout${
     layouts.length === 1 ? "" : "s"
