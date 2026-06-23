@@ -31,7 +31,13 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { notify } from "@/components/ui/sonner";
+import type { SlideElement } from "@/components/slide-editor/lib/slide-schema";
 import Chat from "./Chat";
+import {
+  TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
+  type TemplateV2InsertElementsDetail,
+} from "../../components/TemplateV2KonvaSlide";
 
 type PresentationActionsProps = React.ComponentProps<typeof Chat>;
 
@@ -50,6 +56,12 @@ type ActionItem = {
   icon: LucideIcon;
 };
 
+type PaletteItem = {
+  id?: string;
+  label: string;
+  icon: LucideIcon;
+};
+
 const primaryActions: ActionItem[] = [
   { id: "ai", label: "AI", icon: Sparkles },
   { id: "blocks", label: "Blocks", icon: Blocks },
@@ -64,12 +76,12 @@ const insertActions: ActionItem[] = [
 ];
 
 const textItems = [
-  { label: "Title Block", icon: AlignCenter },
-  { label: "Subtitle", icon: AlignCenter },
-  { label: "Bullet List", icon: List },
-  { label: "Quote", icon: Quote },
-  { label: "Body Text", icon: Columns2 },
-];
+  { id: "title-block", label: "Title Block", icon: AlignCenter },
+  { id: "subtitle", label: "Subtitle", icon: AlignCenter },
+  { id: "bullet-list", label: "Bullet List", icon: List },
+  { id: "quote", label: "Quote", icon: Quote },
+  { id: "body-text", label: "Body Text", icon: Columns2 },
+] satisfies PaletteItem[];
 
 const chartTypeItems = [
   { label: "Bar Chart", icon: BarChart3 },
@@ -154,6 +166,125 @@ const contentCards = [
   },
 ];
 
+const makeTextElement = ({
+  text,
+  x,
+  y,
+  width,
+  height,
+  size,
+  color = "101323",
+  bold = false,
+  italic = false,
+  lineHeight = 1.1,
+  horizontal = "left",
+}: {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  size: number;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  lineHeight?: number;
+  horizontal?: "left" | "center" | "right";
+}): SlideElement => ({
+  type: "text",
+  position: { x, y },
+  size: { width, height },
+  alignment: { horizontal, vertical: "top" },
+  runs: [{ text }],
+  font: {
+    family: "Arial",
+    size,
+    color,
+    bold,
+    italic,
+    lineHeight,
+  },
+});
+
+const makeBulletListElement = (): SlideElement => ({
+  type: "text-list",
+  position: { x: 0.95, y: 1.2 },
+  size: { width: 5.4, height: 1.5 },
+  marker: "bullet",
+  items: [
+    { type: "text", text: "First point" },
+    { type: "text", text: "Second point" },
+    { type: "text", text: "Third point" },
+  ],
+  font: {
+    family: "Arial",
+    size: 18,
+    color: "101323",
+    lineHeight: 1.3,
+  },
+});
+
+const createTextInsertElements = (kind?: string): SlideElement[] => {
+  switch (kind) {
+    case "title-block":
+      return [
+        makeTextElement({
+          text: "Add a title",
+          x: 0.85,
+          y: 0.85,
+          width: 7.1,
+          height: 0.72,
+          size: 38,
+          bold: true,
+        }),
+      ];
+    case "subtitle":
+      return [
+        makeTextElement({
+          text: "Add a subtitle",
+          x: 0.95,
+          y: 1.2,
+          width: 6.2,
+          height: 0.5,
+          size: 24,
+          color: "344054",
+          lineHeight: 1.2,
+        }),
+      ];
+    case "bullet-list":
+      return [makeBulletListElement()];
+    case "quote":
+      return [
+        makeTextElement({
+          text: '"Add a memorable quote or customer insight here."',
+          x: 0.95,
+          y: 1.15,
+          width: 6.2,
+          height: 0.9,
+          size: 24,
+          color: "101323",
+          italic: true,
+          lineHeight: 1.25,
+        }),
+      ];
+    case "body-text":
+      return [
+        makeTextElement({
+          text: "Add body text here. Use this space for a short paragraph or supporting detail.",
+          x: 0.95,
+          y: 1.2,
+          width: 6.1,
+          height: 0.9,
+          size: 18,
+          color: "344054",
+          lineHeight: 1.28,
+        }),
+      ];
+    default:
+      return [];
+  }
+};
+
 const NavButton = ({
   item,
   active,
@@ -203,12 +334,15 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 const PaletteCard = ({
   label,
   icon: Icon,
+  onClick,
 }: {
   label: string;
   icon: ActionItem["icon"];
+  onClick?: () => void;
 }) => (
   <button
     type="button"
+    onClick={onClick}
     className="flex h-[58px] min-w-0 flex-col items-center justify-center gap-2 rounded-[8px] border border-[#EDEEF0] bg-white px-2 text-center transition-colors hover:border-[#DCD8EA] hover:bg-[#FBFAFF]"
     title={label}
   >
@@ -225,12 +359,19 @@ const PaletteCard = ({
 
 const PaletteGrid = ({
   items,
+  onSelect,
 }: {
-  items: Array<{ label: string; icon: ActionItem["icon"] }>;
+  items: PaletteItem[];
+  onSelect?: (item: PaletteItem) => void;
 }) => (
   <div className="grid grid-cols-3 gap-2">
     {items.map((item) => (
-      <PaletteCard key={item.label} label={item.label} icon={item.icon} />
+      <PaletteCard
+        key={item.label}
+        label={item.label}
+        icon={item.icon}
+        onClick={onSelect ? () => onSelect(item) : undefined}
+      />
     ))}
   </div>
 );
@@ -238,12 +379,14 @@ const PaletteGrid = ({
 const InsertPanel = ({
   title,
   groups,
+  onItemSelect,
 }: {
   title: string;
   groups: Array<{
     label: string;
-    items: Array<{ label: string; icon: ActionItem["icon"] }>;
+    items: PaletteItem[];
   }>;
+  onItemSelect?: (item: PaletteItem) => void;
 }) => (
   <div className="h-full overflow-y-auto px-5 pb-8 pt-8 hide-scrollbar">
     <h3 className="mb-8 text-[15px] font-semibold leading-5 text-[#101323]">
@@ -253,7 +396,7 @@ const InsertPanel = ({
       {groups.map((group) => (
         <section key={group.label}>
           <SectionLabel>{group.label}</SectionLabel>
-          <PaletteGrid items={group.items} />
+          <PaletteGrid items={group.items} onSelect={onItemSelect} />
         </section>
       ))}
     </div>
@@ -355,6 +498,34 @@ const BlocksPanel = () => {
 
 const PresentationActions = (props: PresentationActionsProps) => {
   const [activeAction, setActiveAction] = useState<ActionId>("ai");
+
+  const handleTextItemSelect = (item: PaletteItem) => {
+    if (typeof window === "undefined") return;
+    if (typeof props.currentSlide !== "number") {
+      notify.warning("Select a slide", "Choose a slide before adding text.");
+      return;
+    }
+
+    const elements = createTextInsertElements(item.id);
+    if (elements.length === 0) return;
+
+    const detail: TemplateV2InsertElementsDetail = {
+      elements,
+      label: item.label,
+      slideIndex: props.currentSlide,
+    };
+
+    window.dispatchEvent(
+      new CustomEvent(TEMPLATE_V2_INSERT_ELEMENTS_EVENT, { detail })
+    );
+
+    if (!detail.handled) {
+      notify.warning(
+        "Text insert unavailable",
+        "Text blocks can be added only when a USE_SLIDE_EDITOR_IMPORT slide is selected."
+      );
+    }
+  };
 
   return (
     <div className="flex h-full w-full overflow-hidden  bg-white px-2 py-1.5">
@@ -471,6 +642,7 @@ const PresentationActions = (props: PresentationActionsProps) => {
           <InsertPanel
             title="Texts"
             groups={[{ label: "Add", items: textItems }]}
+            onItemSelect={handleTextItemSelect}
           />
         )}
         {activeAction === "charts" && (
