@@ -80,8 +80,10 @@ Convert the provided raw slide elements to components.
 - Identify charts from raw pptx json and replace elements forming chart to chart element.
 - Legends, grids and axis are part of chart and must be included inside `chart` element.
 - If a line chart is represented by `line` elements in raw slide layout, after converting it to line `chart`, remove those `line` elements and replace it with line chart.
-- Also, if chart legend are represented using `ellipse` and `text` elements, remove those elements. `chart` element with by default include legends.
+- Also, if chart legend are represented using `ellipse` and `text` elements, remove those elements, `chart` element includes legends by default.
 - If a chart is represented by `image` element in raw slide layout, convert it to `chart` element and remove `image` element.
+- Use `chart` element for charts even if chart is not visually similar to reference slide image.
+- Must not add legends manually, legends will be included by default.
 
 # Schema Rules:
 - Set `decorative=true` for decorative or static elements like logo, decorative images, etc.
