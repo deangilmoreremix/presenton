@@ -75,11 +75,6 @@ Convert the provided raw slide elements to components.
 # Schema Rules:
 - Set `decorative=true` for decorative or static elements like logo, decorative images, etc.
 - Set `decorative=false` for content elements which should be replaced while creating new slide.
-- Do not set `decorative` on `container`, `flex`, `grid`, or `group` layout elements.
-- Text elements must include `runs`.
-- Text-list elements must include `items`.
-- Image elements must include `data`.
-- Table elements must use `columns` as `list[str]` and `rows` as `list[list[str]]`; do not use table cell objects.
 - If `flex` or `grid` contains list of same items, set the `max_length`, `min_length`, and other schema related constraints same for items.
 - For same items arranged in `flex`/`grid` derive schema fields by averaging between those similar items.
 
