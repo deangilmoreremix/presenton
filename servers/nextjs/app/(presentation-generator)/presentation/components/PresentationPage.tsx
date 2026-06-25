@@ -483,6 +483,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
             <PresentationActions
               presentationId={presentation_id}
               currentSlide={selectedSlide}
+              presentationData={presentationData}
               onPresentationChanged={handlePresentationChanged}
               onChatSendingStateChange={handleChatSendingStateChange}
               onFollowModeChange={setIsFollowModeEnabled}

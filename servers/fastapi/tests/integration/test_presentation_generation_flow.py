@@ -318,6 +318,7 @@ def test_get_presentation_preserves_template_v2_detail_payload():
         name="presentation",
         layouts=template_layouts,
         components=template_components,
+        merged_components=template_components,
     )
 
     class _TemplateV2ComponentSession(FakeAsyncSession):
@@ -341,6 +342,7 @@ def test_get_presentation_preserves_template_v2_detail_payload():
     assert response.layout == template_layouts
     assert response.structure == structure
     assert response.components == template_components
+    assert response.merged_components == template_components
 
 
 def test_stream_presentation_uses_template_v2_schema_for_content_generation():

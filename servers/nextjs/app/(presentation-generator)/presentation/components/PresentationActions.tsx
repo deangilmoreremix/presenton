@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlignCenter,
   AreaChart,
@@ -33,7 +33,14 @@ import type {
 import type { ElementPath } from "@/components/slide-editor/lib/element-path";
 import { createDefaultElementFromRegistry } from "@/components/slide-editor/registry";
 import { ChartEditorContent } from "@/components/slide-editor/workspace/ChartEditorContent";
+import {
+  adaptTemplateV2ComponentToElement,
+  extractTemplateV2Layouts,
+  extractTemplateV2MergedComponents,
+  type TemplateV2ImportResponse,
+} from "@/components/slide-editor/lib/template-v2-import";
 import Chat from "./Chat";
+import TemplateService from "../../services/api/template";
 import {
   TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
@@ -43,7 +50,9 @@ import {
   type TemplateV2InsertElementsDetail,
 } from "../../components/TemplateV2KonvaSlide";
 
-type PresentationActionsProps = React.ComponentProps<typeof Chat>;
+type PresentationActionsProps = React.ComponentProps<typeof Chat> & {
+  presentationData?: unknown;
+};
 
 type ActionId =
   | "ai"
@@ -66,12 +75,23 @@ type PaletteItem = {
   icon: LucideIcon;
 };
 
+type UnknownRecord = Record<string, unknown>;
+
 type ChartEditorState = {
   chart: ChartElement;
   path: ElementPath;
   rootIndex: number;
   slideId?: string | number | null;
   slideIndex?: number | null;
+};
+
+type TemplateBlock = {
+  key: string;
+  title: string;
+  description: string;
+  elementCount: number;
+  raw: unknown;
+  index: number;
 };
 
 const insertActions: ActionItem[] = [
@@ -113,39 +133,7 @@ const elementItems = [
   { id: "line", label: "Line", icon: Minus },
 ] satisfies PaletteItem[];
 
-const contentCards = [
-  {
-    title: "Key Findings",
-    type: "Paragraph",
-    body: (
-      <p>
-        Our platform reached{" "}
-        <span className="font-semibold text-[#7F22FE]">$4.2M ARR</span> this
-        quarter, representing 23% year-over-year growth across all customer
-        segments globally.
-      </p>
-    ),
-  },
-  {
-    title: "Q3 Highlights",
-    type: "Bullet List",
-    body: (
-      <ul className="space-y-1.5">
-        {[
-          "Revenue grew 23% year-over-year",
-          "Reached 12,840 active customers",
-          "NPS improved to 74 (+6 pts)",
-          "Churn reduced to 2.1%",
-        ].map((item) => (
-          <li key={item} className="flex items-start gap-2">
-            <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#7F22FE]" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    ),
-  },
-];
+const templateBlocksCache = new Map<string, TemplateBlock[]>();
 
 const makeTextElement = ({
   text,
@@ -578,8 +566,317 @@ const InsertPanel = ({
   </div>
 );
 
-const BlocksPanel = () => {
+function isRecord(value: unknown): value is UnknownRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function readRecordString(record: UnknownRecord, key: string): string | null {
+  return readString(record[key]);
+}
+
+function readRecordArray(record: UnknownRecord, key: string): unknown[] {
+  const value = record[key];
+  return Array.isArray(value) ? value : [];
+}
+
+function humanizeIdentifier(value: string) {
+  const normalized = value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function templateBlockFromComponent(
+  component: unknown,
+  index: number,
+): TemplateBlock | null {
+  const raw = isRecord(component) ? component : null;
+  if (!raw) return null;
+
+  const id = readRecordString(raw, "id");
+  const title =
+    readRecordString(raw, "name") ??
+    readRecordString(raw, "title") ??
+    (id ? humanizeIdentifier(id) : `Component ${index + 1}`);
+  const description = readRecordString(raw, "description") ?? "";
+  const elementCount = readRecordArray(raw, "elements").length;
+
+  return {
+    key: id ?? `${title}-${index}`,
+    title,
+    description,
+    elementCount,
+    raw: component,
+    index,
+  };
+}
+
+function componentVariants(component: unknown): unknown[] {
+  const raw = isRecord(component) ? component : null;
+  if (!raw) return [];
+
+  return readRecordArray(raw, "variants")
+    .map((variant, variantIndex) => {
+      if (!isRecord(variant)) return null;
+      return {
+        ...raw,
+        ...variant,
+        id:
+          readRecordString(variant, "id") ??
+          `${readRecordString(raw, "id") ?? "component"}_variant_${variantIndex + 1}`,
+        name:
+          readRecordString(variant, "name") ??
+          readRecordString(variant, "title") ??
+          readRecordString(raw, "name") ??
+          readRecordString(raw, "title"),
+        description:
+          readRecordString(variant, "description") ??
+          readRecordString(raw, "description"),
+      };
+    })
+    .filter(Boolean);
+}
+
+function templateBlocksFromTemplate(template: unknown): TemplateBlock[] {
+  const components = extractTemplateV2MergedComponents(template);
+  return components
+    .flatMap((component) => {
+      const variants = componentVariants(component);
+      return variants.length > 0 ? variants : [component];
+    })
+    .map(templateBlockFromComponent)
+    .filter((block): block is TemplateBlock => Boolean(block));
+}
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean) as string[]));
+}
+
+function collectCandidateTemplateIds(value: unknown, depth = 0): string[] {
+  if (depth > 6) return [];
+
+  const ids: Array<string | null | undefined> = [];
+  if (Array.isArray(value)) {
+    value.slice(0, 80).forEach((item) => {
+      ids.push(...collectCandidateTemplateIds(item, depth + 1));
+    });
+    return uniqueStrings(ids);
+  }
+
+  if (!isRecord(value)) return [];
+
+  const directKeys = [
+    "templateV2Id",
+    "template_v2_id",
+    "templateId",
+    "template_id",
+  ];
+
+  directKeys.forEach((key) => {
+    ids.push(readRecordString(value, key) ?? undefined);
+  });
+
+  const template = value.template;
+  if (typeof template === "string") {
+    ids.push(template);
+  } else if (isRecord(template)) {
+    ids.push(
+      readRecordString(template, "id") ??
+        readRecordString(template, "templateV2Id") ??
+        readRecordString(template, "template_v2_id") ??
+        undefined,
+    );
+  }
+
+  [
+    "layout",
+    "layouts",
+    "slides",
+    "presentation",
+    "properties",
+    "ui",
+    "metadata",
+  ].forEach((key) => {
+    ids.push(...collectCandidateTemplateIds(value[key], depth + 1));
+  });
+
+  if (typeof window !== "undefined" && depth === 0) {
+    const params = new URLSearchParams(window.location.search);
+    ids.push(
+      params.get("templateV2Id") ??
+        params.get("template_v2_id") ??
+        params.get("template_id") ??
+        params.get("templateId") ??
+        undefined,
+    );
+  }
+
+  return uniqueStrings(ids);
+}
+
+function collectPresentationLayoutIds(presentationData: unknown): string[] {
+  const raw = isRecord(presentationData) ? presentationData : null;
+  if (!raw) return [];
+
+  const ids: Array<string | null | undefined> = [];
+  const layout = raw.layout;
+
+  if (typeof layout === "string") {
+    ids.push(layout);
+  } else if (isRecord(layout)) {
+    ids.push(readRecordString(layout, "id"));
+    extractTemplateV2Layouts(layout).forEach((entry) => {
+      ids.push(readString(entry.id));
+    });
+  }
+
+  readRecordArray(raw, "slides").forEach((slide) => {
+    if (!isRecord(slide)) return;
+    ids.push(readRecordString(slide, "layout"));
+  });
+
+  return uniqueStrings(ids);
+}
+
+function collectTemplateDetailLayoutIds(
+  template: TemplateV2ImportResponse,
+): string[] {
+  return uniqueStrings([
+    ...extractTemplateV2Layouts(template.layouts).map((layout) =>
+      readString(layout.id),
+    ),
+    ...extractTemplateV2Layouts(template.raw_layouts).map((layout) =>
+      readString(layout.id),
+    ),
+  ]);
+}
+
+function templateMatchesLayoutIds(
+  template: TemplateV2ImportResponse,
+  layoutIds: string[],
+) {
+  if (layoutIds.length === 0) return false;
+  const wanted = new Set(layoutIds);
+  return collectTemplateDetailLayoutIds(template).some((id) => wanted.has(id));
+}
+
+async function loadTemplateBlocksForPresentation(
+  presentationData: unknown,
+): Promise<TemplateBlock[]> {
+  const embeddedBlocks = templateBlocksFromTemplate(presentationData);
+  if (embeddedBlocks.length > 0) return embeddedBlocks;
+
+  const candidateIds = collectCandidateTemplateIds(presentationData);
+  for (const templateId of candidateIds) {
+    try {
+      const template = (await TemplateService.getTemplateV2Details(
+        templateId,
+      )) as TemplateV2ImportResponse;
+      const blocks = templateBlocksFromTemplate(template);
+      if (blocks.length > 0) return blocks;
+    } catch {
+      // Candidate ids can include legacy template slugs; ignore and try the next source.
+    }
+  }
+
+  const layoutIds = collectPresentationLayoutIds(presentationData);
+  if (layoutIds.length === 0) return [];
+
+  try {
+    const summaries = await TemplateService.getTemplateV2Summaries();
+    for (const summary of summaries.items ?? []) {
+      try {
+        const template = (await TemplateService.getTemplateV2Details(
+          summary.id,
+        )) as TemplateV2ImportResponse;
+        if (!templateMatchesLayoutIds(template, layoutIds)) continue;
+
+        const blocks = templateBlocksFromTemplate(template);
+        if (blocks.length > 0) return blocks;
+      } catch {
+        // Keep searching; one bad template should not break the blocks panel.
+      }
+    }
+  } catch {
+    return [];
+  }
+
+  return [];
+}
+
+function templateBlocksCacheKey(presentationId: string, presentationData: unknown) {
+  const candidateIds = collectCandidateTemplateIds(presentationData).join(",");
+  const layoutIds = collectPresentationLayoutIds(presentationData).join(",");
+  return `${presentationId}:${candidateIds}:${layoutIds}`;
+}
+
+const BlocksPanel = ({
+  presentationId,
+  presentationData,
+  onInsertBlock,
+}: {
+  presentationId: string;
+  presentationData?: unknown;
+  onInsertBlock: (block: TemplateBlock) => void;
+}) => {
   const [blockPrompt, setBlockPrompt] = useState("");
+  const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cacheKey = useMemo(
+    () => templateBlocksCacheKey(presentationId, presentationData),
+    [presentationData, presentationId],
+  );
+  const visibleBlocks = useMemo(() => {
+    const query = blockPrompt.trim().toLowerCase();
+    if (!query) return blocks;
+    return blocks.filter(
+      (block) =>
+        block.title.toLowerCase().includes(query) ||
+        block.description.toLowerCase().includes(query),
+    );
+  }, [blockPrompt, blocks]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const cached = templateBlocksCache.get(cacheKey);
+    if (cached) {
+      setBlocks(cached);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    void loadTemplateBlocksForPresentation(presentationData)
+      .then((nextBlocks) => {
+        if (cancelled) return;
+        if (nextBlocks.length > 0) {
+          templateBlocksCache.set(cacheKey, nextBlocks);
+        }
+        setBlocks(nextBlocks);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Could not load template components.");
+        setBlocks([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheKey, presentationData]);
 
   return (
     <div className="h-full overflow-y-auto px-5 pb-8 pt-8 hide-scrollbar">
@@ -610,68 +907,61 @@ const BlocksPanel = () => {
       <SectionLabel>Content</SectionLabel>
 
       <div className="space-y-3">
-        <button
-          type="button"
-          className="relative w-full rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-left"
-        >
-          <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#111827] shadow-[0_4px_12px_rgba(16,24,40,0.16)]">
-            <GripVertical
-              className="h-3.5 w-3.5"
-              strokeWidth={1.8}
-              aria-hidden
-            />
-          </span>
-          <h4 className="text-[17px] font-semibold leading-5 text-[#101323]">
-            Company Overview
-          </h4>
-          <p className="mt-2 text-[10px] leading-4 text-[#667085]">
-            Q3 2024 - Strategic Briefing
+        {loading && (
+          <p className="rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-[11px] leading-4 text-[#667085]">
+            Loading template components...
           </p>
-          <div className="mt-3 h-[3px] w-8 rounded-full bg-[#7F22FE]" />
-        </button>
-        <p className="-mt-1 pl-2 text-[11px] leading-4 text-[#171725]">
-          Title Block
-        </p>
-
-        {contentCards.map((card) => (
-          <React.Fragment key={card.title}>
+        )}
+        {!loading && error && (
+          <p className="rounded-[8px] border border-[#FEE4E2] bg-[#FFFBFA] p-4 text-[11px] leading-4 text-[#B42318]">
+            {error}
+          </p>
+        )}
+        {!loading && !error && visibleBlocks.length === 0 && (
+          <p className="rounded-[8px] border border-dashed border-[#D0D5DD] bg-[#F9FAFB] p-4 text-[11px] leading-4 text-[#667085]">
+            No template components found.
+          </p>
+        )}
+        {!loading &&
+          !error &&
+          visibleBlocks.map((block) => (
             <button
+              key={block.key}
               type="button"
-              className="w-full rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-left"
+              className="relative w-full rounded-[8px] border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-left transition hover:border-[#D6BBFB] hover:bg-[#FAF9FF]"
+              onClick={() => onInsertBlock(block)}
             >
-              <h4 className="mb-2 text-[12px] font-semibold leading-4 text-[#101323]">
-                {card.title}
+              <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#111827] shadow-[0_4px_12px_rgba(16,24,40,0.16)]">
+                <GripVertical
+                  className="h-3.5 w-3.5"
+                  strokeWidth={1.8}
+                  aria-hidden
+                />
+              </span>
+              <h4 className="pr-8 text-[14px] font-semibold leading-5 text-[#101323]">
+                {block.title}
               </h4>
-              <div className="text-[10px] font-normal leading-[15px] text-[#344054]">
-                {card.body}
+              {block.description ? (
+                <p className="mt-2 line-clamp-3 text-[10px] leading-4 text-[#667085]">
+                  {block.description}
+                </p>
+              ) : null}
+              <div className="mt-3 flex items-center gap-2">
+                <div className="h-[3px] w-8 rounded-full bg-[#7F22FE]" />
+                <span className="text-[9px] leading-3 text-[#98A2B3]">
+                  {block.elementCount}{" "}
+                  {block.elementCount === 1 ? "element" : "elements"}
+                </span>
               </div>
             </button>
-            <p className="-mt-1 pl-2 text-[11px] leading-4 text-[#171725]">
-              {card.type}
-            </p>
-          </React.Fragment>
-        ))}
-
-        <button
-          type="button"
-          className="w-full rounded-[8px] border border-[#E5E7EB] bg-[#FAF9FF] p-4 text-left"
-        >
-          <div className="border-l-[4px] border-[#7F22FE] pl-3">
-            <p className="text-[11px] font-semibold leading-[17px] text-[#101323]">
-              &quot;The best investment we made was in our customer success team
-              - it paid back 10x.&quot;
-            </p>
-            <p className="mt-2 text-[9px] leading-3 text-[#98A2B3]">
-              - Sarah Kim, CEO - Presenton
-            </p>
-          </div>
-        </button>
+          ))}
       </div>
     </div>
   );
 };
 
 const PresentationActions = (props: PresentationActionsProps) => {
+  const { presentationData, ...chatProps } = props;
   const [activeAction, setActiveAction] = useState<ActionId>("ai");
   const [chartEditor, setChartEditor] = useState<ChartEditorState | null>(null);
 
@@ -815,6 +1105,19 @@ const PresentationActions = (props: PresentationActionsProps) => {
     insertEditorElements(createElementInsertElements(item.id), item.label);
   };
 
+  const handleBlockSelect = (block: TemplateBlock) => {
+    const element = adaptTemplateV2ComponentToElement(block.raw, block.index);
+    if (!element) {
+      notify.warning(
+        "Component unavailable",
+        "This template component cannot be inserted yet.",
+      );
+      return;
+    }
+
+    insertEditorElements([element], block.title);
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden  bg-white px-2 py-1.5">
       <aside className="flex h-full w-[70px] shrink-0 flex-col items-center border-r border-[#F4F4F5]  py-5">
@@ -922,10 +1225,16 @@ const PresentationActions = (props: PresentationActionsProps) => {
         <div
           className={cn("h-full", activeAction === "ai" ? "block" : "hidden")}
         >
-          <Chat {...props} />
+          <Chat {...chatProps} />
         </div>
 
-        {activeAction === "blocks" && <BlocksPanel />}
+        {activeAction === "blocks" && (
+          <BlocksPanel
+            presentationId={props.presentationId}
+            presentationData={presentationData}
+            onInsertBlock={handleBlockSelect}
+          />
+        )}
         {activeAction === "texts" && (
           <InsertPanel
             title="Texts"

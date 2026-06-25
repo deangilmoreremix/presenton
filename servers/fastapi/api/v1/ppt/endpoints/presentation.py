@@ -171,10 +171,11 @@ async def _resolve_presentation_fonts(
     return None
 
 
-async def _resolve_presentation_components(
+async def _resolve_presentation_template_v2_payload(
     presentation: PresentationModel,
     slides: List[SlideModel],
     sql_session: AsyncSession,
+    payload_field: Literal["components", "merged_components"],
 ):
     candidate_template_ids: List[uuid.UUID] = []
     seen = set()
@@ -203,28 +204,58 @@ async def _resolve_presentation_components(
 
     for template_id in candidate_template_ids:
         template = await sql_session.get(TemplateV2, template_id)
-        if template and template.components is not None:
-            return template.components
+        if template:
+            payload = getattr(template, payload_field, None)
+            if payload is not None:
+                return payload
 
     target_layout_payload = _canonical_template_v2_layout_payload(presentation.layout)
     if not target_layout_payload:
         return None
 
     try:
+        payload_column = getattr(TemplateV2, payload_field)
         result = await sql_session.execute(
-            select(TemplateV2.id, TemplateV2.layouts, TemplateV2.components)
+            select(TemplateV2.id, TemplateV2.layouts, payload_column)
         )
-        for _template_id, layouts, components in result.all():
-            if components is None:
+        for _template_id, layouts, payload in result.all():
+            if payload is None:
                 continue
             if _canonical_template_v2_layout_payload(layouts) == target_layout_payload:
-                return components
+                return payload
     except Exception:
         logger.exception(
-            "[presentation.detail] failed to resolve template v2 components"
+            "[presentation.detail] failed to resolve template v2 %s",
+            payload_field,
         )
 
     return None
+
+
+async def _resolve_presentation_components(
+    presentation: PresentationModel,
+    slides: List[SlideModel],
+    sql_session: AsyncSession,
+):
+    return await _resolve_presentation_template_v2_payload(
+        presentation,
+        slides,
+        sql_session,
+        "components",
+    )
+
+
+async def _resolve_presentation_merged_components(
+    presentation: PresentationModel,
+    slides: List[SlideModel],
+    sql_session: AsyncSession,
+):
+    return await _resolve_presentation_template_v2_payload(
+        presentation,
+        slides,
+        sql_session,
+        "merged_components",
+    )
 
 
 def _insert_toc_layouts(
@@ -453,11 +484,17 @@ async def get_presentation(
         slides,
         sql_session,
     )
+    merged_components = await _resolve_presentation_merged_components(
+        presentation,
+        slides,
+        sql_session,
+    )
     return PresentationDetailWithSlides(
         **presentation.model_dump(),
         slides=slides,
         fonts=fonts,
         components=components,
+        merged_components=merged_components,
     )
 
 
@@ -797,6 +834,11 @@ async def stream_presentation(
                 slides,
                 sql_session,
             ),
+            merged_components=await _resolve_presentation_merged_components(
+                presentation,
+                slides,
+                sql_session,
+            ),
         )
 
         yield SSECompleteResponse(
@@ -854,12 +896,18 @@ async def update_presentation(
         response_slides,
         sql_session,
     )
+    merged_components = await _resolve_presentation_merged_components(
+        presentation,
+        response_slides,
+        sql_session,
+    )
 
     return PresentationDetailWithSlides(
         **presentation.model_dump(),
         slides=response_slides,
         fonts=fonts,
         components=components,
+        merged_components=merged_components,
     )
 
 

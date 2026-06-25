@@ -66,6 +66,8 @@ export type TemplateV2ImportResponse = {
   id?: unknown;
   name?: unknown;
   description?: unknown;
+  merged_components?: unknown;
+  mergedComponents?: unknown;
   raw_layouts?: unknown;
   layouts?: unknown;
   assets?: unknown;
@@ -606,6 +608,37 @@ function componentToGroupElement(
     componentDescription: componentDescription || null,
     design_variables: readArray(raw, "design_variables"),
   });
+}
+
+export function extractTemplateV2MergedComponents(template: unknown): unknown[] {
+  const raw = asRecord(template);
+  if (!raw) return [];
+
+  const value = readValue(raw, "mergedComponents", "merged_components");
+  if (Array.isArray(value)) {
+    return value.filter(isRecord);
+  }
+
+  const record = asRecord(value);
+  if (!record) return [];
+
+  const components = readArray(record, "components");
+  if (components.length > 0) {
+    return components.filter(isRecord);
+  }
+
+  return Object.values(record).filter(isRecord);
+}
+
+export function adaptTemplateV2ComponentToElement(
+  component: unknown,
+  componentIndex = 0,
+): SlideElement | null {
+  const rawGroup = componentToGroupElement(component, componentIndex);
+  if (!rawGroup) return null;
+
+  const element = adaptElement(rawGroup);
+  return element ? normalizeTemplateV2Element(element) : null;
 }
 
 function frameTopLevelFlowElementToComponent(
