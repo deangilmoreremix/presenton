@@ -42,14 +42,6 @@ export type TableInteractionProps = {
 export type SurfaceInteractionTarget = {
   path: ElementPath;
   rootIndexes: number[];
-  overlayFrame?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation: number;
-  };
-  overlayOffset?: { x: number; y: number };
 } | null;
 
 export function geometry(

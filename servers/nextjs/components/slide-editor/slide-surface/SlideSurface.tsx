@@ -178,7 +178,6 @@ export function SlideSurface({
         width={width}
       />
       <DomOverlayRenderers
-        activeSurfaceInteraction={surfaceInteractionTarget}
         editingBulletsIndex={resolvedEditingBulletsIndex}
         editingBulletsPath={resolvedEditingBulletsPath}
         editingTableIndex={resolvedEditingTableIndex}

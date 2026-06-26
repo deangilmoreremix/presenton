@@ -19,7 +19,6 @@ import type { ChartDataset, Plugin } from "chart.js";
 import { useEffect, useMemo, useRef } from "react";
 import type { ChartElement as ChartEl } from "../../../lib/slide-schema";
 import type { ResolvedLayoutItem } from "../../../lib/layout-resolver";
-import { isRootPath } from "../../../lib/element-path";
 import { PX_PER_IN, withHash } from "../../../editorUtils";
 import {
   chartPointColor,
@@ -28,7 +27,6 @@ import {
 } from "../../../lib/chart-data";
 import { renderMarkdownTextContent } from "../../../lib/markdown-text";
 import { DomElementLayer, elementBoxStyle } from "../shared";
-import type { SurfaceInteractionTarget } from "../../konva/types";
 
 type SupportedChartJsType = "bar" | "line" | "pie" | "doughnut";
 
@@ -50,11 +48,9 @@ Chart.register(
 );
 
 export function ChartDomElement({
-  activeSurfaceInteraction,
   items,
   scale,
 }: {
-  activeSurfaceInteraction?: SurfaceInteractionTarget;
   items: ResolvedLayoutItem[];
   scale: number;
 }) {
@@ -65,7 +61,6 @@ export function ChartDomElement({
           <ChartCanvas
             key={item.path}
             element={item.element}
-            overlay={overlayForItem(item, activeSurfaceInteraction)}
             scale={scale}
           />
         ) : null,
@@ -76,20 +71,9 @@ export function ChartDomElement({
 
 function ChartCanvas({
   element,
-  overlay,
   scale,
 }: {
   element: ChartEl;
-  overlay?: {
-    frame?: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rotation: number;
-    };
-    offset?: { x: number; y: number };
-  };
   scale: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -266,18 +250,6 @@ function ChartCanvas({
   }, [element, labels, resolvedDatasets, title]);
 
   const style = elementBoxStyle(element, scale);
-  if (overlay?.frame) {
-    style.left = overlay.frame.x;
-    style.top = overlay.frame.y;
-    style.width = overlay.frame.width;
-    style.height = overlay.frame.height;
-    style.transform = overlay.frame.rotation
-      ? `rotate(${overlay.frame.rotation}deg)`
-      : undefined;
-  } else if (overlay?.offset) {
-    style.left = Number(style.left ?? 0) + overlay.offset.x;
-    style.top = Number(style.top ?? 0) + overlay.offset.y;
-  }
 
   return (
     <div
@@ -296,29 +268,6 @@ function ChartCanvas({
       />
     </div>
   );
-}
-
-function overlayForItem(
-  item: ResolvedLayoutItem,
-  interaction?: SurfaceInteractionTarget,
-) {
-  if (!interaction?.overlayOffset && !interaction?.overlayFrame) {
-    return undefined;
-  }
-  if (!isRootPath(interaction.path)) {
-    return item.sourcePath === interaction.path
-      ? {
-          frame: interaction.overlayFrame,
-          offset: interaction.overlayOffset,
-        }
-      : undefined;
-  }
-  return interaction.rootIndexes.includes(item.rootIndex)
-    ? {
-        frame: interaction.overlayFrame,
-        offset: interaction.overlayOffset,
-      }
-    : undefined;
 }
 
 function markdownText(value: string | null | undefined) {

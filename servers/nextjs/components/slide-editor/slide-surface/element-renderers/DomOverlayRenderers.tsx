@@ -5,13 +5,12 @@ import {
   resolveSlideLayout,
   type ResolvedLayoutItem,
 } from "../../lib/layout-resolver";
-import { isRootPath, type ElementPath } from "../../lib/element-path";
+import type { ElementPath } from "../../lib/element-path";
 import {
   getDomOverlayDefinitions,
   type DomOverlayRendererKey,
 } from "../../registry";
 import type { TableCellSelection } from "../../state";
-import type { SurfaceInteractionTarget } from "../konva/types";
 import { BulletsDomElement } from "./bullets";
 import { ChartDomElement } from "./chart";
 import { SvgDomElement } from "./svg";
@@ -27,7 +26,6 @@ type DomOverlayRenderersProps = {
   editingTextPath?: ElementPath | null;
   hiddenPaths?: ReadonlySet<ElementPath>;
   hiddenRootIndexes?: ReadonlySet<number>;
-  activeSurfaceInteraction?: SurfaceInteractionTarget;
   items?: ResolvedLayoutItem[];
   scale: number;
   selectedTableCell?: TableCellSelection | null;
@@ -36,12 +34,8 @@ type DomOverlayRenderersProps = {
 
 const DOM_OVERLAY_RENDERERS = {
   svg: ({ items = [], scale }) => <SvgDomElement items={items} scale={scale} />,
-  chart: ({ activeSurfaceInteraction, items = [], scale }) => (
-    <ChartDomElement
-      activeSurfaceInteraction={activeSurfaceInteraction}
-      items={items}
-      scale={scale}
-    />
+  chart: ({ items = [], scale }) => (
+    <ChartDomElement items={items} scale={scale} />
   ),
   "text-list": ({ editingBulletsIndex, editingBulletsPath, items = [], scale }) => (
     <BulletsDomElement
@@ -97,7 +91,6 @@ export function DomOverlayRenderers(props: DomOverlayRenderersProps) {
           itemsByRenderer.get(renderer) ?? [],
           props.hiddenPaths,
           props.hiddenRootIndexes,
-          renderer === "chart" ? props.activeSurfaceInteraction : null,
         );
         return (
           <DomOverlayRenderer
@@ -125,13 +118,11 @@ function filterHiddenItems(
   items: ResolvedLayoutItem[],
   hiddenPaths?: ReadonlySet<ElementPath>,
   hiddenRootIndexes?: ReadonlySet<number>,
-  visibleInteraction?: SurfaceInteractionTarget,
 ) {
   if (!hiddenPaths?.size && !hiddenRootIndexes?.size) return items;
 
   let changed = false;
   const visibleItems = items.filter((item) => {
-    if (itemHasOverlayOffset(item, visibleInteraction)) return true;
     const hidden =
       hiddenPaths?.has(item.sourcePath) ||
       hiddenRootIndexes?.has(item.rootIndex);
@@ -139,17 +130,6 @@ function filterHiddenItems(
     return !hidden;
   });
   return changed ? visibleItems : items;
-}
-
-function itemHasOverlayOffset(
-  item: ResolvedLayoutItem,
-  interaction?: SurfaceInteractionTarget,
-) {
-  if (!interaction?.overlayOffset && !interaction?.overlayFrame) return false;
-  if (!isRootPath(interaction.path)) {
-    return item.sourcePath === interaction.path;
-  }
-  return interaction.rootIndexes.includes(item.rootIndex);
 }
 
 function DomOverlayRenderer({
