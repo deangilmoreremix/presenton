@@ -4,7 +4,6 @@ import {
   DeckSchema,
   SLIDE_H,
   SLIDE_W,
-  SlideSchema,
   type Alignment,
   type BorderRadius,
   type ChartSeries,
@@ -16,9 +15,7 @@ import {
   type LayoutAlignment,
   type LayoutItem,
   type Padding,
-  type Position,
   type Shadow,
-  type Size,
   type Slide,
   type SlideElement,
   type Stroke,
@@ -33,8 +30,6 @@ const SOURCE_H = 720;
 const X_SCALE = SLIDE_W / SOURCE_W;
 const Y_SCALE = SLIDE_H / SOURCE_H;
 const SOURCE_PX_TO_PT = (72 * SLIDE_W) / SOURCE_W;
-const TEMPLATE_V2_KONVA_SLIDE_CONTENT_KEY = "__template_v2_konva_slide__";
-
 type UnknownRecord = Record<string, unknown>;
 type AdaptedPosition = { x: number; y: number };
 type AdaptedSize = { width: number; height: number };
@@ -160,13 +155,6 @@ export function adaptGeneratedTemplateV2PresentationToDeck(
   const slides =
     generatedSlides.length > 0
       ? generatedSlides.slice(0, 50).map((slide, index) => {
-          const storedSlide = readStoredKonvaSlideFromContent(
-            readValue(slide, "content"),
-          );
-          if (storedSlide) {
-            return storedSlide;
-          }
-
           const uiLayout = readGeneratedSlideUiLayout(slide);
           if (uiLayout) {
             return adaptLayoutToSlide(uiLayout, index);
@@ -213,16 +201,6 @@ export function adaptGeneratedTemplateV2PresentationToDeck(
 function readGeneratedSlideUiLayout(slide: UnknownRecord): TemplateV2Layout | null {
   const ui = asRecord(readValue(slide, "ui"));
   return ui ? (ui as TemplateV2Layout) : null;
-}
-
-function readStoredKonvaSlideFromContent(content: unknown): Slide | null {
-  const rawContent = asRecord(content);
-  if (!rawContent) return null;
-
-  const parsed = SlideSchema.safeParse(
-    rawContent[TEMPLATE_V2_KONVA_SLIDE_CONTENT_KEY],
-  );
-  return parsed.success ? normalizeTemplateV2Slide(parsed.data) : null;
 }
 
 export function extractTemplateV2Layouts(value: unknown): TemplateV2Layout[] {
@@ -365,63 +343,6 @@ function withTemplateV2ChildSize(
       height: readNumber(size, "height") ?? sourceNumber(height),
     },
   };
-}
-
-export function serializeTemplateV2LayoutFromSlide(
-  layout: TemplateV2Layout,
-  slide: Slide,
-): TemplateV2Layout {
-  const sourceComponents = readArray(layout as UnknownRecord, "components").filter(
-    isRecord,
-  );
-  const usedSourceIndexes = new Set<number>();
-  const components = slide.elements
-    .filter(
-      (element): element is GroupElement =>
-        element.type === "group" && Boolean(element.component_id),
-    )
-    .map((group, index) => {
-      const componentId = group.component_id || `component_${index}`;
-      const sourceIndex = sourceComponents.findIndex(
-        (component, candidateIndex) =>
-          !usedSourceIndexes.has(candidateIndex) &&
-          readString(component.id) === componentId,
-      );
-      const source = sourceIndex >= 0 ? sourceComponents[sourceIndex] : null;
-      if (sourceIndex >= 0) usedSourceIndexes.add(sourceIndex);
-      const sourceElements = source ? readArray(source, "elements") : [];
-
-      return stripNullish({
-        ...(source ?? {}),
-        id: componentId,
-        description:
-          group.component_description ??
-          readString(source?.description) ??
-          `Editable ${componentId} component`,
-        position: sourcePosition(group.position),
-        size: sourceSize(group.size),
-        elements: group.children
-          .map((element, elementIndex) =>
-            serializeTemplateV2Element(element, sourceElements[elementIndex]),
-          )
-          .filter(isRecord),
-      });
-    });
-
-  return {
-    ...layout,
-    components,
-  };
-}
-
-export function serializeTemplateV2ContentFromSlide(
-  slide: Slide,
-  currentContent: unknown,
-  editorStateKey: string,
-): Record<string, unknown> {
-  const content = cloneJsonRecord(currentContent);
-  content[editorStateKey] = normalizeTemplateV2Slide(slide);
-  return content;
 }
 
 export function normalizeTemplateV2Slide(slide: Slide): Slide {
@@ -1554,317 +1475,8 @@ function titleFromLayout(layout: TemplateV2Layout, index: number) {
   return truncateString(`Slide ${slideNumber}`, 60);
 }
 
-function serializeTemplateV2Element(
-  element: SlideElement,
-  sourceValue: unknown,
-): UnknownRecord | null {
-  const source = asRecord(sourceValue) ?? {};
-  const base = serializeTemplateV2ElementBase(element, source);
-
-  switch (element.type) {
-    case "text":
-      return stripNullish({
-        ...base,
-        type: "text",
-        font: sourceFont(element.font),
-        alignment: element.alignment,
-        fill: element.fill,
-        stroke: sourceStroke(element.stroke),
-        runs: element.runs.map((run) =>
-          stripNullish({ text: run.text, font: sourceFont(run.font) }),
-        ),
-        min_length: element.min_length,
-        max_length: element.max_length,
-      });
-    case "container":
-      return stripNullish({
-        ...base,
-        type: "container",
-        alignment: element.alignment,
-        fill: element.fill,
-        stroke: sourceStroke(element.stroke),
-        border_radius: sourceBorderRadius(element.border_radius),
-        padding: sourcePadding(element.padding),
-        child: element.child
-          ? serializeTemplateV2Element(element.child, source.child)
-          : null,
-      });
-    case "image":
-      return stripNullish({
-        ...base,
-        type: "image",
-        flip_h: element.flip_h,
-        flip_v: element.flip_v,
-        data: element.data,
-        name: element.name ?? element.component_slot,
-        fit: element.fit,
-        focus_x: element.focus_x,
-        focus_y: element.focus_y,
-        border_radius: sourceBorderRadius(element.border_radius),
-        color: element.color,
-        is_icon: element.is_icon,
-      });
-    case "text-list":
-      return stripNullish({
-        ...base,
-        type: "text-list",
-        font: sourceFont(element.font),
-        marker: element.marker,
-        items: element.items.map((item) =>
-          item.map((run) => stripNullish({ text: run.text, font: sourceFont(run.font) })),
-        ),
-        min_items: element.min_items,
-        max_items: element.max_items,
-        min_item_length: element.min_item_length,
-        max_item_length: element.max_item_length,
-      });
-    case "table":
-      return stripNullish({
-        ...base,
-        type: "table",
-        columns: element.columns.map(serializeTemplateV2TableCell),
-        rows: element.rows.map((row) =>
-          row.map(serializeTemplateV2TableCell),
-        ),
-        min_columns: element.min_columns,
-        max_columns: element.max_columns,
-        min_rows: element.min_rows,
-        max_rows: element.max_rows,
-      });
-    case "rectangle":
-      return stripNullish({
-        ...base,
-        type: "rectangle",
-        fill: element.fill,
-        stroke: sourceStroke(element.stroke),
-        border_radius: sourceBorderRadius(element.border_radius),
-      });
-    case "ellipse":
-      return stripNullish({
-        ...base,
-        type: "ellipse",
-        fill: element.fill,
-        stroke: sourceStroke(element.stroke),
-      });
-    case "line":
-      return stripNullish({
-        ...base,
-        type: "line",
-        stroke: sourceStroke(element.stroke),
-      });
-    case "chart":
-      return stripNullish({
-        ...base,
-        type: "chart",
-        chart_type: element.chart_type,
-        title: element.title,
-        series_colors: element.series_colors,
-        axis_color: element.axis_color,
-        x_axis: element.x_axis,
-        y_axis: element.y_axis,
-        x_axis_title: element.x_axis_title,
-        y_axis_title: element.y_axis_title,
-        categories: element.categories,
-        series: element.series,
-        data_labels: element.data_labels ?? element.data_labels,
-        data_labels_color: element.data_labels_color,
-        grid: element.grid,
-        source: element.source,
-      });
-    case "infographic":
-      return stripNullish({
-        ...base,
-        type: "infographic",
-        infographic_type: element.infographic_type,
-        min_value: element.min_value,
-        max_value: element.max_value,
-        value: element.value,
-        base_color: element.base_color,
-        highlight_color: element.highlight_color,
-      });
-    case "flex":
-      return serializeTemplateV2ChildrenElement(
-        base,
-        "flex",
-        element,
-        readArray(source, "children"),
-        {
-          direction: element.direction,
-          wrap: element.wrap,
-          align_items: element.align_items,
-          justify_content: element.justify_content,
-          padding: sourcePadding(element.padding),
-          gap: sourceDistance(element.gap, X_SCALE),
-          column_gap: sourceDistance(element.column_gap, X_SCALE),
-          row_gap: sourceDistance(element.row_gap, Y_SCALE),
-          min_children: element.min_children,
-          max_children: element.max_children,
-        },
-      );
-    case "grid":
-      return serializeTemplateV2ChildrenElement(
-        base,
-        "grid",
-        element,
-        readArray(source, "children"),
-        {
-          columns: element.columns,
-          rows: element.rows,
-          align_items: element.align_items,
-          justify_items: element.justify_items,
-          padding: sourcePadding(element.padding),
-          gap: sourceDistance(element.gap, X_SCALE),
-          column_gap: sourceDistance(element.column_gap, X_SCALE),
-          row_gap: sourceDistance(element.row_gap, Y_SCALE),
-          min_children: element.min_children,
-          max_children: element.max_children,
-        },
-      );
-    case "group":
-      return serializeTemplateV2ChildrenElement(
-        base,
-        "group",
-        element,
-        readArray(source, "children"),
-        {
-          min_children: element.min_children,
-          max_children: element.max_children,
-        },
-      );
-  }
-
-  return null;
-}
-
-function serializeTemplateV2ElementBase(
-  element: SlideElement,
-  source: UnknownRecord,
-): UnknownRecord {
-  return stripNullish({
-    ...source,
-    position: sourcePosition(element.position),
-    size: sourceSize(element.size),
-    rotation: element.rotation,
-    decorative: element.decorative,
-    name: element.component_slot ?? readString(source.name),
-    shadow: sourceShadow(element.shadow),
-  });
-}
-
-function serializeTemplateV2ChildrenElement(
-  base: UnknownRecord,
-  type: "flex" | "grid" | "group",
-  element: Extract<SlideElement, { children: SlideElement[] }>,
-  sourceChildren: unknown[],
-  fields: UnknownRecord,
-): UnknownRecord {
-  return stripNullish({
-    ...base,
-    ...fields,
-    type,
-    children: element.children
-      .map((child, index) =>
-        serializeTemplateV2Element(child, sourceChildren[index]),
-      )
-      .filter(isRecord),
-  });
-}
-
-function serializeTemplateV2TableCell(cell: TableCell): UnknownRecord {
-  return stripNullish({
-    color: cell.color,
-    font: sourceFont(cell.font),
-    alignment: cell.alignment,
-    runs: cell.runs.map((run) =>
-      stripNullish({ text: run.text, font: sourceFont(run.font) }),
-    ),
-  });
-}
-
-function sourcePosition(value: Position | null | undefined) {
-  return value
-    ? { x: sourceNumber(value.x / X_SCALE), y: sourceNumber(value.y / Y_SCALE) }
-    : null;
-}
-
-function sourceSize(value: Size | null | undefined) {
-  return value
-    ? {
-        width: sourceNumber(value.width / X_SCALE),
-        height: sourceNumber(value.height / Y_SCALE),
-      }
-    : null;
-}
-
-function sourceFont(value: Font | null | undefined) {
-  if (!value) return null;
-  return stripNullish({
-    ...value,
-    size:
-      value.size == null
-        ? null
-        : sourceNumber(value.size / SOURCE_PX_TO_PT),
-    line_height: value.line_height,
-    letter_spacing: value.letter_spacing,
-  });
-}
-
-function sourceStroke(value: Stroke | null | undefined) {
-  if (!value) return null;
-  return {
-    ...value,
-    width: sourceNumber(value.width / SOURCE_PX_TO_PT),
-  };
-}
-
-function sourceBorderRadius(value: BorderRadius | null | undefined) {
-  if (!value) return null;
-  return {
-    tl: sourceNumber(value.tl / X_SCALE),
-    tr: sourceNumber(value.tr / X_SCALE),
-    bl: sourceNumber(value.bl / X_SCALE),
-    br: sourceNumber(value.br / X_SCALE),
-  };
-}
-
-function sourcePadding(value: Padding | null | undefined) {
-  if (!value) return null;
-  return {
-    top: sourceNumber(value.top / Y_SCALE),
-    right: sourceNumber(value.right / X_SCALE),
-    bottom: sourceNumber(value.bottom / Y_SCALE),
-    left: sourceNumber(value.left / X_SCALE),
-  };
-}
-
-function sourceShadow(value: Shadow | null | undefined) {
-  if (!value) return null;
-  return stripNullish({
-    ...value,
-    blur:
-      value.blur == null ? null : sourceNumber(value.blur / X_SCALE),
-    offset_x:
-      value.offset_x == null ? null : sourceNumber(value.offset_x / X_SCALE),
-    offset_y:
-      value.offset_y == null ? null : sourceNumber(value.offset_y / Y_SCALE),
-  });
-}
-
-function sourceDistance(value: number | null | undefined, scale: number) {
-  return value == null ? null : sourceNumber(value / scale);
-}
-
 function sourceNumber(value: number) {
   return Math.round(value * 10000) / 10000;
-}
-
-function cloneJsonRecord(value: unknown): Record<string, unknown> {
-  if (!isRecord(value)) return {};
-  try {
-    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
-  } catch {
-    return { ...value };
-  }
 }
 
 function readValue(record: UnknownRecord, key: string) {

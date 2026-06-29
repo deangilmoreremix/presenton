@@ -21,7 +21,10 @@ import {
   extractTemplateV2Layouts,
   type TemplateV2Layout,
 } from "@/components/slide-editor/lib/template-v2-import";
-import { BLANK_SLIDE_LAYOUT_ID } from "../../_shared/blank-slide";
+import {
+  BLANK_SLIDE_LAYOUT_ID,
+  BLANK_TEMPLATE_V2_LAYOUT,
+} from "../../_shared/blank-slide";
 
 interface LayoutItemProps {
   layout: any;
@@ -33,7 +36,7 @@ const PREVIEW_HEIGHT = 720;
 const EMPTY_SLIDE_LAYOUT = {
   layoutId: BLANK_SLIDE_LAYOUT_ID,
   layoutName: "Empty Slide",
-  sampleData: {},
+  sampleData: BLANK_TEMPLATE_V2_LAYOUT,
   isEmptySlide: true,
 };
 
@@ -50,7 +53,7 @@ function createTemplateV2LayoutItem(layout: TemplateV2Layout, layoutIndex: numbe
   return {
     layoutId,
     layoutName: description ?? layoutId,
-    sampleData: {},
+    sampleData: layout,
     v2Layout: layout,
   };
 }
@@ -172,7 +175,8 @@ const NewSlideV1 = ({
         const newSlide = {
           id: uuidv4(),
           index: index,
-          content: sampleData,
+          content: isTemplateV2 ? {} : sampleData,
+          ...(isTemplateV2 ? { ui: sampleData } : {}),
           layout_group: templateID,
           layout: isCustomTemplate ? `${templateID}:${id}` : id,
           presentation: presentationId,

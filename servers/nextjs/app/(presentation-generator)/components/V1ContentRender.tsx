@@ -56,8 +56,7 @@ export const V1ContentRender = ({
         const slideUi = slide.ui;
         return slideUi &&
             typeof slideUi === "object" &&
-            !Array.isArray(slideUi) &&
-            Array.isArray(slideUi.components)
+            !Array.isArray(slideUi)
             ? slideUi as TemplateV2Layout
             : null;
     }, [isTemplateV2Slide, slide.ui]);
@@ -86,25 +85,16 @@ export const V1ContentRender = ({
         }
     }, [isTemplateV2Slide, isCustomTemplate, customTemplate, slideLayout, layoutGroup]);
 
-    if (isBlankSlide && isTemplateV2Slide) {
-        return (
-            <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
-                <TemplateV2KonvaSlide
-                    layout={BLANK_TEMPLATE_V2_LAYOUT}
-                    slide={slide}
-                    isEditMode={isEditMode}
-                    renderIndex={renderIndex}
-                />
-            </SlideErrorBoundary>
-        );
-    }
-
     if (isBlankSlide) {
-        return <div className="h-full w-full bg-white" />;
+        if (!isTemplateV2Slide) {
+            return <div className="h-full w-full bg-white" />;
+        }
     }
 
     if (isTemplateV2Slide) {
-        if (!templateV2Layout) {
+        const directLayout = templateV2Layout ??
+            (isBlankSlide ? BLANK_TEMPLATE_V2_LAYOUT : null);
+        if (!directLayout) {
             return (
                 <div className="flex h-full aspect-video flex-col items-center justify-center rounded-lg bg-gray-100">
                     <Loader2 className="mb-2 h-4 w-4 animate-spin" />
@@ -116,9 +106,10 @@ export const V1ContentRender = ({
         return (
             <SlideErrorBoundary label={`Slide ${slide.index + 1}`}>
                 <TemplateV2KonvaSlide
-                    layout={templateV2Layout}
-                    slide={slide}
+                    layout={directLayout}
                     isEditMode={isEditMode}
+                    slideId={slide.id ?? null}
+                    slideIndex={slide.index}
                     renderIndex={renderIndex}
                 />
             </SlideErrorBoundary>

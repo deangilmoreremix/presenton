@@ -3,6 +3,8 @@ export const BLANK_SLIDE_LAYOUT_ID = "__blank_slide__";
 export const BLANK_TEMPLATE_V2_LAYOUT = {
   id: BLANK_SLIDE_LAYOUT_ID,
   description: "Empty slide.",
+  background: "#FFFFFF",
+  components: [],
   elements: [
     {
       type: "rectangle",
