@@ -510,6 +510,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
                             slide={slide}
                             index={index}
                             presentationId={presentation_id}
+                            onSlideAdded={handleSlideClick}
                             isChatEditing={
                               highlightedSlideIndex !== null &&
                               index === highlightedSlideIndex

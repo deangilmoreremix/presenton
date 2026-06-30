@@ -150,6 +150,7 @@ const SidePanel = ({
                 templateID={lastSlideTemplateId}
                 setShowNewSlideSelection={setShowNewSlideSelection}
                 presentationId={presentationId}
+                onSlideAdded={onSlideClick}
               />
             </div>
           </div>

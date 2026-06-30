@@ -16,16 +16,24 @@ export const usePresentationNavigation = (
     searchParams.get("slide") || `${selectedSlide}` || "0"
   );
 
-  const handleSlideClick = useCallback((index: number) => {
-    setSelectedSlide(index);
+  const scrollToSlide = useCallback((index: number, attempts = 2) => {
     const slideElement = document.getElementById(`slide-${index}`);
     if (slideElement) {
       slideElement.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
+      return;
     }
-  }, [setSelectedSlide]);
+    if (attempts > 0) {
+      window.requestAnimationFrame(() => scrollToSlide(index, attempts - 1));
+    }
+  }, []);
+
+  const handleSlideClick = useCallback((index: number) => {
+    setSelectedSlide(index);
+    window.requestAnimationFrame(() => scrollToSlide(index));
+  }, [scrollToSlide, setSelectedSlide]);
 
   useEffect(() => {
     const syncFullscreenState = () => {

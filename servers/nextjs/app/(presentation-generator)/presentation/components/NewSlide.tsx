@@ -142,12 +142,14 @@ interface NewSlideV1Props {
   templateID: string;
   index: number;
   presentationId: string;
+  onSlideAdded?: (index: number) => void;
 }
 const NewSlideV1 = ({
   setShowNewSlideSelection,
   templateID,
   index,
   presentationId,
+  onSlideAdded,
 }: NewSlideV1Props) => {
   const dispatch = useDispatch();
   const pathname = usePathname();
@@ -182,6 +184,7 @@ const NewSlideV1 = ({
           presentation: presentationId,
         };
         dispatch(addNewSlide({ slideData: newSlide, index }));
+        onSlideAdded?.(index + 1);
         trackEvent(MixpanelEvent.Presentation_Slide_Added, {
           pathname,
           presentation_id: presentationId,
@@ -206,6 +209,7 @@ const NewSlideV1 = ({
       isCustomTemplate,
       isTemplateV2,
       pathname,
+      onSlideAdded,
     ]
   );
 

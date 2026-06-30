@@ -919,9 +919,9 @@ function collectCandidateTemplateIds(value: unknown, depth = 0): string[] {
   } else if (isRecord(template)) {
     ids.push(
       readRecordString(template, "id") ??
-        readRecordString(template, "templateV2Id") ??
-        readRecordString(template, "template_v2_id") ??
-        undefined,
+      readRecordString(template, "templateV2Id") ??
+      readRecordString(template, "template_v2_id") ??
+      undefined,
     );
   }
 
@@ -941,10 +941,10 @@ function collectCandidateTemplateIds(value: unknown, depth = 0): string[] {
     const params = new URLSearchParams(window.location.search);
     ids.push(
       params.get("templateV2Id") ??
-        params.get("template_v2_id") ??
-        params.get("template_id") ??
-        params.get("templateId") ??
-        undefined,
+      params.get("template_v2_id") ??
+      params.get("template_id") ??
+      params.get("templateId") ??
+      undefined,
     );
   }
 
@@ -1235,7 +1235,7 @@ const BlocksPanel = ({
         <input
           value={blockPrompt}
           onChange={(event) => setBlockPrompt(event.target.value)}
-          placeholder="Describe your components"
+          placeholder="Search blocks"
           className="min-w-0 flex-1 bg-transparent text-xs text-[#101323] outline-none placeholder:text-[#9CA3AF]"
         />
         <button
@@ -1355,9 +1355,8 @@ function PrimaryActionButton({
   return (
     <button type="button" className="mt-10 first:mt-0" onClick={onClick}>
       <p
-        className={`p-1.5 flex items-center justify-center rounded-[10px] border border-transparent ${
-          active ? "border-[#EDEEEF] bg-white" : ""
-        }`}
+        className={`p-1.5 flex items-center justify-center rounded-[10px] border border-transparent ${active ? "border-[#EDEEEF] bg-white" : ""
+          }`}
         style={{
           boxShadow: active ? "0 6.6px 13.2px 0 rgba(124, 81, 248, 0.14)" : "",
         }}
@@ -1631,7 +1630,15 @@ const PresentationActions = (props: PresentationActionsProps) => {
         "Insert unavailable",
         "Content can be added only when a USE_SLIDE_EDITOR_IMPORT slide is selected.",
       );
+      return;
     }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(`slide-${props.currentSlide}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
   };
 
   const insertEditorElements = (elements: SlideElement[], label: string) => {

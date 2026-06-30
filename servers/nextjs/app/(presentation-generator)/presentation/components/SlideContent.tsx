@@ -32,6 +32,7 @@ interface SlideContentProps {
   slide: any;
   index: number;
   presentationId: string;
+  onSlideAdded?: (index: number) => void;
   isChatEditing?: boolean;
   isChatTargeted?: boolean;
 }
@@ -40,6 +41,7 @@ const SlideContent = ({
   slide,
   index,
   presentationId,
+  onSlideAdded,
   isChatEditing = false,
 }: SlideContentProps) => {
   const dispatch = useDispatch();
@@ -234,6 +236,7 @@ const SlideContent = ({
                     templateID={slideTemplateId}
                     setShowNewSlideSelection={setShowNewSlideSelection}
                     presentationId={presentationId}
+                    onSlideAdded={onSlideAdded}
                   />
                 </div>
               </div>
