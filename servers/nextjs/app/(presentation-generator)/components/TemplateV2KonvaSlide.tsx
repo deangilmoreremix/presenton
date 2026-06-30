@@ -52,6 +52,12 @@ import { resolveBackendAssetSource } from "@/utils/api";
 import { ImagesApi } from "../services/api/images";
 import IconsEditor from "./IconsEditor";
 import {
+  createTemplateV2ClipboardPayload,
+  pasteTemplateV2ClipboardPayload,
+  type TemplateV2ClipboardPayload,
+} from "./template-v2-clipboard/clipboard";
+import { useTemplateV2Clipboard } from "./template-v2-clipboard/useTemplateV2Clipboard";
+import {
   TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
@@ -387,6 +393,57 @@ function TemplateV2KonvaSlideComponent({
     setInlineEdit(null);
     setIconEditorSelection(null);
   }, [commitUi, selection]);
+
+  const createClipboardPayload = useCallback((): TemplateV2ClipboardPayload | null => {
+    if (!selection) return null;
+    if (selection.kind === "component") {
+      const component = asRecord(
+        readArray(currentUiRef.current.components)[selection.componentIndex],
+      );
+      return component
+        ? createTemplateV2ClipboardPayload(
+            "component",
+            component,
+            componentBox(component),
+          )
+        : null;
+    }
+
+    const element = getElementAtSelection(currentUiRef.current, selection);
+    const absoluteBox = absoluteBoxForSelection(
+      currentUiRef.current,
+      selection,
+    );
+    return element && absoluteBox
+      ? createTemplateV2ClipboardPayload("element", element, absoluteBox)
+      : null;
+  }, [selection]);
+
+  const pasteClipboardPayload = useCallback(
+    (payload: TemplateV2ClipboardPayload, offset: number) => {
+      const result = pasteTemplateV2ClipboardPayload({
+        sourceUi: currentUiRef.current,
+        payload,
+        offset,
+        stageSize: { width: STAGE_WIDTH, height: STAGE_HEIGHT },
+      });
+      if (!result) return;
+      commitUi(result.ui);
+      setSelection(result.selection);
+      setInlineEdit(null);
+      setIconEditorSelection(null);
+      activateSurface();
+    },
+    [activateSurface, commitUi],
+  );
+
+  useTemplateV2Clipboard({
+    enabled: isEditMode,
+    isSurfaceActive,
+    isEditableTarget,
+    onCopy: createClipboardPayload,
+    onPaste: pasteClipboardPayload,
+  });
 
   const openInlineEditor = useCallback(
     (elementSelection: ElementSelection) => {
