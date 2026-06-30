@@ -258,7 +258,7 @@ class ExportTaskService:
                 status_code=500,
                 detail="NEXT_PUBLIC_FAST_API must be set for PPTX-to-HTML export",
             )
-        env["ASSETS_BASE_URL"] = f"{fastapi_base.rstrip('/')}/app_data"
+        env["ASSETS_BASE_URL"] = "/app_data"
         env["BUILT_PYTHON_MODULE_PATH"] = self.converter_path
 
         return env
