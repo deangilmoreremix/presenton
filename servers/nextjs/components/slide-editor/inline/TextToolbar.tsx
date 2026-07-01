@@ -10,12 +10,10 @@ import {
   Underline,
 } from "lucide-react";
 import type { TextSlideElement } from "../state";
-import type { Font } from "../lib/slide-schema";
 import { withHash } from "../editorUtils";
 import {
   elementFont,
   mergeFont,
-  type ResolvedFont,
 } from "../lib/element-model";
 import { DeferredColorInput } from "./DeferredColorInput";
 import { InlineToolbar } from "./InlineToolbar";
@@ -41,9 +39,7 @@ const HORIZONTAL_ALIGNMENT_ICONS = {
 
 const MIN_FONT_SIZE = 4;
 const MAX_FONT_SIZE = 240;
-export type TextToolbarFontPatch = Partial<
-  Pick<Font, "family" | "size" | "color" | "bold" | "italic" | "underline">
->;
+type TextToolbarFontPatch = Partial<NonNullable<TextSlideElement["font"]>>;
 
 function clampFontSize(size: number) {
   return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, size));
@@ -55,22 +51,18 @@ function formatToolbarFontSize(size: number) {
 }
 
 export function TextToolbar({
-  activeFont,
   element,
   index,
-  onFontPatch,
   scale,
   onChange,
 }: {
-  activeFont?: Partial<ResolvedFont> | null;
   element: TextSlideElement;
   index: number;
-  onFontPatch?: (patch: TextToolbarFontPatch) => void;
   scale: number;
   onChange: (index: number, element: TextSlideElement) => void;
 }) {
   const elementResolvedFont = elementFont(element);
-  const font = { ...elementResolvedFont, ...(activeFont ?? {}) };
+  const font = elementResolvedFont;
   const horizontalAlignment = element.alignment?.horizontal ?? "left";
   const verticalAlignment = element.alignment?.vertical ?? "top";
   const HorizontalAlignmentIcon =
@@ -81,10 +73,6 @@ export function TextToolbar({
   const [openPanel, setOpenPanel] = useState<"opacity" | null>(null);
   const [hoveredControl, setHoveredControl] = useState<string | null>(null);
   const applyFontPatch = (patch: TextToolbarFontPatch) => {
-    if (onFontPatch) {
-      onFontPatch(patch);
-      return;
-    }
     onChange(index, mergeFont(element, patch));
   };
   const commitFontSize = (nextSize: number) => {
