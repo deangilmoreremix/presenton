@@ -74,6 +74,12 @@ import {
   type TemplateV2ClipboardPayload,
 } from "./template-v2-clipboard/clipboard";
 import { useTemplateV2Clipboard } from "./template-v2-clipboard/useTemplateV2Clipboard";
+import {
+  isTemplateV2LayoutElement,
+  TemplateV2LayoutToolbar,
+} from "./template-v2-layout-toolbar/TemplateV2LayoutToolbar";
+import { findFirstComponentLayoutElement } from "./template-v2-layout-toolbar/layoutToolbarTarget";
+import { layoutWrappedFlexChildren } from "./template-v2-layout/wrappedFlexLayout";
 import { TemplateV2SelectionTransformers } from "./template-v2-selection/TemplateV2SelectionTransformers";
 import {
   TEMPLATE_V2_CHART_EDITOR_EVENT,
@@ -254,6 +260,22 @@ function TemplateV2KonvaSlideComponent({
   const selectedBox = selection
     ? absoluteBoxForSelection(uiDraft, selection)
     : null;
+  const layoutToolbarTarget = useMemo(() => {
+    if (selection?.kind !== "component" || !selectedComponent) return null;
+    const layoutRoot = findFirstComponentLayoutElement(
+      readArray(selectedComponent.elements),
+    );
+    if (!layoutRoot) return null;
+    const elementSelection: ElementSelection = {
+      kind: "element",
+      componentIndex: selection.componentIndex,
+      elementPath: layoutRoot.elementPath,
+    };
+    const box = absoluteBoxForSelection(uiDraft, elementSelection);
+    return box
+      ? { selection: elementSelection, element: layoutRoot.element, box }
+      : null;
+  }, [selection, selectedComponent, uiDraft]);
   const toolbarElement = useMemo(
     () => {
       if (!selectedElement || !selectedBox) return null;
@@ -587,6 +609,17 @@ function TemplateV2KonvaSlideComponent({
       });
     },
     [selection, updateElement, updateInlineEdit],
+  );
+
+  const applyLayoutElementChange = useCallback(
+    (changes: Record<string, unknown>) => {
+      if (!layoutToolbarTarget) return;
+      updateElement(layoutToolbarTarget.selection, (current) => ({
+        ...current,
+        ...changes,
+      }));
+    },
+    [layoutToolbarTarget, updateElement],
   );
 
   const applyComponentToolbarChange = useCallback(
@@ -976,11 +1009,20 @@ function TemplateV2KonvaSlideComponent({
           onEditImage={() => undefined}
         />
       ) : null}
+      {isEditMode && layoutToolbarTarget ? (
+        <TemplateV2LayoutToolbar
+          key={keyForSelection(layoutToolbarTarget.selection)}
+          box={layoutToolbarTarget.box}
+          element={layoutToolbarTarget.element}
+          onChange={applyLayoutElementChange}
+        />
+      ) : null}
       {isEditMode &&
         selection?.kind === "element" &&
         selectedElement &&
         selectedBox &&
         toolbarElement &&
+        !isTemplateV2LayoutElement(selectedElement) &&
         !isRawIconElement(selectedElement) &&
         !(editingTableCell && readString(selectedElement.type) === "table") ? (
         <ElementToolbar
@@ -2431,6 +2473,35 @@ function layoutFlexChildren(
   const availableH = Math.max(1, parentBox.height - padding.top - padding.bottom);
   const availableMain = isColumn ? availableH : availableW;
   const availableCross = isColumn ? availableW : availableH;
+  if (parent.wrap === true) {
+    const crossGap =
+      (isColumn
+        ? readNumber(parent.column_gap) ?? readNumber(parent.columnGap)
+        : readNumber(parent.row_gap) ?? readNumber(parent.rowGap)) ??
+      readNumber(parent.gap) ??
+      0;
+    return layoutWrappedFlexChildren({
+      align,
+      alignSelf: (child) =>
+        readString(child.layout?.align_self) ??
+        readString(child.layout?.alignSelf),
+      alignmentOffset,
+      availableCross,
+      availableMain,
+      childCrossSize,
+      children,
+      clampLayoutSize,
+      crossGap,
+      direction,
+      elementBox,
+      flexBasis,
+      isManualPositioned,
+      justify,
+      layoutNumber,
+      mainGap,
+      padding,
+    });
+  }
   const bases = children.map((child) =>
     isManualPositioned(child)
       ? isColumn
