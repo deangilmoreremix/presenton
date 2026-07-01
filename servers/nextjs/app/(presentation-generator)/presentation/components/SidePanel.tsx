@@ -182,6 +182,8 @@ const SidePanel = ({
                     slide={slide}
                     index={index}
                     selected={selectedSlide === index}
+                    fonts={presentationData.fonts}
+                    presentationVersion={presentationData.version}
                     onClick={() => onSlideClick(slide.index ?? index)}
                   />
                 ))
@@ -202,6 +204,8 @@ const SidePanel = ({
                           slide={slide}
                           index={index}
                           selectedSlide={selectedSlide}
+                          fonts={presentationData.fonts}
+                          presentationVersion={presentationData.version}
                           onSlideClick={onSlideClick}
                         />
                       )

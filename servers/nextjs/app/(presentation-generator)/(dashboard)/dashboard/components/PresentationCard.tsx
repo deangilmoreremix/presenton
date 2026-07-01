@@ -14,6 +14,10 @@ import { notify } from "@/components/ui/sonner";
 
 import { useFontLoader } from "@/app/(presentation-generator)/hooks/useFontLoad";
 import SlideScale from "@/app/(presentation-generator)/components/PresentationRender";
+import {
+  shouldRenderTemplateV2HtmlPreview,
+  TemplateV2HtmlSlidePreview,
+} from "@/app/(presentation-generator)/components/TemplateV2HtmlSlidePreview";
 import MarkdownRenderer from "@/components/MarkDownRender";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 
@@ -107,6 +111,10 @@ export const PresentationCard = ({
     setIsDeleting(false);
   };
   const firstSlide = presentation?.slides?.[0];
+  const useTemplateV2HtmlPreview = shouldRenderTemplateV2HtmlPreview(
+    firstSlide,
+    presentation?.version
+  );
   return (
     <Card
       suppressHydrationWarning={true}
@@ -124,11 +132,18 @@ export const PresentationCard = ({
         <img src="/card_bg.svg" alt="" className="absolute top-0 left-0 w-full h-full object-cover" />
         <div className="scale-[0.75] mt-4  border border-gray-300 rounded-lg overflow-hidden">
 
-          <SlideScale
-            slide={firstSlide}
-            isClickable={false}
-            presentationLayout={presentation.layout}
-          />
+          {useTemplateV2HtmlPreview ? (
+            <TemplateV2HtmlSlidePreview
+              slide={firstSlide}
+              fonts={presentation.fonts}
+            />
+          ) : (
+            <SlideScale
+              slide={firstSlide}
+              isClickable={false}
+              presentationLayout={presentation.layout}
+            />
+          )}
         </div>
 
         <div className="w-full py-3 px-5 mt-auto z-40 relative bg-white  border-t border-[#EDEEEF]">

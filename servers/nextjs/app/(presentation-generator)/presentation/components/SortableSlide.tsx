@@ -8,9 +8,18 @@ interface SortableSlideProps {
     index: number;
     selectedSlide: number;
     onSlideClick: (index: any) => void;
+    fonts?: unknown;
+    presentationVersion?: unknown;
 }
 
-export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: SortableSlideProps) {
+export function SortableSlide({
+    slide,
+    index,
+    selectedSlide,
+    onSlideClick,
+    fonts,
+    presentationVersion,
+}: SortableSlideProps) {
     const lastClickTime = useRef(0);
     const {
         attributes,
@@ -27,7 +36,7 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: Sor
         opacity: isDragging ? 0.5 : 1,
     };
 
-    const handleClick = (e: React.MouseEvent) => {
+    const handleClick = () => {
         const now = Date.now();
 
         // Debounce clicks - only allow one click every 300ms
@@ -48,6 +57,8 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: Sor
             slide={slide}
             index={index}
             selected={selectedSlide === index}
+            fonts={fonts}
+            presentationVersion={presentationVersion}
             style={style}
             {...attributes}
             {...listeners}
