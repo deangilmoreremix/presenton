@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
   type ChangeEvent as ReactChangeEvent,
-  type CSSProperties,
 } from "react";
 import type Konva from "konva";
 import { useDispatch } from "react-redux";
@@ -26,17 +25,34 @@ import {
   Rect,
   Stage,
   Text,
-  Transformer,
 } from "react-konva";
 import { notify } from "@/components/ui/sonner";
 import type { TemplateV2Layout } from "@/components/slide-editor/lib/template-v2-import";
+import { effectiveLineHeight } from "@/components/slide-editor/lib/text-line-height";
+import { textRunsContent } from "@/components/slide-editor/lib/text-runs";
+import type {
+  TemplateV2InlineEditKind,
+  TemplateV2TextEditStyle,
+} from "@/components/slide-editor/lib/template-v2-text-editing";
 import {
   SLIDE_H,
   SLIDE_W,
   type ChartElement,
   type ChartSeries,
+  type Font,
   type SlideElement,
+  type TextRun,
 } from "@/components/slide-editor/lib/slide-schema";
+import {
+  useTableCellSelection,
+  useTemplateV2InlineEditing,
+  type TableCellSelection,
+  type TableSlideElement,
+} from "@/components/slide-editor/state";
+import {
+  TableInlineEditor,
+  TemplateV2InlineEditor,
+} from "@/components/slide-editor/inline";
 import { ElementToolbar } from "@/components/slide-editor/workspace/ElementToolbar";
 import {
   loadKonvaImage,
@@ -46,6 +62,7 @@ import {
   TemplateV2ChartElement as RawChartElement,
   rawChartType,
 } from "@/components/slide-editor/slide-surface/konva/TemplateV2ChartElement";
+import { TemplateV2TableElement as RawTableElement } from "@/components/slide-editor/slide-surface/konva/TemplateV2TableElement";
 import { buildSvgUpdateUrl } from "@/lib/svg-color";
 import { updateSlideUi } from "@/store/slices/presentationGeneration";
 import { resolveBackendAssetSource } from "@/utils/api";
@@ -57,6 +74,7 @@ import {
   type TemplateV2ClipboardPayload,
 } from "./template-v2-clipboard/clipboard";
 import { useTemplateV2Clipboard } from "./template-v2-clipboard/useTemplateV2Clipboard";
+import { TemplateV2SelectionTransformers } from "./template-v2-selection/TemplateV2SelectionTransformers";
 import {
   TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_CHART_UPDATE_EVENT,
@@ -121,20 +139,8 @@ type LaidOutChild = {
   box: Box | null;
   layoutManaged: boolean;
 };
-type TextEditStyle = {
-  family: string;
-  size: number;
-  color: string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-  lineHeight: number;
-  letterSpacing: number;
-  wrap: string;
-  horizontal: "left" | "center" | "right";
-  vertical: "top" | "middle" | "bottom";
-};
-type RenderTextFont = Omit<TextEditStyle, "horizontal" | "vertical">;
+type TextEditStyle = TemplateV2TextEditStyle;
+type RenderTextFont = Omit<TemplateV2TextEditStyle, "horizontal" | "vertical">;
 type RenderTextRun = {
   text: string;
   font: RenderTextFont;
@@ -152,16 +158,6 @@ type ElementSelection = {
 };
 
 type Selection = ComponentSelection | ElementSelection | null;
-
-type InlineEdit =
-  | {
-    kind: "text" | "text-list" | "table" | "svg";
-    selection: ElementSelection;
-    draft: string;
-    frame?: Box | null;
-    style?: TextEditStyle;
-  }
-  | null;
 
 type TemplateV2KonvaSlideProps = {
   layout: TemplateV2Layout;
@@ -181,7 +177,6 @@ function TemplateV2KonvaSlideComponent({
   const dispatch = useDispatch();
   const surfaceId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const transformerRef = useRef<Konva.Transformer | null>(null);
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pendingImageUploadRef = useRef<ElementSelection | null>(null);
@@ -192,13 +187,35 @@ function TemplateV2KonvaSlideComponent({
     cloneJson(layout as RawUi),
   );
   const [selection, setSelection] = useState<Selection>(null);
-  const [inlineEdit, setInlineEdit] = useState<InlineEdit>(null);
+  const {
+    inlineEdit,
+    clearInlineEdit,
+    startInlineEdit,
+    updateInlineDraft,
+    updateInlineEdit,
+    updateInlineRuns,
+    updateInlineTextSelectionRange,
+  } = useTemplateV2InlineEditing<ElementSelection>({
+    keyForSelection,
+  });
   const [iconEditorSelection, setIconEditorSelection] =
     useState<ElementSelection | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [{ canUndo, canRedo }, setHistoryAvailability] = useState({
     canUndo: false,
     canRedo: false,
+  });
+  const {
+    clearTableCellEditing,
+    clearTableCellSelection,
+    editingTableCell,
+    editTableCellSelection,
+    selectedTableCell,
+    selectTableCellSelection,
+    visibleSelectedTableCell,
+  } = useTableCellSelection<Selection, ElementSelection>({
+    keyForSelection,
+    selection,
   });
 
   const components = useMemo(
@@ -217,12 +234,19 @@ function TemplateV2KonvaSlideComponent({
     [],
   );
   const selectedKey = selection ? keyForSelection(selection) : null;
+  const selectedParentComponentKey =
+    selection?.kind === "element" &&
+    selection.componentIndex !== ROOT_ELEMENTS_COMPONENT_INDEX
+      ? keyForSelection({
+          kind: "component",
+          componentIndex: selection.componentIndex,
+        })
+      : null;
   const editingKey = inlineEdit ? keyForSelection(inlineEdit.selection) : null;
   const selectedElement =
     selection?.kind === "element"
       ? getElementAtSelection(uiDraft, selection)
       : null;
-  const selectedElementIsLine = readString(selectedElement?.type) === "line";
   const selectedComponent =
     selection?.kind === "component"
       ? asRecord(readArray(uiDraft.components)[selection.componentIndex])
@@ -231,11 +255,19 @@ function TemplateV2KonvaSlideComponent({
     ? absoluteBoxForSelection(uiDraft, selection)
     : null;
   const toolbarElement = useMemo(
-    () =>
-      selectedElement && selectedBox
-        ? rawElementForEditorToolbar(selectedElement, selectedBox)
-        : null,
-    [selectedBox, selectedElement],
+    () => {
+      if (!selectedElement || !selectedBox) return null;
+      const inlineTextElement =
+        inlineEdit &&
+        inlineEdit.kind === "text" &&
+        inlineEdit.runs &&
+        selection?.kind === "element" &&
+        keyForSelection(inlineEdit.selection) === keyForSelection(selection)
+          ? setRawTextRunsContent(selectedElement, inlineEdit.runs)
+          : selectedElement;
+      return rawElementForEditorToolbar(inlineTextElement, selectedBox);
+    },
+    [inlineEdit, selectedBox, selectedElement, selection],
   );
   const componentToolbarElement = useMemo(
     () =>
@@ -244,9 +276,6 @@ function TemplateV2KonvaSlideComponent({
         : null,
     [selectedComponent],
   );
-  const inlineEditElement = inlineEdit
-    ? getElementAtSelection(uiDraft, inlineEdit.selection)
-    : null;
   const inlineEditBox = inlineEdit
     ? absoluteBoxForSelection(uiDraft, inlineEdit.selection)
     : null;
@@ -263,21 +292,13 @@ function TemplateV2KonvaSlideComponent({
     currentUiRef.current = next;
     setUiDraft(next);
     setSelection(null);
-    setInlineEdit(null);
+    clearTableCellSelection();
+    clearInlineEdit();
     setIconEditorSelection(null);
     undoStackRef.current = [];
     redoStackRef.current = [];
     setHistoryAvailability({ canUndo: false, canRedo: false });
-  }, [layout]);
-
-  useEffect(() => {
-    if (!isEditMode) return;
-    const transformer = transformerRef.current;
-    if (!transformer) return;
-    const node = selectedKey ? nodeRefs.current.get(selectedKey) : null;
-    transformer.nodes(node ? [node] : []);
-    transformer.getLayer()?.batchDraw();
-  }, [isEditMode, selectedKey]);
+  }, [clearInlineEdit, clearTableCellSelection, layout]);
 
   const isSurfaceActive = useCallback(
     () =>
@@ -360,8 +381,39 @@ function TemplateV2KonvaSlideComponent({
     (nextSelection: Selection) => {
       activateSurface();
       setSelection(nextSelection);
+      clearTableCellSelection();
     },
-    [activateSurface],
+    [activateSurface, clearTableCellSelection],
+  );
+
+  const selectTableCell = useCallback(
+    (
+      elementSelection: ElementSelection,
+      rowIndex: number,
+      colIndex: number,
+    ) => {
+      activateSurface();
+      setSelection(elementSelection);
+      clearInlineEdit();
+      setIconEditorSelection(null);
+      selectTableCellSelection(elementSelection, rowIndex, colIndex);
+    },
+    [activateSurface, clearInlineEdit, selectTableCellSelection],
+  );
+
+  const editTableCell = useCallback(
+    (
+      elementSelection: ElementSelection,
+      rowIndex: number,
+      colIndex: number,
+    ) => {
+      activateSurface();
+      setSelection(elementSelection);
+      clearInlineEdit();
+      setIconEditorSelection(null);
+      editTableCellSelection(elementSelection, rowIndex, colIndex);
+    },
+    [activateSurface, clearInlineEdit, editTableCellSelection],
   );
 
   const updateComponent = useCallback(
@@ -390,9 +442,10 @@ function TemplateV2KonvaSlideComponent({
     if (!selection) return;
     commitUi(deleteSelectionFromUi(currentUiRef.current, selection));
     setSelection(null);
-    setInlineEdit(null);
+    clearTableCellSelection();
+    clearInlineEdit();
     setIconEditorSelection(null);
-  }, [commitUi, selection]);
+  }, [clearInlineEdit, clearTableCellSelection, commitUi, selection]);
 
   const createClipboardPayload = useCallback((): TemplateV2ClipboardPayload | null => {
     if (!selection) return null;
@@ -430,11 +483,11 @@ function TemplateV2KonvaSlideComponent({
       if (!result) return;
       commitUi(result.ui);
       setSelection(result.selection);
-      setInlineEdit(null);
+      clearInlineEdit();
       setIconEditorSelection(null);
       activateSurface();
     },
-    [activateSurface, commitUi],
+    [activateSurface, clearInlineEdit, commitUi],
   );
 
   useTemplateV2Clipboard({
@@ -449,36 +502,32 @@ function TemplateV2KonvaSlideComponent({
     (elementSelection: ElementSelection) => {
       const element = getElementAtSelection(currentUiRef.current, elementSelection);
       if (!element) return;
+      clearTableCellEditing();
       const type = readString(element.type);
       const frame = renderedLocalBoxForElementSelection(
         currentUiRef.current,
         elementSelection,
       );
       if (type === "text") {
-        setInlineEdit({
+        const runs = rawTextRunsForEditor(element);
+        startInlineEdit({
           kind: "text",
           selection: elementSelection,
-          draft: rawTextContent(element),
+          draft: textRunsContent(runs),
+          runs,
           frame,
           style: rawTextStyle(element),
         });
       } else if (type === "text-list") {
-        setInlineEdit({
+        startInlineEdit({
           kind: "text-list",
           selection: elementSelection,
           draft: rawTextListContent(element),
           frame,
           style: rawTextStyle(element),
         });
-      } else if (type === "table") {
-        setInlineEdit({
-          kind: "table",
-          selection: elementSelection,
-          draft: rawTableContent(element),
-          frame,
-        });
       } else if (type === "svg") {
-        setInlineEdit({
+        startInlineEdit({
           kind: "svg",
           selection: elementSelection,
           draft: rawSvgContent(element),
@@ -486,7 +535,7 @@ function TemplateV2KonvaSlideComponent({
         });
       }
     },
-    [],
+    [clearTableCellEditing, startInlineEdit],
   );
 
   const closeInlineEditor = useCallback(
@@ -501,13 +550,14 @@ function TemplateV2KonvaSlideComponent({
             current.draft,
             current.style,
             current.frame,
+            current.runs,
           ),
         );
       }
       setSelection(current.selection);
-      setInlineEdit(null);
+      clearInlineEdit();
     },
-    [inlineEdit, updateElement],
+    [clearInlineEdit, inlineEdit, updateElement],
   );
 
   const applyToolbarElementChange = useCallback(
@@ -518,15 +568,25 @@ function TemplateV2KonvaSlideComponent({
       if (!current || !box) return;
       const next = mergeEditorToolbarElement(current, editorElement, box);
       updateElement(selection, () => next);
-      setInlineEdit((active) =>
-        active &&
-          active.style &&
-          keyForSelection(active.selection) === keyForSelection(selection)
-          ? { ...active, style: rawTextStyle(next) }
-          : active,
-      );
+      updateInlineEdit(selection, (active) => {
+        if (
+          !active?.style ||
+          keyForSelection(active.selection) !== keyForSelection(selection)
+        ) {
+          return active;
+        }
+        if (active.kind === "text") {
+          return {
+            ...active,
+            draft: rawTextContent(next),
+            runs: rawTextRunsForEditor(next),
+            style: rawTextStyle(next),
+          };
+        }
+        return { ...active, style: rawTextStyle(next) };
+      });
     },
-    [selection, updateElement],
+    [selection, updateElement, updateInlineEdit],
   );
 
   const applyComponentToolbarChange = useCallback(
@@ -564,10 +624,10 @@ function TemplateV2KonvaSlideComponent({
       }
       activateSurface();
       setSelection(elementSelection);
-      setInlineEdit(null);
+      clearInlineEdit();
       setIconEditorSelection(elementSelection);
     },
-    [activateSurface],
+    [activateSurface, clearInlineEdit],
   );
 
   const handleIconChange = useCallback(
@@ -766,7 +826,7 @@ function TemplateV2KonvaSlideComponent({
       }
 
       setSelection(null);
-      setInlineEdit(null);
+      clearInlineEdit();
       clearSurface();
     };
     document.addEventListener("pointerdown", handlePointerDown, true);
@@ -774,7 +834,7 @@ function TemplateV2KonvaSlideComponent({
       document.removeEventListener("pointerdown", handlePointerDown, true);
       clearSurface();
     };
-  }, [activateSurface, clearSurface, isEditMode]);
+  }, [activateSurface, clearInlineEdit, clearSurface, isEditMode]);
 
   useHotkey(
     "Mod+Z",
@@ -839,14 +899,16 @@ function TemplateV2KonvaSlideComponent({
           activateSurface();
           if (event.target === event.target.getStage()) {
             setSelection(null);
-            setInlineEdit(null);
+            clearTableCellSelection();
+            clearInlineEdit();
           }
         }}
         onTouchStart={(event) => {
           activateSurface();
           if (event.target === event.target.getStage()) {
             setSelection(null);
-            setInlineEdit(null);
+            clearTableCellSelection();
+            clearInlineEdit();
           }
         }}
       >
@@ -860,8 +922,11 @@ function TemplateV2KonvaSlideComponent({
               elementPath={[elementIndex]}
               isEditMode={isEditMode}
               editingKey={editingKey}
+              selectedTableCell={visibleSelectedTableCell}
               setNodeRef={setSelectionNodeRef}
               onSelect={select}
+              onTableCellSelect={selectTableCell}
+              onTableCellEdit={editTableCell}
               onOpenEditor={handleElementDoubleClick}
               onElementChange={updateElement}
               parentBox={STAGE_BOX}
@@ -875,24 +940,23 @@ function TemplateV2KonvaSlideComponent({
               componentIndex={componentIndex}
               isEditMode={isEditMode}
               editingKey={editingKey}
+              selectedTableCell={visibleSelectedTableCell}
               setNodeRef={setSelectionNodeRef}
               onSelect={select}
+              onTableCellSelect={selectTableCell}
+              onTableCellEdit={editTableCell}
               onOpenElementEditor={handleElementDoubleClick}
               onComponentChange={updateComponent}
               onElementChange={updateElement}
             />
           ))}
           {isEditMode ? (
-            <Transformer
-              ref={transformerRef}
-              anchorSize={selectedElementIsLine ? 12 : undefined}
-              borderEnabled={!selectedElementIsLine}
-              enabledAnchors={
-                selectedElementIsLine
-                  ? ["middle-left", "middle-right"]
-                  : undefined
-              }
-              rotateEnabled={!selectedElementIsLine}
+            <TemplateV2SelectionTransformers
+              nodeRefs={nodeRefs}
+              parentComponentKey={selectedParentComponentKey}
+              selectedKey={selectedKey}
+              selectionKind={selection?.kind ?? null}
+              suppressSelectedOutline={Boolean(selectedTableCell)}
             />
           ) : null}
         </Layer>
@@ -905,7 +969,7 @@ function TemplateV2KonvaSlideComponent({
           index={selection.componentIndex}
           path={keyForSelection(selection)}
           scale={EDITOR_SCALE}
-          selectedTableCell={null}
+          selectedTableCell={selectedTableCell}
           onChange={(_index, element) =>
             applyComponentToolbarChange(element)
           }
@@ -917,29 +981,59 @@ function TemplateV2KonvaSlideComponent({
         selectedElement &&
         selectedBox &&
         toolbarElement &&
-        !isRawIconElement(selectedElement) ? (
+        !isRawIconElement(selectedElement) &&
+        !(editingTableCell && readString(selectedElement.type) === "table") ? (
         <ElementToolbar
           element={toolbarElement}
           index={selection.componentIndex}
           path={keyForSelection(selection)}
           scale={EDITOR_SCALE}
-          selectedTableCell={null}
+          selectedTableCell={selectedTableCell}
+          textSelectionRange={
+            inlineEdit &&
+            inlineEdit.kind === "text" &&
+            keyForSelection(inlineEdit.selection) === keyForSelection(selection)
+              ? inlineEdit.textSelectionRange
+              : null
+          }
           onChange={(_index, element) => applyToolbarElementChange(element)}
           onEditChart={() => openChartEditor(selection)}
           onEditImage={() => openImageUpload(selection)}
           onEditText={() => openInlineEditor(selection)}
         />
       ) : null}
-      {inlineEdit && inlineEditElement && inlineEditBox ? (
-        <RawInlineEditor
+      {isEditMode &&
+        selection?.kind === "element" &&
+        editingTableCell &&
+        toolbarElement &&
+        readString((toolbarElement as UnknownRecord).type) === "table" ? (
+        <TableInlineEditor
+          key={`${keyForSelection(selection)}:${editingTableCell.rowIndex}:${editingTableCell.colIndex}`}
+          element={toolbarElement as TableSlideElement}
+          index={selection.componentIndex}
+          scale={EDITOR_SCALE}
+          selectedCell={editingTableCell}
+          onChange={(_index, element) => applyToolbarElementChange(element)}
+          onClose={clearTableCellEditing}
+        />
+      ) : null}
+      {inlineEdit && inlineEditBox ? (
+        <TemplateV2InlineEditor
           key={keyForSelection(inlineEdit.selection)}
           draft={inlineEdit.draft}
-          element={inlineEditElement}
           kind={inlineEdit.kind}
           box={inlineEditBox}
+          runs={inlineEdit.runs}
           style={inlineEdit.style}
-          onChange={(draft) =>
-            setInlineEdit((current) => (current ? { ...current, draft } : current))
+          onChange={updateInlineDraft}
+          onRunsChange={(runs) =>
+            updateInlineRuns(inlineEdit.selection, runs)
+          }
+          onSelectionChange={(textSelectionRange) =>
+            updateInlineTextSelectionRange(
+              inlineEdit.selection,
+              textSelectionRange,
+            )
           }
           onClose={(commit) => closeInlineEditor(commit)}
         />
@@ -976,8 +1070,11 @@ function RawComponentNode({
   componentIndex,
   isEditMode,
   editingKey,
+  selectedTableCell,
   setNodeRef,
   onSelect,
+  onTableCellSelect,
+  onTableCellEdit,
   onOpenElementEditor,
   onComponentChange,
   onElementChange,
@@ -986,8 +1083,19 @@ function RawComponentNode({
   componentIndex: number;
   isEditMode: boolean;
   editingKey: string | null;
+  selectedTableCell: TableCellSelection | null;
   setNodeRef: (key: string, node: Konva.Node | null) => void;
   onSelect: (selection: Selection) => void;
+  onTableCellSelect: (
+    selection: ElementSelection,
+    rowIndex: number,
+    colIndex: number,
+  ) => void;
+  onTableCellEdit: (
+    selection: ElementSelection,
+    rowIndex: number,
+    colIndex: number,
+  ) => void;
   onOpenElementEditor: (selection: ElementSelection) => void;
   onComponentChange: (
     componentIndex: number,
@@ -1082,8 +1190,11 @@ function RawComponentNode({
           elementPath={[elementIndex]}
           isEditMode={isEditMode}
           editingKey={editingKey}
+          selectedTableCell={selectedTableCell}
           setNodeRef={setNodeRef}
           onSelect={onSelect}
+          onTableCellSelect={onTableCellSelect}
+          onTableCellEdit={onTableCellEdit}
           onOpenEditor={onOpenElementEditor}
           onElementChange={onElementChange}
           parentBox={box}
@@ -1103,9 +1214,12 @@ const MemoizedRawComponentNode = memo(
       previous.isEditMode !== next.isEditMode ||
       previous.setNodeRef !== next.setNodeRef ||
       previous.onSelect !== next.onSelect ||
+      previous.onTableCellSelect !== next.onTableCellSelect ||
+      previous.onTableCellEdit !== next.onTableCellEdit ||
       previous.onOpenElementEditor !== next.onOpenElementEditor ||
       previous.onComponentChange !== next.onComponentChange ||
-      previous.onElementChange !== next.onElementChange
+      previous.onElementChange !== next.onElementChange ||
+      previous.selectedTableCell !== next.selectedTableCell
     ) {
       return false;
     }
@@ -1126,8 +1240,11 @@ function RawElementNode({
   elementPath,
   isEditMode,
   editingKey,
+  selectedTableCell,
   setNodeRef,
   onSelect,
+  onTableCellSelect,
+  onTableCellEdit,
   onOpenEditor,
   onElementChange,
   parentBox,
@@ -1139,8 +1256,19 @@ function RawElementNode({
   elementPath: number[];
   isEditMode: boolean;
   editingKey: string | null;
+  selectedTableCell: TableCellSelection | null;
   setNodeRef: (key: string, node: Konva.Node | null) => void;
   onSelect: (selection: Selection) => void;
+  onTableCellSelect: (
+    selection: ElementSelection,
+    rowIndex: number,
+    colIndex: number,
+  ) => void;
+  onTableCellEdit: (
+    selection: ElementSelection,
+    rowIndex: number,
+    colIndex: number,
+  ) => void;
   onOpenEditor: (selection: ElementSelection) => void;
   onElementChange: (
     selection: ElementSelection,
@@ -1152,17 +1280,34 @@ function RawElementNode({
 }) {
   const groupRef = useRef<Konva.Group | null>(null);
   const box = renderBox ?? elementBox(element);
-  const selection: ElementSelection = {
-    kind: "element",
-    componentIndex,
-    elementPath,
-  };
+  const selection = useMemo<ElementSelection>(
+    () => ({
+      kind: "element",
+      componentIndex,
+      elementPath,
+    }),
+    [componentIndex, elementPath],
+  );
   const key = keyForSelection(selection);
+  const selectedCell =
+    selectedTableCell?.elementPath === key ? selectedTableCell : null;
   const editing = editingKey === key;
   const childInfo = childArrayInfo(element);
   const children = childInfo?.items ?? [];
   const laidOutChildren = layoutChildren(element, children, box);
   const clipChildren = shouldClipElementChildren(element, childInfo);
+  const handleTableCellSelect = useCallback(
+    (rowIndex: number, colIndex: number) => {
+      onTableCellSelect(selection, rowIndex, colIndex);
+    },
+    [onTableCellSelect, selection],
+  );
+  const handleTableCellEdit = useCallback(
+    (rowIndex: number, colIndex: number) => {
+      onTableCellEdit(selection, rowIndex, colIndex);
+    },
+    [onTableCellEdit, selection],
+  );
 
   return (
     <Group
@@ -1244,6 +1389,9 @@ function RawElementNode({
           width={box.width}
           height={box.height}
           interactive={isEditMode}
+          selectedTableCell={selectedCell}
+          onTableCellSelect={handleTableCellSelect}
+          onTableCellEdit={handleTableCellEdit}
         />
       )}
       {laidOutChildren.map(({ child, index, box: childBox, layoutManaged }) => (
@@ -1254,8 +1402,11 @@ function RawElementNode({
           elementPath={[...elementPath, index]}
           isEditMode={isEditMode}
           editingKey={editingKey}
+          selectedTableCell={selectedTableCell}
           setNodeRef={setNodeRef}
           onSelect={onSelect}
+          onTableCellSelect={onTableCellSelect}
+          onTableCellEdit={onTableCellEdit}
           onOpenEditor={onOpenEditor}
           onElementChange={onElementChange}
           parentBox={{
@@ -1278,8 +1429,11 @@ const MemoizedRawElementNode = memo(RawElementNode, (previous, next) => {
     previous.componentIndex !== next.componentIndex ||
     previous.isEditMode !== next.isEditMode ||
     previous.layoutManaged !== next.layoutManaged ||
+    previous.selectedTableCell !== next.selectedTableCell ||
     previous.setNodeRef !== next.setNodeRef ||
     previous.onSelect !== next.onSelect ||
+    previous.onTableCellSelect !== next.onTableCellSelect ||
+    previous.onTableCellEdit !== next.onTableCellEdit ||
     previous.onOpenEditor !== next.onOpenEditor ||
     previous.onElementChange !== next.onElementChange ||
     !numberPathEqual(previous.elementPath, next.elementPath) ||
@@ -1308,11 +1462,17 @@ function RawElementVisual({
   width,
   height,
   interactive,
+  selectedTableCell,
+  onTableCellSelect,
+  onTableCellEdit,
 }: {
   element: RawElement;
   width: number;
   height: number;
   interactive: boolean;
+  selectedTableCell: TableCellSelection | null;
+  onTableCellSelect: (rowIndex: number, colIndex: number) => void;
+  onTableCellEdit: (rowIndex: number, colIndex: number) => void;
 }) {
   const type = readString(element.type);
   if (isBoxVisualType(type)) {
@@ -1405,7 +1565,17 @@ function RawElementVisual({
     return <RawSvgElement element={element} width={width} height={height} interactive={interactive} />;
   }
   if (type === "table") {
-    return <RawTableElement element={element} width={width} height={height} interactive={interactive} />;
+    return (
+      <RawTableElement
+        element={element}
+        width={width}
+        height={height}
+        interactive={interactive}
+        selectedCell={selectedTableCell}
+        onCellSelect={onTableCellSelect}
+        onCellEdit={onTableCellEdit}
+      />
+    );
   }
   if (type === "chart") {
     return <RawChartElement element={element} width={width} height={height} interactive={interactive} />;
@@ -1422,7 +1592,10 @@ const MemoizedRawElementVisual = memo(
     previous.element === next.element &&
     previous.width === next.width &&
     previous.height === next.height &&
-    previous.interactive === next.interactive,
+    previous.interactive === next.interactive &&
+    previous.selectedTableCell === next.selectedTableCell &&
+    previous.onTableCellSelect === next.onTableCellSelect &&
+    previous.onTableCellEdit === next.onTableCellEdit,
 );
 
 const richMeasureCtx: { ctx: CanvasRenderingContext2D | null } = { ctx: null };
@@ -1590,8 +1763,88 @@ function RawRichTextElement({
   interactive: boolean;
 }) {
   const font = rawFont(element);
+  const content = text ?? rawTextContent(element);
+  const displayContent = displayText(content);
+  const renderRuns = text == null ? rawRenderTextRuns(element) : [];
+  const renderRunsDifferFromElement =
+    renderRuns.length > 0 &&
+    textRunsHaveMixedStyle([{ text: "", font }, ...renderRuns]);
   const align = readString(element.alignment?.horizontal) ?? "left";
   const verticalAlign = readString(element.alignment?.vertical) ?? "top";
+  const textLineHeight = effectiveLineHeight({
+    text: displayContent,
+    width,
+    fontSize: font.size,
+    lineHeight: font.lineHeight,
+    fallback: 1.15,
+    wrap: font.wrap,
+  });
+
+  if (renderRunsDifferFromElement) {
+    const lines = layoutRenderTextRuns(renderRuns, width);
+    const lineMetrics = lines.map((line) => ({
+      height: lineRenderHeight(line, textLineHeight),
+      width: line.reduce((sum, segment) => sum + segment.width, 0),
+    }));
+    const totalHeight = lineMetrics.reduce(
+      (sum, metric) => sum + metric.height,
+      0,
+    );
+    const startY =
+      verticalAlign === "middle"
+        ? Math.max(0, (height - totalHeight) / 2)
+        : verticalAlign === "bottom"
+          ? Math.max(0, height - totalHeight)
+          : 0;
+    let y = startY;
+
+    return (
+      <Group listening={interactive}>
+        {lines.map((line, lineIndex) => {
+          const lineMetric = lineMetrics[lineIndex] ?? {
+            height: font.size * textLineHeight,
+            width: 0,
+          };
+          const startX =
+            align === "center"
+              ? Math.max(0, (width - lineMetric.width) / 2)
+              : align === "right"
+                ? Math.max(0, width - lineMetric.width)
+                : 0;
+          let x = startX;
+          const lineY = y;
+          y += lineMetric.height;
+          return line.map((segment, segmentIndex) => {
+            const segmentX = x;
+            x += segment.width;
+            return (
+              <Text
+                key={`${lineIndex}:${segmentIndex}`}
+                x={segmentX}
+                y={lineY}
+                width={segment.width}
+                height={lineMetric.height}
+                text={segment.text}
+                fill={withHash(segment.font.color)}
+                fontFamily={`${segment.font.family}, Helvetica, sans-serif`}
+                fontSize={segment.font.size}
+                fontStyle={`${segment.font.bold ? "bold" : "normal"} ${
+                  segment.font.italic ? "italic" : ""
+                }`}
+                textDecoration={segment.font.underline ? "underline" : ""}
+                verticalAlign="middle"
+                lineHeight={segment.font.lineHeight ?? textLineHeight}
+                letterSpacing={segment.font.letterSpacing}
+                wrap="none"
+                {...shadowProps(element)}
+                listening={interactive}
+              />
+            );
+          });
+        })}
+      </Group>
+    );
+  }
 
   // Multi-run (partially styled) text elements are laid out per-run so each
   // segment keeps its own font. Everything else — text-list (explicit joined
@@ -1630,12 +1883,11 @@ function RawRichTextElement({
     );
   }
 
-  const content = text ?? rawTextContent(element);
   return (
     <Text
       width={width}
       height={height}
-      text={displayText(content)}
+      text={displayContent}
       fill={withHash(font.color)}
       fontFamily={`${font.family}, Helvetica, sans-serif`}
       fontSize={font.size}
@@ -1643,12 +1895,106 @@ function RawRichTextElement({
       textDecoration={font.underline ? "underline" : ""}
       align={align}
       verticalAlign={verticalAlign}
-      lineHeight={font.lineHeight}
+      lineHeight={textLineHeight}
       letterSpacing={font.letterSpacing}
       wrap={font.wrap === "none" ? "none" : "word"}
       {...shadowProps(element)}
       listening={interactive}
     />
+  );
+}
+
+function rawRenderTextRuns(element: RawElement): RenderTextRun[] {
+  const baseFont = rawFont(element);
+  const runs = readArray(element.runs)
+    .map((run) => {
+      const record = asRecord(run);
+      const text = displayText(readString(record?.text) ?? "");
+      if (!text) return null;
+      return {
+        text,
+        font: fontFromRecord(asRecord(record?.font), baseFont),
+      } satisfies RenderTextRun;
+    })
+    .filter(Boolean) as RenderTextRun[];
+
+  return runs.length > 0
+    ? runs
+    : [{ text: displayText(rawTextContent(element)), font: baseFont }];
+}
+
+function textRunsHaveMixedStyle(runs: RenderTextRun[]) {
+  const first = runs[0]?.font;
+  return runs.some((run) => JSON.stringify(run.font) !== JSON.stringify(first));
+}
+
+function layoutRenderTextRuns(runs: RenderTextRun[], width: number) {
+  const lines: Array<Array<RenderTextRun & { width: number }>> = [[]];
+  let lineWidth = 0;
+
+  const pushLine = () => {
+    if (lines[lines.length - 1]?.length === 0) return;
+    lines.push([]);
+    lineWidth = 0;
+  };
+
+  for (const run of runs) {
+    const parts = run.text.match(/\n|[^\S\n]+|[^\s]+/g) ?? [run.text];
+    for (const part of parts) {
+      if (part === "\n") {
+        pushLine();
+        continue;
+      }
+      const segmentWidth = measureRenderText(part, run.font);
+      const isWhitespace = part.trim().length === 0;
+      if (
+        !isWhitespace &&
+        lineWidth > 0 &&
+        lineWidth + segmentWidth > width
+      ) {
+        pushLine();
+      }
+      if (lines.length === 0) lines.push([]);
+      lines[lines.length - 1].push({
+        ...run,
+        text: part,
+        width: segmentWidth,
+      });
+      lineWidth += segmentWidth;
+    }
+  }
+
+  return lines.filter((line) => line.length > 0);
+}
+
+function lineRenderHeight(
+  line: Array<RenderTextRun & { width: number }>,
+  fallbackLineHeight: number,
+) {
+  return Math.max(
+    1,
+    ...line.map(
+      (segment) =>
+        segment.font.size * (segment.font.lineHeight ?? fallbackLineHeight),
+    ),
+  );
+}
+
+let renderTextMeasureCanvas: HTMLCanvasElement | null = null;
+
+function measureRenderText(text: string, font: RenderTextFont) {
+  const fallbackWidth =
+    text.length * font.size * (font.bold ? 0.58 : TEXT_AVERAGE_CHAR_EM);
+  if (typeof document === "undefined") return fallbackWidth;
+  renderTextMeasureCanvas ??= document.createElement("canvas");
+  const context = renderTextMeasureCanvas.getContext("2d");
+  if (!context) return fallbackWidth;
+  context.font = `${font.italic ? "italic " : ""}${
+    font.bold ? "700 " : "400 "
+  }${font.size}px ${font.family}, Helvetica, sans-serif`;
+  return (
+    context.measureText(text).width +
+    ((font.letterSpacing ?? 0) * Math.max(0, text.length - 1))
   );
 }
 
@@ -1822,63 +2168,6 @@ function RawSvgElement({
   );
 }
 
-function RawTableElement({
-  element,
-  width,
-  height,
-  interactive,
-}: {
-  element: RawElement;
-  width: number;
-  height: number;
-  interactive: boolean;
-}) {
-  const rows = rawTableRows(element);
-  const rowCount = Math.max(1, rows.length);
-  const colCount = Math.max(1, ...rows.map((row) => row.length));
-  const cellW = width / colCount;
-  const cellH = height / rowCount;
-  const font = rawFont(element);
-
-  return (
-    <Group listening={interactive}>
-      {rows.map((row, rowIndex) =>
-        Array.from({ length: colCount }, (_, colIndex) => {
-          const cell = asRecord(row[colIndex]) ?? {};
-          const firstRun = asRecord(readArray(cell.runs)[0]) ?? {};
-          const cellFont = asRecord(cell.font) ?? asRecord(firstRun.font) ?? {};
-          const fill =
-            fillColor(cell.fill ?? cell.color) ??
-            (rowIndex === 0 ? "#F2F4F7" : "#FFFFFF");
-          return (
-            <Group key={`${rowIndex}-${colIndex}`} x={colIndex * cellW} y={rowIndex * cellH}>
-              <Rect
-                width={cellW}
-                height={cellH}
-                fill={fill}
-                stroke={strokeColor(cell.stroke) ?? "#D0D5DD"}
-                strokeWidth={strokeWidth(cell.stroke) || 1}
-              />
-              <Text
-                x={6}
-                y={4}
-                width={Math.max(1, cellW - 12)}
-                height={Math.max(1, cellH - 8)}
-                text={rawTableCellText(cell)}
-                fill={withHash(readString(cellFont.color) ?? font.color)}
-                fontFamily={`${readString(cellFont.family) ?? font.family}, Helvetica, sans-serif`}
-                fontSize={readNumber(cellFont.size) ?? font.size}
-                fontStyle={rowIndex === 0 || cellFont.bold ? "bold" : "normal"}
-                verticalAlign="middle"
-              />
-            </Group>
-          );
-        }),
-      )}
-    </Group>
-  );
-}
-
 function RawInfographicElement({
   element,
   width,
@@ -1975,103 +2264,6 @@ function RawInfographicElement({
         fill="#172033"
       />
     </Group>
-  );
-}
-
-function RawInlineEditor({
-  draft,
-  element,
-  kind,
-  box,
-  style,
-  onChange,
-  onClose,
-}: {
-  draft: string;
-  element: RawElement;
-  kind: NonNullable<InlineEdit>["kind"];
-  box: Box;
-  style?: TextEditStyle;
-  onChange: (draft: string) => void;
-  onClose: (commit: boolean) => void;
-}) {
-  const editorRef = useRef<HTMLDivElement | null>(null);
-  const font = style ?? rawTextStyle(element);
-  const isCode = kind === "svg";
-  const closeAfterBlur = useCallback(() => {
-    window.setTimeout(() => {
-      const active = document.activeElement;
-      if (active && editorRef.current?.contains(active)) return;
-      if (
-        active instanceof Element &&
-        active.closest("[data-inline-edit-ignore='true']")
-      ) {
-        return;
-      }
-      onClose(true);
-    }, 0);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={editorRef}
-      data-inline-edit-ignore="true"
-      onBlur={closeAfterBlur}
-      onPointerDown={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-      style={{
-        position: "absolute",
-        zIndex: 30,
-        inset: 0,
-        pointerEvents: "none",
-      }}
-    >
-      <textarea
-        autoFocus
-        data-inline-edit-ignore="true"
-        value={draft}
-        onMouseDown={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            onClose(false);
-          }
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-            event.preventDefault();
-            onClose(true);
-          }
-        }}
-        style={{
-          position: "absolute",
-          zIndex: 31,
-          left: box.x,
-          top: box.y,
-          width: box.width,
-          height: box.height,
-          pointerEvents: "auto",
-          border: "1px solid #7C51F8",
-          outline: "none",
-          resize: "none",
-          padding: kind === "table" ? 8 : 0,
-          background: isCode
-            ? "rgba(7,20,37,0.96)"
-            : "rgba(255,255,255,0.08)",
-          color: isCode ? "#E7EDF8" : withHash(font.color),
-          caretColor: isCode ? "#E7EDF8" : withHash(font.color),
-          fontFamily: isCode
-            ? "Menlo, Consolas, monospace"
-            : `${font.family}, Helvetica, sans-serif`,
-          fontSize: isCode ? 12 : font.size,
-          fontWeight: font.bold ? 700 : 400,
-          fontStyle: font.italic ? "italic" : "normal",
-          lineHeight: font.lineHeight,
-          letterSpacing: font.letterSpacing,
-          textAlign: font.horizontal as CSSProperties["textAlign"],
-        }}
-      />
-    </div>
   );
 }
 
@@ -3523,20 +3715,24 @@ function isBoxVisualType(type: string | null) {
 
 function elementWithInlineDraft(
   element: RawElement,
-  kind: NonNullable<InlineEdit>["kind"],
+  kind: TemplateV2InlineEditKind,
   draft: string,
   style?: TextEditStyle,
   frame?: Box | null,
+  runs?: TextRun[],
 ) {
   if (kind === "text") {
-    return preserveInlineEditFrame(setRawTextContent(element, draft, style), frame);
+    const next =
+      runs != null
+        ? setRawTextRunsContent(element, runs)
+        : draft === rawTextContent(element)
+        ? element
+        : setRawTextContent(element, draft, style);
+    return preserveInlineEditFrame(next, frame);
   }
   if (kind === "text-list") {
     const next = setRawTextListContent(element, draft);
     return preserveInlineEditFrame(style ? applyTextStyle(next, style) : next, frame);
-  }
-  if (kind === "table") {
-    return preserveInlineEditFrame(setRawTableContent(element, draft), frame);
   }
   if (kind === "svg") {
     return preserveInlineEditFrame(setRawSvgContent(element, draft), frame);
@@ -3572,6 +3768,27 @@ function rawTextContent(element: RawElement) {
   return "";
 }
 
+function rawTextRunsForEditor(element: RawElement): TextRun[] {
+  const fallbackFont = fontToSource(rawFont(element));
+  const runs = readArray(element.runs)
+    .map((run) => {
+      const record = asRecord(run);
+      if (!record) return null;
+      const text = readString(record.text) ?? "";
+      if (!text) return null;
+      return {
+        text,
+        font: fontToSource(
+          fontFromRecord(asRecord(record.font), rawFont(element)),
+        ),
+      } satisfies TextRun;
+    })
+    .filter(Boolean) as TextRun[];
+
+  if (runs.length > 0) return runs;
+  return [{ text: rawTextContent(element) || " ", font: fallbackFont }];
+}
+
 function setRawTextContent(
   element: RawElement,
   text: string,
@@ -3592,6 +3809,39 @@ function setRawTextContent(
     ...styled,
     text,
     runs,
+  };
+}
+
+function setRawTextRunsContent(
+  element: RawElement,
+  runs: TextRun[],
+): RawElement {
+  const sourceRuns = readArray(element.runs);
+  const nextRuns = (runs.length > 0 ? runs : [{ text: " " }]).map(
+    (run, index) => {
+      const sourceRun = asRecord(sourceRuns[index]) ?? {};
+      return {
+        ...sourceRun,
+        text: run.text,
+        font: rawInlineTextFontRecord(run.font, sourceRun.font),
+      };
+    },
+  );
+  return {
+    ...element,
+    text: textRunsContent(nextRuns),
+    runs: nextRuns,
+  };
+}
+
+function rawInlineTextFontRecord(value: unknown, fallback: unknown) {
+  const font = asRecord(value);
+  if (!font) return fallback;
+  return {
+    ...(asRecord(fallback) ?? {}),
+    ...font,
+    line_height: font.line_height ?? font.lineHeight,
+    letter_spacing: font.letter_spacing ?? font.letterSpacing,
   };
 }
 
@@ -3690,18 +3940,6 @@ function setRawTextListContent(element: RawElement, draft: string): RawElement {
   return { ...element, items };
 }
 
-function rawTableRows(element: RawElement) {
-  const columns = readArray(element.columns);
-  const rows = readArray(element.rows);
-  return [columns, ...rows].filter((row) => Array.isArray(row)) as unknown[][];
-}
-
-function rawTableContent(element: RawElement) {
-  return rawTableRows(element)
-    .map((row) => row.map(rawTableCellText).join("\t"))
-    .join("\n");
-}
-
 function rawTableCellText(cell: unknown) {
   if (typeof cell === "string" || typeof cell === "number") {
     return String(cell);
@@ -3716,44 +3954,6 @@ function rawTableCellText(cell: unknown) {
   }
   const textRecord = asRecord(record.text);
   return readString(textRecord?.text) ?? readString(record.text) ?? "";
-}
-
-function rawTableCellWithText(source: unknown, text: string): unknown {
-  if (typeof source === "string" || typeof source === "number") return text;
-  const record = asRecord(source);
-  if (!record) return { runs: text ? [{ text }] : [] };
-  const runs = readArray(record.runs);
-  if (runs.length > 0 || Object.hasOwn(record, "runs")) {
-    const firstRun = asRecord(runs[0]) ?? {};
-    return { ...record, runs: text ? [{ ...firstRun, text }] : [] };
-  }
-  const textRecord = asRecord(record.text);
-  return textRecord
-    ? { ...record, text: { ...textRecord, text } }
-    : { ...record, text };
-}
-
-function setRawTableContent(element: RawElement, draft: string): RawElement {
-  const sourceRows = rawTableRows(element);
-  const textRows = draft
-    .split(/\r?\n/)
-    .map((row) => row.split("\t"))
-    .filter((row) => row.some((cell) => cell.trim().length > 0));
-  const rows = textRows.map((row, rowIndex) =>
-    row.map((text, colIndex) => {
-      const sourceRow =
-        sourceRows[rowIndex] ?? sourceRows[sourceRows.length - 1] ?? [];
-      return rawTableCellWithText(
-        sourceRow[colIndex] ?? sourceRow[sourceRow.length - 1],
-        text,
-      );
-    }),
-  );
-  return {
-    ...element,
-    columns: rows[0] ?? [],
-    rows: rows.slice(1),
-  };
 }
 
 function rawSvgContent(element: RawElement) {
@@ -3921,10 +4121,14 @@ function rawElementForEditorToolbar(
   };
 
   if (type === "text") {
-    projected.runs = readArray(element.runs).map((value) => {
+    const runs = readArray(element.runs).map((value) => {
       const run = asRecord(value) ?? {};
       return { ...run, font: rawFontRecordForEditor(run.font) };
     });
+    projected.runs =
+      runs.length > 0
+        ? runs
+        : [{ text: rawTextContent(element) || " ", font: projected.font }];
   } else if (type === "text-list") {
     projected.items = readArray(element.items).map((item) => {
       if (Array.isArray(item)) {
@@ -4303,7 +4507,7 @@ function fontFromRecord(
   };
 }
 
-function fontToSource(font: RenderTextFont) {
+function fontToSource(font: RenderTextFont): Font {
   return {
     family: font.family,
     size: font.size,
@@ -4313,7 +4517,7 @@ function fontToSource(font: RenderTextFont) {
     underline: font.underline,
     line_height: font.lineHeight,
     letter_spacing: font.letterSpacing,
-    wrap: font.wrap,
+    wrap: readFontWrap(font.wrap),
   };
 }
 
@@ -4485,6 +4689,14 @@ function readVerticalAlignment(value: unknown): TextEditStyle["vertical"] {
   const normalized = readString(value);
   if (normalized === "middle" || normalized === "bottom") return normalized;
   return "top";
+}
+
+function readFontWrap(value: unknown): Font["wrap"] {
+  const normalized = readString(value);
+  if (normalized === "none" || normalized === "char" || normalized === "word") {
+    return normalized;
+  }
+  return "word";
 }
 
 function alignmentOffset(alignment: string | null, available: number, used: number) {

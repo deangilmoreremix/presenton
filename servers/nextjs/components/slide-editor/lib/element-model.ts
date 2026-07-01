@@ -15,6 +15,12 @@ import type {
   TextListElement,
   TextRun,
 } from "./slide-schema";
+import {
+  applyTextRunFontToSelection,
+  replaceTextRunsContent,
+  textRunsContent,
+  type TextSelectionRange,
+} from "./text-runs";
 
 export type ElementType = SlideElement["type"];
 export type ElementBox = { x: number; y: number; w: number; h: number };
@@ -83,7 +89,7 @@ export function moveElement<T extends SlideElement>(
 }
 
 export function textContent(element: TextElement): string {
-  return element.runs.map((run) => run.text).join("");
+  return textRunsContent(element.runs);
 }
 
 export function textRun(text: string, font?: Font | null): TextRun {
@@ -91,11 +97,18 @@ export function textRun(text: string, font?: Font | null): TextRun {
 }
 
 export function setTextContent(element: TextElement, text: string): TextElement {
-  const first = element.runs[0];
   return {
     ...element,
-    runs: [textRun(text, first?.font ?? element.font)],
+    runs: replaceTextRunsContent(element.runs, text, element.font),
   };
+}
+
+export function mergeFontForTextSelection<T extends TextElement>(
+  element: T,
+  range: TextSelectionRange | null | undefined,
+  font: Partial<Font>,
+): T {
+  return applyTextRunFontToSelection(element, range, font) as T;
 }
 
 export function elementFont(element: {
@@ -149,7 +162,7 @@ export function setTextListStrings(
 }
 
 export function textListItemText(item: TextListElement["items"][number]): string {
-  return item.map((run) => run.text).join("");
+  return textRunsContent(item);
 }
 
 export function fillColor(fill: Fill | null | undefined, fallback = "FFFFFF") {
@@ -186,14 +199,13 @@ export function tableRowsAsStrings(element: TableElement): string[][] {
 }
 
 export function tableCellText(cell: TableCell): string {
-  return cell.runs.map((run) => run.text).join("");
+  return textRunsContent(cell.runs);
 }
 
 export function setTableCellText(cell: TableCell, text: string): TableCell {
-  const first = cell.runs[0];
   return {
     ...cell,
-    runs: text ? [textRun(text, first?.font ?? cell.font)] : [],
+    runs: text ? replaceTextRunsContent(cell.runs, text, cell.font) : [],
   };
 }
 
