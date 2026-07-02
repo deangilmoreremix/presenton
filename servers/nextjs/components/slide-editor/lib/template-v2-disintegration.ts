@@ -134,7 +134,7 @@ function disintegratedComponent(
   const { box, element } = entry;
   return {
     id: `${idBase}_part_${index + 1}`,
-    description: "Disintegrated component element",
+    description: "Ungrouped component element",
     position: { x: box.x, y: box.y },
     size: { width: box.width, height: box.height },
     elements: [

@@ -53,7 +53,7 @@ type TemplateV2LayoutToolbarProps = {
   box: TemplateV2LayoutToolbarBox;
   element: TemplateV2LayoutElement;
   onChange: (changes: RawRecord) => void;
-  onDisintegrate?: () => void;
+  onUngroup?: () => void;
 };
 
 const LAYOUT_ALIGNMENTS: Array<{
@@ -712,11 +712,11 @@ export function TemplateV2LayoutToolbar({
   box,
   element,
   onChange,
-  onDisintegrate,
+  onUngroup,
 }: TemplateV2LayoutToolbarProps) {
   const [openPanel, setOpenPanel] = useState<PanelId>(null);
   const estimatedWidth = (element.type === "container" ? 700 : 440) +
-    (onDisintegrate ? 118 : 0);
+    (onUngroup ? 90 : 0);
   const left = Math.max(8, Math.min(box.x, STAGE_WIDTH - estimatedWidth - 8));
   const top =
     box.y >= 58
@@ -740,11 +740,11 @@ export function TemplateV2LayoutToolbar({
         {capitalize(element.type)}
       </span>
       <Divider />
-      {onDisintegrate ? (
+      {onUngroup ? (
         <>
-          <ControlButton title="Disintegrate" onClick={onDisintegrate}>
+          <ControlButton title="Ungroup" onClick={onUngroup}>
             <Ungroup size={15} aria-hidden />
-            <span>Disintegrate</span>
+            <span>Ungroup</span>
           </ControlButton>
           <Divider />
         </>

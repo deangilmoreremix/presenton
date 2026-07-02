@@ -75,6 +75,7 @@ import {
   pasteTemplateV2ClipboardPayload,
   type TemplateV2ClipboardPayload,
 } from "./template-v2-clipboard/clipboard";
+import { TemplateV2ComponentToolbar } from "./template-v2-component-toolbar/TemplateV2ComponentToolbar";
 import { useTemplateV2Clipboard } from "./template-v2-clipboard/useTemplateV2Clipboard";
 import {
   isTemplateV2LayoutElement,
@@ -82,6 +83,10 @@ import {
 } from "./template-v2-layout-toolbar/TemplateV2LayoutToolbar";
 import { findFirstComponentLayoutElement } from "./template-v2-layout-toolbar/layoutToolbarTarget";
 import { layoutWrappedFlexChildren } from "./template-v2-layout/wrappedFlexLayout";
+import {
+  reorderComponentLayer,
+  type ComponentLayerAction,
+} from "./template-v2-layering/componentLayering";
 import { TemplateV2SelectionTransformers } from "./template-v2-selection/TemplateV2SelectionTransformers";
 import {
   TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
@@ -303,6 +308,13 @@ function TemplateV2KonvaSlideComponent({
         ? rawComponentForEditorToolbar(selectedComponent)
         : null,
     [selectedComponent],
+  );
+  const canUngroupSelectedComponent = useMemo(
+    () =>
+      selection?.kind === "component" &&
+      selectedComponent != null &&
+      componentChildCount(selectedComponent) > 1,
+    [selectedComponent, selection],
   );
   const inlineEditBox = inlineEdit
     ? absoluteBoxForSelection(uiDraft, inlineEdit.selection)
@@ -530,13 +542,15 @@ function TemplateV2KonvaSlideComponent({
   }, [clearInlineEdit, clearTableCellSelection, commitUi, selection]);
 
   const createClipboardPayload = useCallback((): TemplateV2ClipboardPayload | null => {
-    const componentIndex = componentIndexForClipboardSelection(selection);
-    if (componentIndex == null) return null;
-    const component = asRecord(
-      readArray(currentUiRef.current.components)[componentIndex],
+    const clipboardComponent = componentForClipboardSelection(
+      currentUiRef.current,
+      selection,
     );
-    return component
-      ? createTemplateV2ClipboardPayload(component, componentBox(component))
+    return clipboardComponent
+      ? createTemplateV2ClipboardPayload(
+          clipboardComponent.component,
+          clipboardComponent.box,
+        )
       : null;
   }, [selection]);
 
@@ -703,8 +717,8 @@ function TemplateV2KonvaSlideComponent({
     [selection, updateComponent],
   );
 
-  const disintegrateSelectedComponent = useCallback(() => {
-    if (selection?.kind !== "component") return;
+  const ungroupSelectedComponent = useCallback(() => {
+    if (selection?.kind !== "component" || !canUngroupSelectedComponent) return;
     const result = disintegrateTemplateV2ComponentInUi(
       currentUiRef.current,
       selection.componentIndex,
@@ -722,7 +736,45 @@ function TemplateV2KonvaSlideComponent({
     clearInlineEdit();
     clearTableCellSelection();
     setIconEditorSelection(null);
-  }, [clearInlineEdit, clearTableCellSelection, commitUi, selection]);
+  }, [
+    canUngroupSelectedComponent,
+    clearInlineEdit,
+    clearTableCellSelection,
+    commitUi,
+    selection,
+  ]);
+
+  const reorderSelectedComponentLayer = useCallback(
+    (action: ComponentLayerAction) => {
+      if (selection?.kind !== "component") return;
+      const result = reorderComponentLayer(
+        readArray(currentUiRef.current.components),
+        selection.componentIndex,
+        action,
+      );
+      if (!result) return;
+      const nextSelection: ComponentSelection = {
+        kind: "component",
+        componentIndex: result.componentIndex,
+      };
+      commitUi({
+        ...currentUiRef.current,
+        components: result.components,
+      });
+      setSelection(nextSelection);
+      clearTableCellSelection();
+      clearInlineEdit();
+      setIconEditorSelection(null);
+      activateSurface(nextSelection);
+    },
+    [
+      activateSurface,
+      clearInlineEdit,
+      clearTableCellSelection,
+      commitUi,
+      selection,
+    ],
+  );
 
   const openImageUpload = useCallback(
     (elementSelection: ElementSelection) => {
@@ -1097,6 +1149,19 @@ function TemplateV2KonvaSlideComponent({
       </Stage>
       {isEditMode &&
         selection?.kind === "component" &&
+        selectedBox ? (
+        <TemplateV2ComponentToolbar
+          box={selectedBox}
+          canUngroup={canUngroupSelectedComponent}
+          componentIndex={selection.componentIndex}
+          componentCount={components.length}
+          slideWidth={STAGE_WIDTH}
+          onLayerAction={reorderSelectedComponentLayer}
+          onUngroup={ungroupSelectedComponent}
+        />
+      ) : null}
+      {isEditMode &&
+        selection?.kind === "component" &&
         componentToolbarElement ? (
         <ElementToolbar
           element={componentToolbarElement}
@@ -1116,11 +1181,6 @@ function TemplateV2KonvaSlideComponent({
           box={layoutToolbarTarget.box}
           element={layoutToolbarTarget.element}
           onChange={applyLayoutElementChange}
-          onDisintegrate={
-            selection?.kind === "component"
-              ? disintegrateSelectedComponent
-              : undefined
-          }
         />
       ) : null}
       {isEditMode &&
@@ -3713,12 +3773,50 @@ function keyForSelection(selection: Selection) {
   return `element:${selection.componentIndex}:${selection.elementPath.join(".")}`;
 }
 
-function componentIndexForClipboardSelection(selection: Selection) {
+function componentForClipboardSelection(
+  ui: RawUi,
+  selection: Selection,
+): { component: RawComponent; box: Box } | null {
   if (!selection) return null;
+
   if (selection.kind === "component") {
-    return selection.componentIndex >= 0 ? selection.componentIndex : null;
+    const component = asRecord(readArray(ui.components)[selection.componentIndex]);
+    return component
+      ? { component, box: componentBox(component) }
+      : null;
   }
-  return selection.componentIndex >= 0 ? selection.componentIndex : null;
+
+  if (selection.componentIndex >= 0) {
+    const component = asRecord(readArray(ui.components)[selection.componentIndex]);
+    return component
+      ? { component, box: componentBox(component) }
+      : null;
+  }
+
+  const element = getElementAtSelection(ui, selection);
+  const box = absoluteBoxForSelection(ui, selection);
+  return element && box
+    ? { component: rootElementClipboardComponent(element, box), box }
+    : null;
+}
+
+function rootElementClipboardComponent(element: RawElement, box: Box): RawComponent {
+  const type = readString(element.type) ?? "element";
+  const label =
+    readString(element.name) || readString(element.id) || `Copied ${type}`;
+  return {
+    id: `${normalizeId(label)}_component`,
+    description: label,
+    position: { x: box.x, y: box.y },
+    size: { width: box.width, height: box.height },
+    elements: [
+      {
+        ...element,
+        position: { x: 0, y: 0 },
+        size: { width: box.width, height: box.height },
+      },
+    ],
+  };
 }
 
 function surfaceSelectionTarget(
@@ -3774,6 +3872,10 @@ function componentDisplayLabel(component: UnknownRecord | null, index: number) {
     readString(component?.id) ||
     `Component ${index + 1}`
   );
+}
+
+function componentChildCount(component: UnknownRecord) {
+  return readArray(component.elements).filter(isRecord).length;
 }
 
 function elementPathForSelection(ui: RawUi, selection: ElementSelection) {
