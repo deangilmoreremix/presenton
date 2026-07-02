@@ -198,7 +198,7 @@ type InsertedElementConversion = {
   scaleTemplateText: boolean;
 };
 type ChildArrayInfo = {
-  key: "children" | "elements" | "child" | "item";
+  key: "children" | "elements" | "child";
   items: unknown[];
 };
 type LaidOutChild = {
@@ -3049,7 +3049,7 @@ function updateElementArray(
   const updatedChildren = updateElementArray(childInfo.items, rest, updater);
   if (updatedChildren === childInfo.items) return elements;
   const next = [...elements];
-  next[index] = withUpdatedChildItems(current, childInfo, updatedChildren, rest[0]);
+  next[index] = withUpdatedChildItems(current, childInfo, updatedChildren);
   return next;
 }
 
@@ -3139,7 +3139,7 @@ function scaleRawElements(
       position: { x: box.x * scaleX, y: box.y * scaleY },
       size: { width: box.width * scaleX, height: box.height * scaleY },
       ...(childInfo && scaledChildren
-        ? withUpdatedChildItems({}, childInfo, scaledChildren, 0)
+        ? withUpdatedChildItems({}, childInfo, scaledChildren)
         : {}),
     };
   });
@@ -3753,9 +3753,6 @@ function convertInsertedChildArrays(
   if (isRecord(element.child)) {
     next.child = rawElementFromInsertedElement(element.child, childConversion);
   }
-  if (isRecord(element.item)) {
-    next.item = rawElementFromInsertedElement(element.item, childConversion);
-  }
 
   return next;
 }
@@ -4123,7 +4120,7 @@ function elementPathForSelection(ui: RawUi, selection: ElementSelection) {
       parts.push(`elements[${index}]`);
     } else if (current) {
       const childInfo = childArrayInfo(current);
-      if (!childInfo || childInfo.key === "item") return "";
+      if (!childInfo) return "";
       parts.push(childInfo.key === "child" ? "child" : `${childInfo.key}[${index}]`);
     }
     current = asRecord(items[index]) as RawElement | null;
@@ -4353,7 +4350,7 @@ function elementSize(element: RawElement, fallback?: Size): Size {
       height: fallback?.height ?? DECORATIVE_LINE_LENGTH,
     };
   }
-  if (type === "flex" || type === "grid" || type === "list-view" || type === "grid-view") {
+  if (type === "flex" || type === "grid") {
     return fallback ?? childrenBounds(childArrayInfo(element)?.items ?? []);
   }
   return fallback ?? { width: 1, height: 1 };
@@ -4379,13 +4376,6 @@ function childArrayInfo(element: RawElement): ChildArrayInfo | null {
   if (Array.isArray(element.children)) return { key: "children", items: element.children };
   if (Array.isArray(element.elements)) return { key: "elements", items: element.elements };
   if (isRecord(element.child)) return { key: "child", items: [element.child] };
-  if (isRecord(element.item)) {
-    const count = Math.max(0, Math.floor(readNumber(element.count) ?? 1));
-    return {
-      key: "item",
-      items: Array.from({ length: count }, () => element.item),
-    };
-  }
   return null;
 }
 
@@ -4393,21 +4383,9 @@ function withUpdatedChildItems(
   element: RawElement,
   childInfo: ChildArrayInfo,
   updatedChildren: unknown[],
-  selectedChildIndex = 0,
 ) {
   if (childInfo.key === "child") {
     return { ...element, child: updatedChildren[0] ?? null };
-  }
-  if (childInfo.key === "item") {
-    const selected = Math.max(0, selectedChildIndex);
-    return {
-      ...element,
-      item:
-        updatedChildren[selected] ??
-        updatedChildren[0] ??
-        element.item ??
-        null,
-    };
   }
   return { ...element, [childInfo.key]: updatedChildren };
 }
@@ -4421,9 +4399,7 @@ function shouldClipElementChildren(
   return (
     type === "container" ||
     type === "flex" ||
-    type === "grid" ||
-    type === "list-view" ||
-    type === "grid-view"
+    type === "grid"
   );
 }
 
@@ -4433,9 +4409,7 @@ function isBoxVisualType(type: string | null) {
     type === "container" ||
     type === "flex" ||
     type === "grid" ||
-    type === "group" ||
-    type === "list-view" ||
-    type === "grid-view"
+    type === "group"
   );
 }
 
@@ -4590,8 +4564,6 @@ function rawElementTreeForEditor(element: RawElement): SlideElement {
     delete next.elements;
   } else if (isRecord(element.child)) {
     next.child = rawElementTreeForEditor(element.child);
-  } else if (isRecord(element.item)) {
-    next.item = rawElementTreeForEditor(element.item);
   }
 
   return next as unknown as SlideElement;
@@ -4667,11 +4639,6 @@ function mergeEditorElementTree(
     merged.child = mergeEditorElementTree(
       current.child,
       editor.child as unknown as SlideElement,
-    );
-  } else if (isRecord(current.item) && isRecord(editor.item)) {
-    merged.item = mergeEditorElementTree(
-      current.item,
-      editor.item as unknown as SlideElement,
     );
   }
 
