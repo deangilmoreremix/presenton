@@ -28,7 +28,13 @@ import {
 } from "react-konva";
 import { notify } from "@/components/ui/sonner";
 import type { TemplateV2Layout } from "@/components/slide-editor/lib/template-v2-import";
-import { disintegrateTemplateV2ComponentInUi } from "@/components/slide-editor/lib/template-v2-disintegration";
+import {
+  ensureGoogleFontsForDescriptors,
+  ensureTemplateFontsForDescriptors,
+  templateFontOptionsFromMap,
+  type TemplateFontOption,
+} from "@/components/slide-editor/lib/google-fonts";
+import { ungroupTemplateV2ComponentInUi } from "@/components/slide-editor/lib/template-v2-ungroup";
 import { effectiveLineHeight } from "@/components/slide-editor/lib/text-line-height";
 import { textRunsContent } from "@/components/slide-editor/lib/text-runs";
 import type {
@@ -169,6 +175,7 @@ const TOOLBAR_HEIGHT = 40;
 const TOOLBAR_GAP = 8;
 const TOOLBAR_MARGIN = 8;
 const SCROLL_DISMISS_THRESHOLD_PX = 300;
+const EMPTY_TEMPLATE_FONTS: TemplateFontOption[] = [];
 
 type UnknownRecord = Record<string, any>;
 type RawUi = TemplateV2Layout & UnknownRecord;
@@ -231,6 +238,7 @@ type TemplateV2KonvaSlideProps = {
   slideId?: string | number | null;
   slideIndex: number;
   renderIndex?: number;
+  fonts?: unknown;
 };
 
 function TemplateV2KonvaSlideComponent({
@@ -239,6 +247,7 @@ function TemplateV2KonvaSlideComponent({
   slideId = null,
   slideIndex,
   renderIndex,
+  fonts,
 }: TemplateV2KonvaSlideProps) {
   const dispatch = useDispatch();
   const surfaceId = useId();
@@ -253,7 +262,10 @@ function TemplateV2KonvaSlideComponent({
   const [uiDraft, setUiDraft] = useState<RawUi>(() =>
     normalizeMarkdownTextInUi(cloneJson(layout as RawUi)),
   );
-  const fontLoadState = useFontLoadState(uiDraft);
+  const templateFonts = useMemo(() => templateFontOptionsFromMap(fonts), [
+    fonts,
+  ]);
+  const fontLoadState = useFontLoadState(uiDraft, templateFonts);
   const currentUiRef = useRef<RawUi>(uiDraft);
   const [selection, setSelection] = useState<Selection>(null);
   const {
@@ -318,11 +330,11 @@ function TemplateV2KonvaSlideComponent({
   const selectedKey = selectedKeys.length === 1 ? selectedKeys[0] : null;
   const selectedParentComponentKey =
     selection?.kind === "element" &&
-    selection.componentIndex !== ROOT_ELEMENTS_COMPONENT_INDEX
+      selection.componentIndex !== ROOT_ELEMENTS_COMPONENT_INDEX
       ? keyForSelection({
-          kind: "component",
-          componentIndex: selection.componentIndex,
-        })
+        kind: "component",
+        componentIndex: selection.componentIndex,
+      })
       : null;
   const editingKey = inlineEdit ? keyForSelection(inlineEdit.selection) : null;
   const selectedElement =
@@ -357,10 +369,10 @@ function TemplateV2KonvaSlideComponent({
       if (!selectedElement || !selectedBox) return null;
       const inlineTextElement =
         inlineEdit &&
-        inlineEdit.kind === "text" &&
-        inlineEdit.runs &&
-        selection?.kind === "element" &&
-        keyForSelection(inlineEdit.selection) === keyForSelection(selection)
+          inlineEdit.kind === "text" &&
+          inlineEdit.runs &&
+          selection?.kind === "element" &&
+          keyForSelection(inlineEdit.selection) === keyForSelection(selection)
           ? setRawTextRunsContent(selectedElement, inlineEdit.runs)
           : selectedElement;
       return rawElementForEditorToolbar(inlineTextElement, selectedBox);
@@ -384,33 +396,33 @@ function TemplateV2KonvaSlideComponent({
   const [, setToolbarViewportVersion] = useState(0);
   const hasDismissibleEditorUi = Boolean(
     selection ||
-      inlineEdit ||
-      iconEditorSelection ||
-      selectedTableCell ||
-      editingTableCell,
+    inlineEdit ||
+    iconEditorSelection ||
+    selectedTableCell ||
+    editingTableCell,
   );
   const hasFloatingToolbars = Boolean(
     isEditMode &&
-      selection?.kind === "component" &&
-      (selectedBox || layoutToolbarTarget),
+    selection?.kind === "component" &&
+    (selectedBox || layoutToolbarTarget),
   );
   const componentToolbarPosition = selectedBox
     ? stackedViewportToolbarPosition({
-        root: rootElement,
-        anchorBox: selectedBox,
-        index: 0,
-        total: layoutToolbarTarget ? 2 : 1,
-        toolbarWidth: COMPONENT_TOOLBAR_WIDTH,
-      })
+      root: rootElement,
+      anchorBox: selectedBox,
+      index: 0,
+      total: layoutToolbarTarget ? 2 : 1,
+      toolbarWidth: COMPONENT_TOOLBAR_WIDTH,
+    })
     : null;
   const layoutToolbarPosition = layoutToolbarTarget
     ? stackedViewportToolbarPosition({
-        root: rootElement,
-        anchorBox: selectedBox ?? layoutToolbarTarget.box,
-        index: selectedBox ? 1 : 0,
-        total: selectedBox ? 2 : 1,
-        toolbarWidth: LAYOUT_TOOLBAR_WIDTH,
-      })
+      root: rootElement,
+      anchorBox: selectedBox ?? layoutToolbarTarget.box,
+      index: selectedBox ? 1 : 0,
+      total: selectedBox ? 2 : 1,
+      toolbarWidth: LAYOUT_TOOLBAR_WIDTH,
+    })
     : null;
   const inlineEditBox = inlineEdit
     ? absoluteInlineEditBox(uiDraft, inlineEdit.selection, inlineEdit.frame)
@@ -482,10 +494,10 @@ function TemplateV2KonvaSlideComponent({
               nextSelection === undefined
                 ? selectedSurfaceTarget
                 : surfaceSelectionTarget(
-                    currentUiRef.current,
-                    nextSelection,
-                    surfaceSlideIndex,
-                  ),
+                  currentUiRef.current,
+                  nextSelection,
+                  surfaceSlideIndex,
+                ),
           },
         },
       ),
@@ -852,9 +864,9 @@ function TemplateV2KonvaSlideComponent({
     );
     return clipboardComponent
       ? createTemplateV2ClipboardPayload(
-          clipboardComponent.component,
-          clipboardComponent.box,
-        )
+        clipboardComponent.component,
+        clipboardComponent.box,
+      )
       : null;
   }, [selection]);
 
@@ -1028,7 +1040,7 @@ function TemplateV2KonvaSlideComponent({
 
   const ungroupSelectedComponent = useCallback(() => {
     if (selection?.kind !== "component" || !canUngroupSelectedComponent) return;
-    const result = disintegrateTemplateV2ComponentInUi(
+    const result = ungroupTemplateV2ComponentInUi(
       currentUiRef.current,
       selection.componentIndex,
       {
@@ -1494,6 +1506,7 @@ function TemplateV2KonvaSlideComponent({
           path={keyForSelection(selection)}
           scale={EDITOR_SCALE}
           selectedTableCell={selectedTableCell}
+          templateFonts={templateFonts}
           onChange={(_index, element) =>
             applyComponentToolbarChange(element)
           }
@@ -1508,8 +1521,8 @@ function TemplateV2KonvaSlideComponent({
           position={layoutToolbarPosition ?? undefined}
           onUngroup={
             canUngroupSelectedComponent &&
-            (readString(layoutToolbarTarget.element.type) === "flex" ||
-              readString(layoutToolbarTarget.element.type) === "grid")
+              (readString(layoutToolbarTarget.element.type) === "flex" ||
+                readString(layoutToolbarTarget.element.type) === "grid")
               ? ungroupSelectedComponent
               : undefined
           }
@@ -1530,10 +1543,11 @@ function TemplateV2KonvaSlideComponent({
           path={keyForSelection(selection)}
           scale={EDITOR_SCALE}
           selectedTableCell={selectedTableCell}
+          templateFonts={templateFonts}
           textSelectionRange={
             inlineEdit &&
-            inlineEdit.kind === "text" &&
-            keyForSelection(inlineEdit.selection) === keyForSelection(selection)
+              inlineEdit.kind === "text" &&
+              keyForSelection(inlineEdit.selection) === keyForSelection(selection)
               ? inlineEdit.textSelectionRange
               : null
           }
@@ -1554,6 +1568,7 @@ function TemplateV2KonvaSlideComponent({
           index={selection.componentIndex}
           scale={EDITOR_SCALE}
           selectedCell={editingTableCell}
+          templateFonts={templateFonts}
           onChange={(_index, element) => applyToolbarElementChange(element)}
           onClose={clearTableCellEditing}
         />
@@ -1606,7 +1621,10 @@ function TemplateV2KonvaSlideComponent({
 export const TemplateV2KonvaSlide = memo(TemplateV2KonvaSlideComponent);
 TemplateV2KonvaSlide.displayName = "TemplateV2KonvaSlide";
 
-function useFontLoadState(ui: RawUi) {
+function useFontLoadState(
+  ui: RawUi,
+  templateFonts: TemplateFontOption[] = EMPTY_TEMPLATE_FONTS,
+) {
   const fontSignature = useMemo(() => fontLoadSignatureForUi(ui), [ui]);
   const [state, setState] = useState(() => ({
     revision: 0,
@@ -1647,13 +1665,22 @@ function useFontLoadState(ui: RawUi) {
 
     const fonts = document.fonts;
     const descriptors = fontSignature.split("\n").filter(Boolean);
+    const stylesheetLoads = [
+      ...ensureTemplateFontsForDescriptors(descriptors, templateFonts),
+      ...ensureGoogleFontsForDescriptors(descriptors),
+    ];
+    const fontsAlreadyReady =
+      stylesheetLoads.length === 0 && areFontDescriptorsLoaded(fontSignature);
     setState((current) =>
-      current.ready && areFontDescriptorsLoaded(fontSignature)
+      current.ready && fontsAlreadyReady
         ? current
         : { ...current, ready: false },
     );
 
-    void Promise.all(descriptors.map((descriptor) => fonts.load(descriptor)))
+    void Promise.all(stylesheetLoads)
+      .then(() =>
+        Promise.all(descriptors.map((descriptor) => fonts.load(descriptor))),
+      )
       .then(() => fonts.ready)
       .then(scheduleReady)
       .catch(scheduleReady);
@@ -1668,7 +1695,7 @@ function useFontLoadState(ui: RawUi) {
       fonts.removeEventListener?.("loadingdone", scheduleReady);
       fonts.removeEventListener?.("loadingerror", scheduleReady);
     };
-  }, [fontSignature]);
+  }, [fontSignature, templateFonts]);
 
   return state;
 }
@@ -2473,9 +2500,8 @@ function RawRichTextElement({
                 fill={withHash(segment.font.color)}
                 fontFamily={`${segment.font.family}, Helvetica, sans-serif`}
                 fontSize={segment.font.size}
-                fontStyle={`${segment.font.bold ? "bold" : "normal"} ${
-                  segment.font.italic ? "italic" : ""
-                }`}
+                fontStyle={`${segment.font.bold ? "bold" : "normal"} ${segment.font.italic ? "italic" : ""
+                  }`}
                 textDecoration={segment.font.underline ? "underline" : ""}
                 verticalAlign="middle"
                 lineHeight={segment.font.lineHeight ?? textLineHeight}
@@ -2543,9 +2569,9 @@ function RawRichTextElement({
   );
   const textNodeHeight = noWrap
     ? Math.max(
-        height,
-        measureNoWrapTextHeight(displayContent, font, textLineHeight),
-      )
+      height,
+      measureNoWrapTextHeight(displayContent, font, textLineHeight),
+    )
     : Math.max(height, wrappedTextHeight);
 
   return (
@@ -4605,9 +4631,9 @@ function stackedToolbarPosition({
   const startTop = canFitAbove
     ? anchorBox.y - stackHeight - TOOLBAR_GAP
     : Math.min(
-        boundary.height - stackHeight - TOOLBAR_MARGIN,
-        anchorBox.y + anchorBox.height + TOOLBAR_GAP,
-      );
+      boundary.height - stackHeight - TOOLBAR_MARGIN,
+      anchorBox.y + anchorBox.height + TOOLBAR_GAP,
+    );
   return {
     left: Math.max(
       TOOLBAR_MARGIN,
@@ -4836,8 +4862,8 @@ function elementWithInlineDraft(
       runs != null
         ? setRawTextRunsContent(element, runs)
         : draft === rawTextContent(element)
-        ? element
-        : setRawTextContent(element, draft, style);
+          ? element
+          : setRawTextContent(element, draft, style);
     return preserveInlineEditFrame(next, frame);
   }
   if (kind === "text-list") {
