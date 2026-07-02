@@ -1,5 +1,6 @@
 import { renderMarkdownTextRuns } from "./markdown-text";
 import type { Font, TextRun } from "./slide-schema";
+import { effectiveLineHeight } from "./text-line-height";
 import { textRunsContent } from "./text-runs";
 import type { TemplateV2TextEditStyle } from "./template-v2-text-editing";
 
@@ -19,6 +20,14 @@ export type LaidToken = {
   font: RenderTextFont;
   x: number;
   y: number;
+  width: number;
+  height: number;
+};
+export type TemplateV2TextBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 const TEXT_AVERAGE_CHAR_EM = 0.5;
@@ -395,6 +404,116 @@ export function rawRenderTextRuns(
     }));
 }
 
+export function textVisualLocalBox(
+  element: TemplateV2RawTextElement,
+  box: TemplateV2TextBox,
+): TemplateV2TextBox {
+  const font = rawFont(element);
+  const content = rawTextContent(element);
+  const displayContent = displayText(content);
+  const renderRuns = rawRenderTextRuns(element);
+  const renderRunsDifferFromElement =
+    renderRuns.length > 0 &&
+    textRunsHaveMixedStyle([{ text: "", font }, ...renderRuns]);
+  const align = readString(asRecord(element.alignment)?.horizontal) ?? "left";
+  const verticalAlign =
+    readString(asRecord(element.alignment)?.vertical) ?? "top";
+  const textLineHeight = effectiveLineHeight({
+    text: displayContent,
+    width: box.width,
+    fontSize: font.size,
+    lineHeight: font.lineHeight,
+    fallback: 1.15,
+    wrap: font.wrap,
+  });
+
+  if (renderRunsDifferFromElement) {
+    const lines = layoutRenderTextRuns(renderRuns, box.width, font.wrap);
+    const lineMetrics = lines.map((line) => ({
+      height: lineRenderHeight(line, textLineHeight),
+      width: line.reduce((sum, segment) => sum + segment.width, 0),
+    }));
+    const totalHeight = lineMetrics.reduce(
+      (sum, metric) => sum + metric.height,
+      0,
+    );
+    const startY = verticalStartY(verticalAlign, box.height, totalHeight);
+    const left = Math.min(
+      0,
+      ...lineMetrics.map((metric) =>
+        lineStartX(align, box.width, metric.width, font.wrap === "none"),
+      ),
+    );
+    const right = Math.max(
+      box.width,
+      ...lineMetrics.map((metric) => {
+        const startX = lineStartX(
+          align,
+          box.width,
+          metric.width,
+          font.wrap === "none",
+        );
+        return startX + metric.width;
+      }),
+    );
+    return {
+      x: box.x + left,
+      y: box.y + Math.min(0, startY),
+      width: Math.max(1, right - left),
+      height: Math.max(box.height, totalHeight),
+    };
+  }
+
+  if (renderRuns.length > 1) {
+    const { tokens, contentHeight } = layoutRichText(
+      renderRuns,
+      box.width,
+      font,
+      align,
+      verticalAlign,
+      box.height,
+      font.wrap,
+    );
+    if (tokens.length === 0) return box;
+    const left = Math.min(0, ...tokens.map((token) => token.x));
+    const top = Math.min(0, ...tokens.map((token) => token.y));
+    const right = Math.max(
+      box.width,
+      ...tokens.map((token) => token.x + token.width),
+    );
+    const bottom = Math.max(
+      box.height,
+      contentHeight,
+      ...tokens.map((token) => token.y + token.height),
+    );
+    return {
+      x: box.x + left,
+      y: box.y + top,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+    };
+  }
+
+  if (font.wrap !== "none") return box;
+
+  const textNodeWidth = Math.max(
+    box.width,
+    measureNoWrapTextWidth(displayContent, font),
+  );
+  const textNodeHeight = Math.max(
+    box.height,
+    measureNoWrapTextHeight(displayContent, font, textLineHeight),
+  );
+  return {
+    x: box.x + lineStartX(align, box.width, textNodeWidth, true),
+    y:
+      box.y +
+      verticalTextStartY(verticalAlign, box.height, textNodeHeight, true),
+    width: textNodeWidth,
+    height: textNodeHeight,
+  };
+}
+
 export function textRunsHaveMixedStyle(runs: RenderTextRun[]) {
   const first = runs[0]?.font;
   return runs.some((run) => JSON.stringify(run.font) !== JSON.stringify(first));
@@ -498,6 +617,8 @@ export function layoutRichText(
           font: tok.font,
           x,
           y: y + (line.height - tokenBoxHeight),
+          width: tok.width,
+          height: tokenBoxHeight,
         });
       }
       x += tok.width;
@@ -599,13 +720,18 @@ export function verticalTextStartY(
   textHeight: number,
   allowOverflow: boolean,
 ) {
+  const y = verticalStartY(align, boxHeight, textHeight);
+  return allowOverflow ? y : Math.max(0, y);
+}
+
+function verticalStartY(align: string, boxHeight: number, textHeight: number) {
   const y =
     align === "middle"
       ? (boxHeight - textHeight) / 2
       : align === "bottom"
         ? boxHeight - textHeight
         : 0;
-  return allowOverflow ? y : Math.max(0, y);
+  return y;
 }
 
 export function rawFontRecordForEditor(value: unknown) {

@@ -62,6 +62,7 @@ import {
   setRawTextListContent,
   setRawTextRunsContent,
   textRunsHaveMixedStyle,
+  textVisualLocalBox,
   verticalTextStartY,
 } from "@/components/slide-editor/lib/template-v2-text";
 import {
@@ -325,7 +326,7 @@ function TemplateV2KonvaSlideComponent({
     [selectedComponent],
   );
   const inlineEditBox = inlineEdit
-    ? absoluteBoxForSelection(uiDraft, inlineEdit.selection)
+    ? absoluteInlineEditBox(uiDraft, inlineEdit.selection, inlineEdit.frame)
     : null;
   const iconEditorElement = iconEditorSelection
     ? getElementAtSelection(uiDraft, iconEditorSelection)
@@ -3060,6 +3061,95 @@ function absoluteBoxForSelection(ui: RawUi, selection: Selection): Box | null {
     y: componentOrigin.y + elementBoxValue.y,
     width: elementBoxValue.width,
     height: elementBoxValue.height,
+  };
+}
+
+function absoluteInlineEditBox(
+  ui: RawUi,
+  selection: ElementSelection,
+  frame?: Box | null,
+): Box | null {
+  const element = getElementAtSelection(ui, selection);
+  const localFrame =
+    frame ?? renderedLocalBoxForElementSelection(ui, selection);
+  if (!element || !localFrame) return absoluteBoxForSelection(ui, selection);
+
+  const visualFrame =
+    readString(element.type) === "text"
+      ? textVisualLocalBox(element, localFrame)
+      : localFrame;
+  return (
+    absoluteBoxForElementLocalFrame(ui, selection, visualFrame) ??
+    absoluteBoxForSelection(ui, selection)
+  );
+}
+
+function absoluteBoxForElementLocalFrame(
+  ui: RawUi,
+  selection: ElementSelection,
+  frame: Box,
+): Box | null {
+  if (selection.componentIndex === ROOT_ELEMENTS_COMPONENT_INDEX) {
+    return absoluteElementLocalFrame(
+      rootElementsComponent(ui),
+      selection.elementPath,
+      frame,
+    );
+  }
+
+  const component = asRecord(readArray(ui.components)[selection.componentIndex]);
+  if (!component) return null;
+  const componentOrigin = readPoint(component.position);
+  const elementFrame = absoluteElementLocalFrame(
+    component,
+    selection.elementPath,
+    frame,
+  );
+  if (!elementFrame) return null;
+  return {
+    x: componentOrigin.x + elementFrame.x,
+    y: componentOrigin.y + elementFrame.y,
+    width: elementFrame.width,
+    height: elementFrame.height,
+  };
+}
+
+function absoluteElementLocalFrame(
+  component: RawComponent,
+  path: number[],
+  frame: Box,
+) {
+  let items = readArray(component.elements).filter(isRecord) as RawElement[];
+  let parentElement: RawElement | null = null;
+  let parentRenderBox: Box = {
+    x: 0,
+    y: 0,
+    ...readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT }),
+  };
+  let x = 0;
+  let y = 0;
+  for (const index of path.slice(0, -1)) {
+    const element = asRecord(items[index]);
+    if (!element) return null;
+    const laidOut =
+      parentElement != null
+        ? layoutChildren(parentElement, items, parentRenderBox).find(
+          (item) => item.index === index,
+        )
+        : null;
+    const box = laidOut?.box ?? elementBox(element);
+    x += box.x;
+    y += box.y;
+    const childInfo = childArrayInfo(element);
+    parentElement = element;
+    parentRenderBox = { x: 0, y: 0, width: box.width, height: box.height };
+    items = (childInfo?.items ?? []).filter(isRecord) as RawElement[];
+  }
+  return {
+    x: x + frame.x,
+    y: y + frame.y,
+    width: frame.width,
+    height: frame.height,
   };
 }
 
