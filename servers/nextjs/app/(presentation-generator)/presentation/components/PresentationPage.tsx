@@ -31,7 +31,9 @@ import { applyPresentationThemeToElement } from "../utils/applyPresentationTheme
 import PresentationHeader from "./PresentationHeader";
 import PresentationActions from "./PresentationActions";
 import {
+  TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+  type TemplateV2ActivateSurfaceDetail,
   type TemplateV2SurfaceSelectedDetail,
 } from "../../components/templateV2Events";
 
@@ -394,6 +396,31 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
       );
     };
   }, [totalSlides]);
+
+  useEffect(() => {
+    if (
+      isPresentMode ||
+      !isTemplateV2Presentation ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+    delete document.documentElement.dataset.templateV2KonvaActiveSurface;
+    delete document.documentElement.dataset.templateV2KonvaActiveSlideIndex;
+    const frame = window.requestAnimationFrame(() => {
+      window.dispatchEvent(
+        new CustomEvent<TemplateV2ActivateSurfaceDetail>(
+          TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
+          {
+            detail: {
+              slideIndex: selectedSlide,
+            },
+          }
+        )
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPresentMode, isTemplateV2Presentation, selectedSlide]);
 
   // Presentation Mode View
   if (isPresentMode) {

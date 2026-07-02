@@ -9,13 +9,12 @@ export type TemplateV2ClipboardBox = {
 
 export type TemplateV2ClipboardSelection =
   | { kind: "component"; componentIndex: number }
-  | { kind: "element"; componentIndex: number; elementPath: number[] }
   | null;
 
 export type TemplateV2ClipboardPayload = {
   format: "presenton/template-v2";
   version: 1;
-  kind: "component" | "element";
+  kind: "component";
   data: TemplateV2ClipboardRecord;
   absoluteBox: TemplateV2ClipboardBox;
 };
@@ -29,18 +28,16 @@ type PasteOptions<TUi extends TemplateV2ClipboardRecord> = {
   sourceUi: TUi;
   payload: TemplateV2ClipboardPayload;
   offset: number;
-  stageSize: { width: number; height: number };
 };
 
 export function createTemplateV2ClipboardPayload(
-  kind: TemplateV2ClipboardPayload["kind"],
   data: TemplateV2ClipboardRecord,
   absoluteBox: TemplateV2ClipboardBox,
 ): TemplateV2ClipboardPayload {
   return {
     format: "presenton/template-v2",
     version: 1,
-    kind,
+    kind: "component",
     data: cloneJson(data),
     absoluteBox: { ...absoluteBox },
   };
@@ -52,65 +49,19 @@ export function pasteTemplateV2ClipboardPayload<
   sourceUi,
   payload,
   offset,
-  stageSize,
 }: PasteOptions<TUi>): TemplateV2ClipboardPasteResult<TUi> | null {
-  const stageBox = { x: 0, y: 0, ...stageSize };
-  if (payload.kind === "component") {
-    const components = [...readArray(sourceUi.components)];
-    const component = cloneJson(payload.data);
-    const box = payload.absoluteBox;
-    const componentIndex = components.length;
-    components.push({
-      ...component,
-      position: clampPosition(
-        { x: box.x + offset, y: box.y + offset },
-        box,
-        stageBox,
-      ),
-    });
-    return {
-      ui: { ...sourceUi, components } as TUi,
-      selection: { kind: "component", componentIndex },
-    };
-  }
-
-  const element = cloneJson(payload.data);
-  const box = payload.absoluteBox;
+  if (payload.kind !== "component") return null;
   const components = [...readArray(sourceUi.components)];
+  const component = cloneJson(payload.data);
+  const box = payload.absoluteBox;
   const componentIndex = components.length;
   components.push({
-    position: clampPosition(
-      { x: box.x + offset, y: box.y + offset },
-      box,
-      stageBox,
-    ),
-    size: { width: box.width, height: box.height },
-    elements: [
-      {
-        ...element,
-        position: { x: 0, y: 0 },
-        size: { width: box.width, height: box.height },
-      },
-    ],
+    ...withUniquePastedComponentIdentity(component, components),
+    position: { x: box.x + offset, y: box.y + offset },
   });
   return {
     ui: { ...sourceUi, components } as TUi,
-    selection: {
-      kind: "element",
-      componentIndex,
-      elementPath: [0],
-    },
-  };
-}
-
-function clampPosition(
-  position: { x: number; y: number },
-  box: { width: number; height: number },
-  parent: { width: number; height: number },
-) {
-  return {
-    x: clamp(position.x, 0, Math.max(0, parent.width - box.width)),
-    y: clamp(position.y, 0, Math.max(0, parent.height - box.height)),
+    selection: { kind: "component", componentIndex },
   };
 }
 
@@ -118,8 +69,53 @@ function readArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
+function withUniquePastedComponentIdentity(
+  component: TemplateV2ClipboardRecord,
+  siblings: unknown[],
+) {
+  const next = { ...component };
+  next.id = uniqueComponentId(
+    `${normalizeId(
+      readString(component.id) ??
+        readString(component.name) ??
+        readString(component.description) ??
+        "component",
+    )}_copy`,
+    siblings,
+  );
+  return next;
+}
+
+function uniqueComponentId(base: string, siblings: unknown[]) {
+  const existingIds = new Set(
+    siblings
+      .map((component) =>
+        isRecord(component) ? readString(component.id) : null,
+      )
+      .filter(Boolean),
+  );
+  if (!existingIds.has(base)) return base;
+  let index = 2;
+  while (existingIds.has(`${base}_${index}`)) {
+    index += 1;
+  }
+  return `${base}_${index}`;
+}
+
+function normalizeId(value: string) {
+  const normalized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized || "component";
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function cloneJson<T>(value: T): T {

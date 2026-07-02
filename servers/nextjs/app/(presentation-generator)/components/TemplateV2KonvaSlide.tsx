@@ -84,10 +84,12 @@ import { findFirstComponentLayoutElement } from "./template-v2-layout-toolbar/la
 import { layoutWrappedFlexChildren } from "./template-v2-layout/wrappedFlexLayout";
 import { TemplateV2SelectionTransformers } from "./template-v2-selection/TemplateV2SelectionTransformers";
 import {
+  TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
   TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+  type TemplateV2ActivateSurfaceDetail,
   type TemplateV2ChartEditorDetail,
   type TemplateV2ChartUpdateDetail,
   type TemplateV2InsertElementsDetail,
@@ -95,10 +97,12 @@ import {
 } from "./templateV2Events";
 
 export {
+  TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
   TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+  type TemplateV2ActivateSurfaceDetail,
   type TemplateV2ChartEditorDetail,
   type TemplateV2ChartUpdateDetail,
   type TemplateV2InsertElementsDetail,
@@ -379,6 +383,32 @@ function TemplateV2KonvaSlideComponent({
     );
   }, [isSurfaceActive, selectedSurfaceTarget, slideId, surfaceSlideIndex]);
 
+  useEffect(() => {
+    if (!isEditMode || typeof window === "undefined") return;
+
+    const handleActivateSurface = (event: Event) => {
+      const detail = (event as CustomEvent<TemplateV2ActivateSurfaceDetail>)
+        .detail;
+      if (
+        !detail ||
+        !eventTargetsThisSlide(detail, slideId, surfaceSlideIndex, () => false)
+      ) {
+        return;
+      }
+      activateSurface();
+    };
+
+    window.addEventListener(
+      TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
+      handleActivateSurface,
+    );
+    return () =>
+      window.removeEventListener(
+        TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
+        handleActivateSurface,
+      );
+  }, [activateSurface, isEditMode, slideId, surfaceSlideIndex]);
+
   const clearSurface = useCallback(() => {
     if (typeof document === "undefined") return;
     if (
@@ -500,27 +530,13 @@ function TemplateV2KonvaSlideComponent({
   }, [clearInlineEdit, clearTableCellSelection, commitUi, selection]);
 
   const createClipboardPayload = useCallback((): TemplateV2ClipboardPayload | null => {
-    if (!selection) return null;
-    if (selection.kind === "component") {
-      const component = asRecord(
-        readArray(currentUiRef.current.components)[selection.componentIndex],
-      );
-      return component
-        ? createTemplateV2ClipboardPayload(
-            "component",
-            component,
-            componentBox(component),
-          )
-        : null;
-    }
-
-    const element = getElementAtSelection(currentUiRef.current, selection);
-    const absoluteBox = absoluteBoxForSelection(
-      currentUiRef.current,
-      selection,
+    const componentIndex = componentIndexForClipboardSelection(selection);
+    if (componentIndex == null) return null;
+    const component = asRecord(
+      readArray(currentUiRef.current.components)[componentIndex],
     );
-    return element && absoluteBox
-      ? createTemplateV2ClipboardPayload("element", element, absoluteBox)
+    return component
+      ? createTemplateV2ClipboardPayload(component, componentBox(component))
       : null;
   }, [selection]);
 
@@ -530,16 +546,16 @@ function TemplateV2KonvaSlideComponent({
         sourceUi: currentUiRef.current,
         payload,
         offset,
-        stageSize: { width: STAGE_WIDTH, height: STAGE_HEIGHT },
       });
       if (!result) return;
       commitUi(result.ui);
       setSelection(result.selection);
+      clearTableCellSelection();
       clearInlineEdit();
       setIconEditorSelection(null);
       activateSurface(result.selection);
     },
-    [activateSurface, clearInlineEdit, commitUi],
+    [activateSurface, clearInlineEdit, clearTableCellSelection, commitUi],
   );
 
   useTemplateV2Clipboard({
@@ -1289,6 +1305,7 @@ function RawComponentNode({
         );
       }}
     >
+      {isEditMode ? <SelectionBoundsRect width={box.width} height={box.height} /> : null}
       {elements.map((element, elementIndex) => (
         <MemoizedRawElementNode
           key={rawElementKey(element, elementIndex)}
@@ -1497,6 +1514,7 @@ function RawElementNode({
         }));
       }}
     >
+      {editing ? <SelectionBoundsRect width={box.width} height={box.height} /> : null}
       {editing ? null : (
         <MemoizedRawElementVisual
           element={element}
@@ -1570,6 +1588,25 @@ const MemoizedRawElementNode = memo(RawElementNode, (previous, next) => {
       ))
   );
 });
+
+function SelectionBoundsRect({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
+  return (
+    <Rect
+      width={width}
+      height={height}
+      fill="rgba(0,0,0,0)"
+      listening={false}
+      perfectDrawEnabled={false}
+      shadowForStrokeEnabled={false}
+    />
+  );
+}
 
 function RawElementVisual({
   element,
@@ -3677,6 +3714,14 @@ function keyForSelection(selection: Selection) {
   if (!selection) return "";
   if (selection.kind === "component") return `component:${selection.componentIndex}`;
   return `element:${selection.componentIndex}:${selection.elementPath.join(".")}`;
+}
+
+function componentIndexForClipboardSelection(selection: Selection) {
+  if (!selection) return null;
+  if (selection.kind === "component") {
+    return selection.componentIndex >= 0 ? selection.componentIndex : null;
+  }
+  return selection.componentIndex >= 0 ? selection.componentIndex : null;
 }
 
 function surfaceSelectionTarget(

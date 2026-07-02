@@ -8,6 +8,8 @@ export const TEMPLATE_V2_INSERT_ELEMENTS_EVENT =
   "presenton:template-v2-insert-elements";
 export const TEMPLATE_V2_SURFACE_SELECTED_EVENT =
   "presenton:template-v2-surface-selected";
+export const TEMPLATE_V2_ACTIVATE_SURFACE_EVENT =
+  "presenton:template-v2-activate-surface";
 export const TEMPLATE_V2_CHART_EDITOR_EVENT =
   "presenton:template-v2-chart-editor";
 export const TEMPLATE_V2_CHART_UPDATE_EVENT =
@@ -44,6 +46,11 @@ export type TemplateV2SurfaceSelectedDetail = {
     elementName?: string;
     targetLabel?: string;
   } | null;
+};
+
+export type TemplateV2ActivateSurfaceDetail = {
+  slideId?: string | number | null;
+  slideIndex?: number | null;
 };
 
 export type TemplateV2ChartEditorDetail = {
