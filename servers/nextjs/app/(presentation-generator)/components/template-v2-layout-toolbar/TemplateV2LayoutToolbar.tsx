@@ -27,10 +27,16 @@ import {
   addLayoutItemChanges,
   layoutItemStats,
   removeLastLayoutItemChanges,
-} from "./layoutItems";
+} from "../template-v2-layout/layoutItems";
+import { isFlowLayoutElement } from "../template-v2-layout/flowLayout";
 
 type RawRecord = Record<string, unknown>;
-type LayoutElementType = "container" | "flex" | "grid";
+type LayoutElementType =
+  | "container"
+  | "flex"
+  | "grid"
+  | "list-view"
+  | "grid-view";
 type LayoutAlignment = "flex-start" | "center" | "flex-end" | "stretch";
 type PanelId =
   | "horizontal-alignment"
@@ -677,7 +683,13 @@ export function TemplateV2LayoutToolbar({
   onUngroup,
 }: TemplateV2LayoutToolbarProps) {
   const [openPanel, setOpenPanel] = useState<PanelId>(null);
-  const estimatedWidth = (element.type === "container" ? 700 : 440) +
+  const layoutType =
+    element.type === "list-view"
+      ? "flex"
+      : element.type === "grid-view"
+        ? "grid"
+        : element.type;
+  const estimatedWidth = (layoutType === "container" ? 700 : 440) +
     (onUngroup ? 90 : 0);
   const left =
     position?.left ??
@@ -691,7 +703,7 @@ export function TemplateV2LayoutToolbar({
     setOpenPanel((current) => (current === panel ? null : panel));
   };
   const TypeIcon =
-    element.type === "grid" ? Grid3X3 : element.type === "container" ? Box : AlignCenter;
+    layoutType === "grid" ? Grid3X3 : layoutType === "container" ? Box : AlignCenter;
 
   const toolbar = (
     <div
@@ -716,14 +728,14 @@ export function TemplateV2LayoutToolbar({
         </>
       ) : null}
 
-      {element.type === "flex" ? (
+      {layoutType === "flex" ? (
         <FlexControls
           element={element}
           onChange={onChange}
           openPanel={openPanel}
           onToggle={togglePanel}
         />
-      ) : element.type === "grid" ? (
+      ) : layoutType === "grid" ? (
         <GridControls
           element={element}
           onChange={onChange}
@@ -752,7 +764,6 @@ export function isTemplateV2LayoutElement(
 ): element is TemplateV2LayoutElement {
   return (
     element?.type === "container" ||
-    element?.type === "flex" ||
-    element?.type === "grid"
+    Boolean(element && isFlowLayoutElement(element))
   );
 }

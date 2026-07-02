@@ -120,7 +120,14 @@ import {
   TemplateV2LayoutToolbar,
 } from "./template-v2-layout-toolbar/TemplateV2LayoutToolbar";
 import { findFirstComponentLayoutElement } from "./template-v2-layout-toolbar/layoutToolbarTarget";
-import { layoutWrappedFlexChildren } from "./template-v2-layout/wrappedFlexLayout";
+import {
+  isFlowLayoutElement,
+  layoutFlowChildren,
+} from "./template-v2-layout/flowLayout";
+import {
+  deleteLayoutChildFromArray,
+  updateComponentLayoutElement,
+} from "./template-v2-layout/layoutItemResize";
 import {
   reorderComponentLayer,
   type ComponentLayerAction,
@@ -1015,17 +1022,23 @@ function TemplateV2KonvaSlideComponent({
   const applyLayoutElementChange = useCallback(
     (changes: Record<string, unknown>) => {
       if (!layoutToolbarTarget) return;
-      updateElement(layoutToolbarTarget.selection, (current) =>
-        elementWithNormalizedLayoutChildren(
-          {
-            ...current,
-            ...changes,
-          },
+      updateComponent(layoutToolbarTarget.selection.componentIndex, (component) =>
+        updateComponentLayoutElement(
+          component,
+          layoutToolbarTarget.selection.elementPath,
+          changes,
           layoutToolbarTarget.box,
+          {
+            childrenBounds,
+            elementBox,
+            elementSize,
+            isManualPositioned,
+            normalizeLayoutChildren: elementWithNormalizedLayoutChildren,
+          },
         ),
       );
     },
-    [layoutToolbarTarget, updateElement],
+    [layoutToolbarTarget, updateComponent],
   );
 
   const applyComponentToolbarChange = useCallback(
@@ -1521,8 +1534,7 @@ function TemplateV2KonvaSlideComponent({
           position={layoutToolbarPosition ?? undefined}
           onUngroup={
             canUngroupSelectedComponent &&
-              (readString(layoutToolbarTarget.element.type) === "flex" ||
-                readString(layoutToolbarTarget.element.type) === "grid")
+              isFlowLayoutElement(layoutToolbarTarget.element)
               ? ungroupSelectedComponent
               : undefined
           }
@@ -3059,61 +3071,6 @@ function deleteSelectionFromUi(sourceUi: RawUi, selection: Selection) {
   return sourceUi;
 }
 
-function deleteLayoutChildFromArray(elements: unknown[], path: number[]) {
-  const [index, ...rest] = path;
-  if (!Number.isInteger(index) || index < 0 || index >= elements.length) {
-    return elements;
-  }
-  const current = asRecord(elements[index]);
-  const childInfo = current ? childArrayInfo(current) : null;
-  if (!current || !childInfo) return elements;
-  if (rest.length >= 1 && isFlowLayoutElement(current)) {
-    if (childInfo.key === "item") {
-      const count = Math.max(
-        0,
-        readNumber(current.count) ?? childInfo.items.length,
-      );
-      const minCount = Math.max(0, readNumber(current.min_count) ?? 0);
-      if (count <= minCount) return elements;
-      const next = [...elements];
-      next[index] = {
-        ...current,
-        count: Math.max(0, count - 1),
-      };
-      return next;
-    }
-    if (childInfo.key === "children") {
-      const minChildren = Math.max(0, readNumber(current.min_children) ?? 0);
-      if (childInfo.items.length <= minChildren) return elements;
-      const updatedChildren = [...childInfo.items];
-      updatedChildren.splice(rest[0], 1);
-      const next = [...elements];
-      next[index] = withUpdatedChildItems(
-        current,
-        childInfo,
-        updatedChildren,
-        rest[0],
-      );
-      return next;
-    }
-  }
-  const updatedChildren = deleteLayoutChildFromArray(childInfo.items, rest);
-  if (updatedChildren === childInfo.items) return elements;
-  const next = [...elements];
-  next[index] = withUpdatedChildItems(current, childInfo, updatedChildren, rest[0]);
-  return next;
-}
-
-function isFlowLayoutElement(element: RawElement) {
-  const type = readString(element.type);
-  return (
-    type === "flex" ||
-    type === "grid" ||
-    type === "list-view" ||
-    type === "grid-view"
-  );
-}
-
 function resizeComponent(
   component: RawComponent,
   next: Box & { scaleX: number; scaleY: number; rotation?: number },
@@ -3205,11 +3162,12 @@ function layoutChildren(
   if (type === "container") {
     return layoutContainerChildren(parent, rawChildren, parentBox);
   }
-  if (type === "grid" || type === "grid-view") {
-    return layoutGridChildren(parent, rawChildren, parentBox);
-  }
-  if (type === "flex" || type === "list-view") {
-    return layoutFlexChildren(parent, rawChildren, parentBox);
+  if (isFlowLayoutElement(parent)) {
+    return layoutFlowChildren(parent, rawChildren, parentBox, {
+      elementBox,
+      elementSize,
+      isManualPositioned,
+    }) as LaidOutChild[];
   }
   return rawChildren.map((child, index) => ({
     child,
@@ -3324,403 +3282,6 @@ function layoutContainerChildren(
       layoutManaged: true,
     };
   });
-}
-
-function layoutFlexChildren(
-  parent: RawElement,
-  children: RawElement[],
-  parentBox: Box,
-) {
-  if (children.length === 0) return [];
-  const padding = readPadding(parent.padding);
-  const direction = readString(parent.direction) === "column" ? "column" : "row";
-  const isColumn = direction === "column";
-  const mainGap =
-    (isColumn
-      ? readNumber(parent.row_gap) ?? readNumber(parent.rowGap)
-      : readNumber(parent.column_gap) ?? readNumber(parent.columnGap)) ??
-    readNumber(parent.gap) ??
-    0;
-  const align =
-    readString(parent.align_items) ?? readString(parent.alignItems) ?? "stretch";
-  const justify =
-    readString(parent.justify_content) ??
-    readString(parent.justifyContent) ??
-    "flex-start";
-  const availableW = Math.max(1, parentBox.width - padding.left - padding.right);
-  const availableH = Math.max(1, parentBox.height - padding.top - padding.bottom);
-  const availableMain = isColumn ? availableH : availableW;
-  const availableCross = isColumn ? availableW : availableH;
-  if (parent.wrap === true) {
-    const crossGap =
-      (isColumn
-        ? readNumber(parent.column_gap) ?? readNumber(parent.columnGap)
-        : readNumber(parent.row_gap) ?? readNumber(parent.rowGap)) ??
-      readNumber(parent.gap) ??
-      0;
-    return layoutWrappedFlexChildren({
-      align,
-      alignSelf: (child) =>
-        readString(child.layout?.align_self) ??
-        readString(child.layout?.alignSelf),
-      alignmentOffset,
-      availableCross,
-      availableMain,
-      childCrossSize,
-      children,
-      clampLayoutSize,
-      crossGap,
-      direction,
-      elementBox,
-      flexBasis,
-      isManualPositioned,
-      justify,
-      layoutNumber,
-      mainGap,
-      padding,
-    });
-  }
-  const bases = children.map((child) =>
-    isManualPositioned(child)
-      ? isColumn
-        ? elementBox(child).height
-        : elementBox(child).width
-      : flexBasis(child, direction, availableCross),
-  );
-  const gapTotal = mainGap * Math.max(0, children.length - 1);
-  const freeBeforeFlex =
-    Math.max(1, availableMain - gapTotal) -
-    bases.reduce((sum, size) => sum + Math.max(0, size), 0);
-  let mainSizes = bases.map((basis) => Math.max(0, basis));
-  const grows = children.map((child, index) =>
-    isManualPositioned(child)
-      ? 0
-      : layoutNumber(child, "grow") ?? (bases[index] > 0 ? 0 : 1),
-  );
-  const growTotal = grows.reduce((sum, grow) => sum + grow, 0);
-
-  if (freeBeforeFlex > 0 && growTotal > 0) {
-    mainSizes = mainSizes.map(
-      (size, index) => size + (freeBeforeFlex * grows[index]) / growTotal,
-    );
-  } else if (freeBeforeFlex > 0 && justify === "stretch") {
-    const flexibleCount = Math.max(
-      1,
-      children.filter((child) => !isManualPositioned(child)).length,
-    );
-    mainSizes = mainSizes.map((size, index) =>
-      isManualPositioned(children[index])
-        ? size
-        : size + freeBeforeFlex / flexibleCount,
-    );
-  } else if (freeBeforeFlex < 0) {
-    const shrinks = children.map((child) =>
-      isManualPositioned(child) ? 0 : layoutNumber(child, "shrink") ?? 1,
-    );
-    const scaledShrinks = shrinks.map((shrink, index) => shrink * mainSizes[index]);
-    const shrinkTotal = scaledShrinks.reduce((sum, shrink) => sum + shrink, 0);
-    if (shrinkTotal > 0) {
-      mainSizes = mainSizes.map((size, index) =>
-        Math.max(1, size + (freeBeforeFlex * scaledShrinks[index]) / shrinkTotal),
-      );
-    }
-  }
-
-  const usedMain =
-    mainSizes.reduce((sum, size) => sum + size, 0) +
-    mainGap * Math.max(0, children.length - 1);
-  let cursor = alignmentOffset(justify, availableMain, usedMain);
-
-  return children.map((child, index) => {
-    const raw = elementBox(child);
-    if (isManualPositioned(child)) {
-      cursor += (isColumn ? raw.height : raw.width) + mainGap;
-      return { child, index, box: raw, layoutManaged: false };
-    }
-    const main = clampLayoutSize(mainSizes[index], child, isColumn ? "height" : "width");
-    const cross = childCrossSize(child, direction, availableCross, align);
-    const alignSelf =
-      readString(child.layout?.align_self) ?? readString(child.layout?.alignSelf);
-    const crossOffset = alignmentOffset(alignSelf ?? align, availableCross, cross);
-    const box = isColumn
-      ? {
-        x: padding.left + crossOffset,
-        y: padding.top + cursor,
-        width: cross,
-        height: main,
-      }
-      : {
-        x: padding.left + cursor,
-        y: padding.top + crossOffset,
-        width: main,
-        height: cross,
-      };
-    cursor += main + mainGap;
-    return { child, index, box, layoutManaged: true };
-  });
-}
-
-function layoutGridChildren(
-  parent: RawElement,
-  children: RawElement[],
-  parentBox: Box,
-) {
-  const padding = readPadding(parent.padding);
-  const gap = readNumber(parent.gap) ?? 0;
-  const columnGap =
-    readNumber(parent.column_gap) ?? readNumber(parent.columnGap) ?? gap;
-  const rowGap = readNumber(parent.row_gap) ?? readNumber(parent.rowGap) ?? gap;
-  const explicitColumns = readArray(parent.columns);
-  const explicitRows = readArray(parent.rows);
-  const columnCount =
-    readNumber(parent.columns) ??
-    (explicitColumns.length > 0
-      ? explicitColumns.length
-      : Math.ceil(Math.sqrt(children.length)));
-  const safeColumns = Math.max(1, Math.floor(columnCount));
-  const declaredRows =
-    readNumber(parent.rows) ??
-    (explicitRows.length > 0 ? explicitRows.length : null);
-  const placements = placeGridChildren(children, safeColumns, declaredRows);
-  const rowCount = Math.max(
-    declaredRows ?? 1,
-    ...placements.map((placement) => placement.row + placement.rowSpan),
-  );
-  const availableW = Math.max(1, parentBox.width - padding.left - padding.right);
-  const availableH = Math.max(1, parentBox.height - padding.top - padding.bottom);
-  const cellW = Math.max(1, (availableW - columnGap * (safeColumns - 1)) / safeColumns);
-  const cellH = Math.max(1, (availableH - rowGap * Math.max(0, rowCount - 1)) / rowCount);
-
-  return children.map((child, index) => {
-    const raw = elementBox(child);
-    if (isManualPositioned(child)) {
-      return { child, index, box: raw, layoutManaged: false };
-    }
-    const placement = placements[index];
-    const area = {
-      x: padding.left + placement.col * (cellW + columnGap),
-      y: padding.top + placement.row * (cellH + rowGap),
-      width: cellW * placement.columnSpan + columnGap * (placement.columnSpan - 1),
-      height: cellH * placement.rowSpan + rowGap * (placement.rowSpan - 1),
-    };
-    const justify =
-      readString(child.layout?.align_self) ??
-      readString(child.layout?.alignSelf) ??
-      readString(parent.justify_items) ??
-      readString(parent.justifyItems) ??
-      "stretch";
-    const align =
-      readString(child.layout?.align_self) ??
-      readString(child.layout?.alignSelf) ??
-      readString(parent.align_items) ??
-      readString(parent.alignItems) ??
-      "stretch";
-    const width =
-      justify === "stretch"
-        ? area.width
-        : clampLayoutSize(raw.width, child, "width", area.width);
-    const height =
-      align === "stretch"
-        ? area.height
-        : clampLayoutSize(raw.height, child, "height", area.height);
-    return {
-      child,
-      index,
-      box: {
-        x: area.x + alignmentOffset(justify, area.width, width),
-        y: area.y + alignmentOffset(align, area.height, height),
-        width,
-        height,
-      },
-      layoutManaged: true,
-    };
-  });
-}
-
-function flexBasis(
-  child: RawElement,
-  direction: "row" | "column",
-  crossSize: number,
-) {
-  const dimension = direction === "row" ? "width" : "height";
-  const explicit = layoutNumber(child, "basis") ?? readOptionalSize(child.size)?.[dimension];
-  if (explicit != null && explicit > 0) {
-    return clampLayoutSize(explicit, child, dimension);
-  }
-
-  if (isFramelessDecorativeShape(child)) {
-    return DECORATIVE_LINE_THICKNESS;
-  }
-  if (readString(child.type) === "text") {
-    return clampLayoutSize(
-      intrinsicTextMainSize(child, direction, crossSize),
-      child,
-      dimension,
-    );
-  }
-
-  const inferred = elementSize(child);
-  const size = direction === "row" ? inferred.width : inferred.height;
-  return size > 1 ? clampLayoutSize(size, child, dimension) : 0;
-}
-
-function childCrossSize(
-  child: RawElement,
-  direction: "row" | "column",
-  crossSize: number,
-  alignItems: string,
-) {
-  const dimension = direction === "row" ? "height" : "width";
-  const alignSelf =
-    readString(child.layout?.align_self) ?? readString(child.layout?.alignSelf);
-  if (isFramelessDecorativeShape(child)) {
-    return clampLayoutSize(
-      Math.min(crossSize, DECORATIVE_LINE_LENGTH),
-      child,
-      dimension,
-    );
-  }
-  if (alignItems === "stretch" && alignSelf == null) {
-    return crossSize;
-  }
-  const explicit = readOptionalSize(child.size)?.[dimension];
-  const inferred = elementSize(child, {
-    width: direction === "row" ? 1 : crossSize,
-    height: direction === "row" ? crossSize : 1,
-  })[dimension];
-  return clampLayoutSize(explicit ?? inferred ?? crossSize, child, dimension, crossSize);
-}
-
-function intrinsicTextMainSize(
-  child: RawElement,
-  direction: "row" | "column",
-  crossSize: number,
-) {
-  const font = rawFont(child);
-  const text = displayText(rawTextContent(child));
-  if (direction === "row") {
-    return Math.max(1, estimateTextWidth(text, font));
-  }
-
-  const explicitWidth = readOptionalSize(child.size)?.width;
-  const width = Math.max(1, explicitWidth ?? crossSize);
-  return Math.max(1, estimateTextHeight(text, font, width));
-}
-
-function placeGridChildren(
-  children: RawElement[],
-  columns: number,
-  declaredRows: number | null,
-) {
-  const occupied = new Set<string>();
-  const placements: Array<{
-    col: number;
-    row: number;
-    columnSpan: number;
-    rowSpan: number;
-  }> = [];
-  let rowLimit = Math.max(1, declaredRows ?? Math.ceil(children.length / columns));
-
-  children.forEach((child) => {
-    const columnSpan = Math.min(
-      columns,
-      Math.max(1, Math.floor(layoutNumber(child, "columnSpan", "column_span") ?? 1)),
-    );
-    const rowSpan = Math.max(
-      1,
-      Math.floor(layoutNumber(child, "rowSpan", "row_span") ?? 1),
-    );
-    let placedRow = 0;
-    let placedCol = 0;
-
-    while (true) {
-      let placed = false;
-      for (let row = 0; row < rowLimit && !placed; row += 1) {
-        for (let col = 0; col <= columns - columnSpan; col += 1) {
-          if (gridAreaOpen(occupied, row, col, rowSpan, columnSpan)) {
-            placed = true;
-            placedRow = row;
-            placedCol = col;
-            break;
-          }
-        }
-      }
-      if (placed) break;
-      rowLimit += 1;
-    }
-
-    markGridArea(occupied, placedRow, placedCol, rowSpan, columnSpan);
-    placements.push({
-      col: placedCol,
-      row: placedRow,
-      columnSpan,
-      rowSpan,
-    });
-  });
-
-  return placements;
-}
-
-function gridAreaOpen(
-  occupied: Set<string>,
-  row: number,
-  col: number,
-  rowSpan: number,
-  columnSpan: number,
-) {
-  for (let r = row; r < row + rowSpan; r += 1) {
-    for (let c = col; c < col + columnSpan; c += 1) {
-      if (occupied.has(`${r}:${c}`)) return false;
-    }
-  }
-  return true;
-}
-
-function markGridArea(
-  occupied: Set<string>,
-  row: number,
-  col: number,
-  rowSpan: number,
-  columnSpan: number,
-) {
-  for (let r = row; r < row + rowSpan; r += 1) {
-    for (let c = col; c < col + columnSpan; c += 1) {
-      occupied.add(`${r}:${c}`);
-    }
-  }
-}
-
-function isFramelessDecorativeShape(child: RawElement) {
-  if (readOptionalSize(child.size) || asRecord(child.position)) return false;
-  const type = readString(child.type);
-  return type === "rectangle" || type === "ellipse" || type === "line";
-}
-
-function clampLayoutSize(
-  size: number,
-  child: RawElement,
-  dimension: "width" | "height",
-  fallback = 1,
-) {
-  const value = Number.isFinite(size) && size > 0 ? size : fallback;
-  const min =
-    dimension === "width"
-      ? layoutNumber(child, "minWidth", "min_width")
-      : layoutNumber(child, "minHeight", "min_height");
-  const max =
-    dimension === "width"
-      ? layoutNumber(child, "maxWidth", "max_width")
-      : layoutNumber(child, "maxHeight", "max_height");
-  return Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? 1, value));
-}
-
-function layoutNumber(child: RawElement, ...keys: string[]) {
-  const layout = asRecord(child.layout);
-  for (const key of keys) {
-    const value = readNumber(layout?.[key]);
-    if (value != null) return value;
-  }
-  return null;
 }
 
 function estimateTextWidth(text: string, font: ReturnType<typeof rawFont>) {
