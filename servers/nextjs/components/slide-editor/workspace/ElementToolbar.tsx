@@ -17,6 +17,12 @@ import { TextToolbar } from "../inline/TextToolbar";
 type ElementToolbarProps = {
   element: SlideElement;
   index: number;
+  anchorBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
   path: string;
   scale: number;
   selectedTableCell: TableCellSelection | null;
@@ -35,6 +41,7 @@ const TOOLBAR_RENDERERS: Partial<
 > = {
   text: ({
     element,
+    anchorBox,
     index,
     onChange,
     path,
@@ -46,6 +53,7 @@ const TOOLBAR_RENDERERS: Partial<
       <TextToolbar
         element={element}
         index={index}
+        anchorBox={anchorBox}
         scale={scale}
         selectionRange={textSelectionRange}
         templateFonts={templateFonts}
@@ -54,6 +62,7 @@ const TOOLBAR_RENDERERS: Partial<
     ) : null,
   "text-list": ({
     element,
+    anchorBox,
     index,
     onChange,
     path,
@@ -65,6 +74,7 @@ const TOOLBAR_RENDERERS: Partial<
       <BulletsToolbar
         element={element}
         index={index}
+        anchorBox={anchorBox}
         scale={scale}
         selectionRange={textSelectionRange}
         templateFonts={templateFonts}

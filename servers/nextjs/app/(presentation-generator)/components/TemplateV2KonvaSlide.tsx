@@ -435,6 +435,12 @@ function TemplateV2KonvaSlideComponent({
   const inlineEditBox = inlineEdit
     ? absoluteInlineEditBox(uiDraft, inlineEdit.selection, inlineEdit.frame)
     : null;
+  const elementToolbarAnchorBox =
+    selection?.kind === "element" &&
+      inlineEditBox &&
+      editingKey === keyForSelection(selection)
+      ? inlineEditBox
+      : selectedBox;
   const iconEditorElement = iconEditorSelection
     ? getElementAtSelection(uiDraft, iconEditorSelection)
     : null;
@@ -1592,6 +1598,7 @@ function TemplateV2KonvaSlideComponent({
         <ElementToolbar
           element={toolbarElement}
           index={selection.componentIndex}
+          anchorBox={elementToolbarAnchorBox}
           path={keyForSelection(selection)}
           scale={EDITOR_SCALE}
           selectedTableCell={selectedTableCell}
