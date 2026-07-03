@@ -1,5 +1,7 @@
+from io import BytesIO
 from typing import List
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, Header
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -20,6 +22,65 @@ import uuid
 from utils.file_utils import get_file_name_with_random_uuid
 
 IMAGES_ROUTER = APIRouter(prefix="/images", tags=["Images"])
+
+ALLOWED_UPLOAD_IMAGE_EXTENSIONS = {
+    ".avif",
+    ".bmp",
+    ".gif",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
+ALLOWED_UPLOAD_IMAGE_FORMATS = {
+    "AVIF",
+    "BMP",
+    "GIF",
+    "JPEG",
+    "PNG",
+    "TIFF",
+    "WEBP",
+}
+
+
+async def _read_validated_image_upload(file: UploadFile) -> bytes:
+    filename = file.filename or ""
+    extension = os.path.splitext(filename)[1].lower()
+    if extension not in ALLOWED_UPLOAD_IMAGE_EXTENSIONS:
+        accepted = ", ".join(sorted(ALLOWED_UPLOAD_IMAGE_EXTENSIONS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid image file type. Accepted types: {accepted}",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded image file is empty")
+
+    try:
+        with Image.open(BytesIO(content)) as image:
+            if image.format not in ALLOWED_UPLOAD_IMAGE_FORMATS:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Uploaded image format is not supported",
+                )
+            image.verify()
+    except HTTPException:
+        raise
+    except (
+        Image.DecompressionBombError,
+        OSError,
+        SyntaxError,
+        UnidentifiedImageError,
+        ValueError,
+    ):
+        raise HTTPException(
+            status_code=400, detail="Uploaded file is not a valid image"
+        )
+
+    return content
 
 
 def _normalize_stock_provider(provider: str | None) -> str:
@@ -140,13 +201,14 @@ async def upload_image(
     file: UploadFile = File(...), sql_session: AsyncSession = Depends(get_async_session)
 ):
     try:
+        content = await _read_validated_image_upload(file)
         new_filename = get_file_name_with_random_uuid(file)
         image_path = os.path.join(
             get_images_directory(), os.path.basename(new_filename)
         )
 
         with open(image_path, "wb") as f:
-            f.write(await file.read())
+            f.write(content)
 
         image_asset = ImageAsset(path=image_path, is_uploaded=True)
 
@@ -156,6 +218,8 @@ async def upload_image(
         await sql_session.refresh(image_asset)
 
         return _image_asset_api_dict(image_asset)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
