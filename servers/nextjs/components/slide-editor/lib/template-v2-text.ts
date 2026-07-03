@@ -45,9 +45,6 @@ const DEFAULT_FONT: RenderTextFont = {
 const MIN_TRANSFORM_FONT_SIZE = 1;
 const MAX_TRANSFORM_FONT_SIZE = 512;
 const TRANSFORM_FONT_SCALE_EPSILON = 0.001;
-const NO_SPACE_BEFORE = new Set([",", ".", ";", ":", "!", "?", ")", "]", "}"]);
-const NO_SPACE_AFTER = new Set(["-", "/", "(", "[", "{"]);
-const END_PUNCTUATION_SPACE_AFTER = new Set([",", ".", ";", ":", "!", "?"]);
 
 const richMeasureCtx: { ctx: CanvasRenderingContext2D | null } = { ctx: null };
 let renderTextMeasureCanvas: HTMLCanvasElement | null = null;
@@ -174,13 +171,12 @@ export function normalizeRawTextMarkdownElement(
   const originalSourceRuns = rawSourceTextRuns(element);
   const rawText = rawStoredTextContent(element);
   const hasSourceRuns = rawTextHasRuns(element);
-  const sourceRuns = reconcileTextRunsWithStoredText(
+  const reconciledSourceRuns = reconcileTextRunsWithStoredText(
     originalSourceRuns,
     rawText,
   );
-  const renderedRuns = inferMissingMarkdownRunSpaces(
-    renderMarkdownTextRuns(sourceRuns),
-  );
+  const sourceRuns = normalizeStyledSourceRunBoundaries(reconciledSourceRuns);
+  const renderedRuns = renderMarkdownTextRuns(sourceRuns);
   const renderedText = textRunsContent(renderedRuns);
   const sourceHasMarkdown = sourceRuns.some((run) =>
     containsMarkdownSyntax(run.text),
@@ -327,8 +323,10 @@ export function rawTextListRunsForEditor(
   const runs: TextRun[] = [];
 
   items.forEach((item, index) => {
-    const itemRuns = inferMissingMarkdownRunSpaces(
-      renderMarkdownTextRuns(rawTextListItemSourceRuns(item, baseFont)),
+    const itemRuns = renderMarkdownTextRuns(
+      normalizeStyledSourceRunBoundaries(
+        rawTextListItemSourceRuns(item, baseFont),
+      ),
     );
     const itemFont = itemRuns[0]?.font ?? fallbackFont;
     const prefix = textListMarkerPrefix(element.marker, index);
@@ -1120,59 +1118,48 @@ function reconcileTextRunsWithStoredText(
   return textRunsContent(reconciled) === storedText ? reconciled : runs;
 }
 
-function inferMissingMarkdownRunSpaces(runs: TextRun[]): TextRun[] {
+function normalizeStyledSourceRunBoundaries(runs: TextRun[]): TextRun[] {
   if (runs.length < 2) return runs;
 
-  const repaired: TextRun[] = [];
+  const normalized: TextRun[] = [];
   for (const run of runs) {
-    const previous = repaired[repaired.length - 1];
-    if (
-      previous &&
-      isMarkdownStyleBoundary(previous.font, run.font) &&
-      shouldInsertRunBoundarySpace(previous.text, run.text)
-    ) {
-      appendRunText(repaired, " ", previous.font);
+    const previous = normalized[normalized.length - 1];
+    if (previous && shouldPreserveStyledRunBoundarySpace(previous, run)) {
+      appendRunText(normalized, " ", previous.font);
     }
-    repaired.push(cloneTextRun(run));
+    normalized.push(cloneTextRun(run));
   }
 
-  return sameTextRuns(repaired, runs) ? runs : repaired;
+  return sameTextRuns(normalized, runs) ? runs : normalized;
 }
 
-function isMarkdownStyleBoundary(
+function shouldPreserveStyledRunBoundarySpace(left: TextRun, right: TextRun) {
+  if (!hasInlineStyleBoundary(left.font, right.font)) return false;
+  if (!left.text || !right.text) return false;
+  if (/\s$/.test(left.text) || /^\s/.test(right.text)) return false;
+
+  const leftCharacter = left.text.match(/\S(?=\s*$)/u)?.[0];
+  const rightCharacter = right.text.match(/\S/u)?.[0];
+  return Boolean(
+    leftCharacter &&
+      rightCharacter &&
+      isWordLikeBoundaryCharacter(leftCharacter) &&
+      isWordLikeBoundaryCharacter(rightCharacter),
+  );
+}
+
+function hasInlineStyleBoundary(
   left: TextRun["font"],
   right: TextRun["font"],
 ) {
   return (
     Boolean(left?.bold) !== Boolean(right?.bold) ||
-    Boolean(left?.italic) !== Boolean(right?.italic)
+    Boolean(left?.italic) !== Boolean(right?.italic) ||
+    Boolean(left?.underline) !== Boolean(right?.underline)
   );
 }
 
-function shouldInsertRunBoundarySpace(leftText: string, rightText: string) {
-  if (!leftText || !rightText) return false;
-  if (/\s$/.test(leftText) || /^\s/.test(rightText)) return false;
-
-  const left = lastNonWhitespaceCharacter(leftText);
-  const right = firstNonWhitespaceCharacter(rightText);
-  if (!left || !right) return false;
-  if (NO_SPACE_BEFORE.has(right) || NO_SPACE_AFTER.has(left)) return false;
-
-  return (
-    (isWordLikeCharacter(left) || END_PUNCTUATION_SPACE_AFTER.has(left)) &&
-    isWordLikeCharacter(right)
-  );
-}
-
-function firstNonWhitespaceCharacter(text: string) {
-  return text.match(/\S/u)?.[0] ?? null;
-}
-
-function lastNonWhitespaceCharacter(text: string) {
-  return text.match(/\S(?=\s*$)/u)?.[0] ?? null;
-}
-
-function isWordLikeCharacter(character: string) {
+function isWordLikeBoundaryCharacter(character: string) {
   return /[\p{L}\p{N}%°]/u.test(character);
 }
 
