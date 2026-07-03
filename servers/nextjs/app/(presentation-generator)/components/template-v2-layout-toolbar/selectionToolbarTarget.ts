@@ -1,6 +1,6 @@
 import {
   isTemplateV2LayoutElement,
-  type TemplateV2LayoutElement,
+  type TemplateV2ToolbarElement,
 } from "./TemplateV2LayoutToolbar";
 import { findFirstComponentLayoutElement } from "./layoutToolbarTarget";
 import type {
@@ -13,7 +13,7 @@ type RawRecord = Record<string, unknown>;
 
 export type TemplateV2SelectionToolbarTarget = {
   selection: TemplateV2ToolbarElementSelection;
-  element: TemplateV2LayoutElement;
+  element: TemplateV2ToolbarElement;
   box: TemplateV2ToolbarBox;
 };
 
@@ -38,9 +38,10 @@ export function getTemplateV2SelectionToolbarTarget({
     selection?.kind === "element" &&
     selectedElement &&
     selectedBox &&
-    isTemplateV2LayoutElement(selectedElement)
+    (isTemplateV2LayoutElement(selectedElement) ||
+      selectedElement.type === "line")
   ) {
-    return { selection, element: selectedElement, box: selectedBox };
+    return { selection, element: selectedElement as TemplateV2ToolbarElement, box: selectedBox };
   }
 
   if (selection?.kind !== "component" || !selectedComponent) return null;

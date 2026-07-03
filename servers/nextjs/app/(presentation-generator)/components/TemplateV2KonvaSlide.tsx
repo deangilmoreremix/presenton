@@ -287,7 +287,7 @@ function TemplateV2KonvaSlideComponent({
   const [iconEditorSelection, setIconEditorSelection] =
     useState<ElementSelection | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [{ canUndo, canRedo }, setHistoryAvailability] = useState({
+  const [, setHistoryAvailability] = useState({
     canUndo: false,
     canRedo: false,
   });
@@ -1427,7 +1427,7 @@ function TemplateV2KonvaSlideComponent({
   useHotkey(
     "Mod+Z",
     (event) => {
-      if (!isSurfaceActive() || !canUndo) return;
+      if (!isSurfaceActive() || undoStackRef.current.length === 0) return;
       event.preventDefault();
       event.stopPropagation();
       undo();
@@ -1437,7 +1437,7 @@ function TemplateV2KonvaSlideComponent({
   useHotkey(
     "Mod+Shift+Z",
     (event) => {
-      if (!isSurfaceActive() || !canRedo) return;
+      if (!isSurfaceActive() || redoStackRef.current.length === 0) return;
       event.preventDefault();
       event.stopPropagation();
       redo();
@@ -1447,7 +1447,7 @@ function TemplateV2KonvaSlideComponent({
   useHotkey(
     "Mod+Y",
     (event) => {
-      if (!isSurfaceActive() || !canRedo) return;
+      if (!isSurfaceActive() || redoStackRef.current.length === 0) return;
       event.preventDefault();
       event.stopPropagation();
       redo();

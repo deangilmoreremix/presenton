@@ -3,29 +3,17 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
-  Box,
   ChevronDown,
   ChevronUp,
   Copy,
   MoreVertical,
-  PaintBucket,
   Plus,
   PlusCircle,
-  Scan,
-  SlidersHorizontal,
-  Sparkles,
-  Square,
   Trash2,
-  Ungroup,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  ColorField,
-  Divider,
-  NumberField,
-  Panel,
-} from "@/components/slide-editor/inline/ShapeToolbar";
+import { Panel } from "@/components/slide-editor/inline/ShapeToolbar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,23 +31,31 @@ import {
   canApplyComponentLayerAction,
   type ComponentLayerAction,
 } from "../template-v2-layering/componentLayering";
+import { TemplateV2ContainerToolbarControls } from "./TemplateV2ContainerToolbarControls";
+import {
+  isTemplateV2LineToolbarElement,
+  TemplateV2LineToolbarControls,
+  type TemplateV2LineToolbarElement,
+} from "./TemplateV2LineToolbarControls";
 
 type RawRecord = Record<string, unknown>;
 type LayoutElementType =
   | "container"
   | "flex"
   | "grid"
+  | "line"
   | "list-view"
   | "grid-view";
 type PanelId =
-  | "horizontal-alignment"
-  | "vertical-alignment"
   | "items"
   | "fill"
   | "stroke"
   | "radius"
   | "padding"
   | "shadow"
+  | "line-width"
+  | "line-color"
+  | "line-style"
   | "component-menu"
   | null;
 
@@ -73,6 +69,10 @@ export type TemplateV2LayoutToolbarBox = {
 export type TemplateV2LayoutElement = RawRecord & {
   type: LayoutElementType;
 };
+
+export type TemplateV2ToolbarElement =
+  | TemplateV2LayoutElement
+  | TemplateV2LineToolbarElement;
 
 type TemplateV2SelectionComponentActions = {
   canUngroup: boolean;
@@ -91,7 +91,7 @@ type TemplateV2UngroupAction = {
 
 type TemplateV2LayoutToolbarProps = {
   box: TemplateV2LayoutToolbarBox;
-  element?: TemplateV2LayoutElement | null;
+  element?: TemplateV2ToolbarElement | null;
   onChange?: (changes: RawRecord) => void;
   position?: { left: number; top: number };
   componentActions?: TemplateV2SelectionComponentActions | null;
@@ -125,140 +125,11 @@ const COMPONENT_LAYER_ACTIONS: Array<{
     },
   ];
 
-const HORIZONTAL_ALIGNMENTS = ["left", "center", "right"] as const;
-const VERTICAL_ALIGNMENTS = ["top", "middle", "bottom"] as const;
 const STAGE_WIDTH = 1280;
 const STAGE_HEIGHT = 720;
 
-function asRecord(value: unknown): RawRecord {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as RawRecord)
-    : {};
-}
-
 function readNumber(value: unknown, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function readString(value: unknown, fallback: string) {
-  return typeof value === "string" && value ? value : fallback;
-}
-
-function readColor(value: unknown, fallback: string) {
-  const color = readString(value, fallback);
-  return color.startsWith("#") ? color : `#${color}`;
-}
-
-function capitalize(value: string) {
-  return value
-    .replace("flex-", "")
-    .replace(/(^|[-_])\w/g, (part) => part.replace(/[-_]/, "").toUpperCase());
-}
-
-function ControlButton({
-  children,
-  open,
-  title,
-  onClick,
-}: {
-  children: ReactNode;
-  open?: boolean;
-  title: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      aria-pressed={open}
-      onClick={onClick}
-      className={cn(
-        "flex items-center justify-center gap-2 rounded-md border-0 bg-transparent px-2 text-sm font-manrope font-medium text-black hover:bg-[#F8F8FA]",
-        open && "bg-[#F4F1FF] text-[#7C3AED]",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SelectControl({
-  id,
-  label,
-  onChange,
-  onToggle,
-  openPanel,
-  options,
-  value,
-}: {
-  id: Exclude<PanelId, null>;
-  label: string;
-  onChange: (value: string) => void;
-  onToggle: (panel: Exclude<PanelId, null>) => void;
-  openPanel: PanelId;
-  options: ReadonlyArray<{ label: string; value: string }>;
-  value: string;
-}) {
-  const open = openPanel === id;
-  const selectedLabel = options.find((option) => option.value === value)?.label;
-
-  return (
-    <div className="relative">
-      <ControlButton title={label} open={open} onClick={() => onToggle(id)}>
-        <span className="text-[#667085]">{label}:</span>
-        <span>{selectedLabel ?? capitalize(value)}</span>
-        <ChevronDown size={14} aria-hidden />
-      </ControlButton>
-      {open ? (
-        <Panel className="min-w-[140px] p-1.5">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={option.value === value}
-              onClick={() => onChange(option.value)}
-              className={cn(
-                "flex w-full rounded-md px-3 py-2 text-left text-xs hover:bg-[#F4F3FF]",
-                option.value === value && "bg-[#F4F1FF] text-[#7A5AF8]",
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </Panel>
-      ) : null}
-    </div>
-  );
-}
-
-function PanelControl({
-  children,
-  icon,
-  id,
-  label,
-  onToggle,
-  openPanel,
-  panelClassName = "w-[250px] p-3",
-}: {
-  children: ReactNode;
-  icon: ReactNode;
-  id: Exclude<PanelId, null>;
-  label: string;
-  onToggle: (panel: Exclude<PanelId, null>) => void;
-  openPanel: PanelId;
-  panelClassName?: string;
-}) {
-  const open = openPanel === id;
-  return (
-    <div className="relative">
-      <ControlButton title={label} open={open} onClick={() => onToggle(id)}>
-        {icon}
-        <span>{label}</span>
-      </ControlButton>
-      {open ? <Panel className={panelClassName}>{children}</Panel> : null}
-    </div>
-  );
 }
 
 type LayoutControlsProps = {
@@ -277,7 +148,7 @@ function FlowControls({
   return (
     <>
       <GapControl element={element} onChange={onChange} />
-      <Divider />
+      <ToolbarDivider />
       <ItemsControl
         element={element}
         onChange={onChange}
@@ -302,9 +173,9 @@ function GapControl({
   };
 
   return (
-    <label className="flex  items-center gap-2 px-1 text-[14px] font-medium font-manrope text-[#191919]">
+    <label className="flex  items-center gap-2.5 px-1 text-[14px] font-medium font-manrope text-[#191919]">
       <span>Gap</span>
-      <span className="flex  items-center rounded-md bg-white">
+      <span className="flex gap-2  items-center rounded-md bg-white">
         <input
           type="number"
           min={0}
@@ -315,7 +186,7 @@ function GapControl({
             const nextValue = Number(event.target.value);
             if (Number.isFinite(nextValue)) commit(nextValue);
           }}
-          className=" w-9 border-0 bg-transparent p-0 text-center text-[14px] font-medium font-manrope text-[#191919] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-[30px] border-0 bg-transparent p-0 text-center text-[12px] font-medium font-manrope text-[#191919] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <span className="flex   flex-col items-center justify-center">
           <button
@@ -325,7 +196,7 @@ function GapControl({
             onClick={() => commit(value + 1)}
             className="grid  place-items-center rounded-sm text-[#05070A] hover:bg-[#F8F8FA]"
           >
-            <ChevronUp size={11} strokeWidth={2.4} aria-hidden />
+            <ChevronUp size={11} strokeWidth={1} aria-hidden />
           </button>
           <button
             type="button"
@@ -334,7 +205,7 @@ function GapControl({
             onClick={() => commit(value - 1)}
             className="grid   place-items-center rounded-sm text-[#05070A] hover:bg-[#F8F8FA]"
           >
-            <ChevronDown size={11} strokeWidth={2.4} aria-hidden />
+            <ChevronDown size={11} strokeWidth={1} aria-hidden />
           </button>
         </span>
       </span>
@@ -426,237 +297,8 @@ function formatGapValue(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function ContainerControls({
-  box,
-  element,
-  onChange,
-  onToggle,
-  openPanel,
-}: {
-  box: TemplateV2LayoutToolbarBox;
-  element: TemplateV2LayoutElement;
-  onChange: (changes: RawRecord) => void;
-  onToggle: (panel: Exclude<PanelId, null>) => void;
-  openPanel: PanelId;
-}) {
-  const alignment = asRecord(element.alignment);
-  const fill = asRecord(element.fill);
-  const stroke = asRecord(element.stroke);
-  const padding = asRecord(element.padding);
-  const shadow = asRecord(element.shadow);
-  const borderRadius = asRecord(element.border_radius);
-  const radius =
-    typeof element.border_radius === "number"
-      ? element.border_radius
-      : readNumber(borderRadius.radius, readNumber(borderRadius.tl));
-  const maxRadius = Math.max(0, Math.min(box.width, box.height) / 2);
-  const shadowEnabled = readNumber(shadow.opacity, 0.2) > 0;
-
-  return (
-    <>
-      <SelectControl
-        id="horizontal-alignment"
-        label="Horizontal"
-        value={readString(alignment.horizontal, "left")}
-        options={HORIZONTAL_ALIGNMENTS.map((value) => ({
-          label: capitalize(value),
-          value,
-        }))}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        onChange={(horizontal) =>
-          onChange({ alignment: { ...alignment, horizontal } })
-        }
-      />
-      <SelectControl
-        id="vertical-alignment"
-        label="Vertical"
-        value={readString(alignment.vertical, "top")}
-        options={VERTICAL_ALIGNMENTS.map((value) => ({
-          label: capitalize(value),
-          value,
-        }))}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        onChange={(vertical) =>
-          onChange({ alignment: { ...alignment, vertical } })
-        }
-      />
-
-      <PanelControl
-        id="fill"
-        label="Fill"
-        icon={<PaintBucket size={15} aria-hidden />}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        panelClassName="w-[240px] space-y-3 p-3"
-      >
-        <ColorField
-          label="Color"
-          color={readColor(fill.color, "#FFFFFF")}
-          onCommit={(color) => onChange({ fill: { ...fill, color } })}
-        />
-        <NumberField
-          label="Opacity"
-          value={readNumber(fill.opacity, 1)}
-          min={0}
-          max={1}
-          step={0.05}
-          onCommit={(opacity) => onChange({ fill: { ...fill, opacity } })}
-        />
-      </PanelControl>
-
-      <PanelControl
-        id="stroke"
-        label="Border"
-        icon={<Square size={15} aria-hidden />}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        panelClassName="w-[240px] space-y-3 p-3"
-      >
-        <ColorField
-          label="Color"
-          color={readColor(stroke.color, "#1A1A1A")}
-          onCommit={(color) => onChange({ stroke: { ...stroke, color } })}
-        />
-        <NumberField
-          label="Width"
-          value={readNumber(stroke.width)}
-          min={0}
-          max={32}
-          step={0.25}
-          suffix="px"
-          onCommit={(width) => onChange({ stroke: { ...stroke, width } })}
-        />
-        <NumberField
-          label="Opacity"
-          value={readNumber(stroke.opacity, 1)}
-          min={0}
-          max={1}
-          step={0.05}
-          onCommit={(opacity) => onChange({ stroke: { ...stroke, opacity } })}
-        />
-      </PanelControl>
-
-      <PanelControl
-        id="radius"
-        label="Radius"
-        icon={<Scan size={15} aria-hidden />}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        panelClassName="w-[220px] p-3"
-      >
-        <NumberField
-          label="Radius"
-          value={radius}
-          min={0}
-          max={maxRadius}
-          step={0.5}
-          suffix="px"
-          onCommit={(value) =>
-            onChange({
-              border_radius: { tl: value, tr: value, br: value, bl: value },
-            })
-          }
-        />
-      </PanelControl>
-
-      <PanelControl
-        id="padding"
-        label="Padding"
-        icon={<SlidersHorizontal size={15} aria-hidden />}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        panelClassName="grid w-[290px] grid-cols-2 gap-2 p-3"
-      >
-        {(["top", "right", "bottom", "left"] as const).map((side) => (
-          <NumberField
-            key={side}
-            label={capitalize(side)}
-            value={readNumber(padding[side])}
-            min={0}
-            step={0.5}
-            suffix="px"
-            onCommit={(value) =>
-              onChange({ padding: { ...padding, [side]: value } })
-            }
-          />
-        ))}
-      </PanelControl>
-
-      <PanelControl
-        id="shadow"
-        label="Shadow"
-        icon={<Sparkles size={15} aria-hidden />}
-        openPanel={openPanel}
-        onToggle={onToggle}
-        panelClassName="w-[280px] space-y-3 p-3"
-      >
-        <label className="flex items-center justify-between text-xs text-[#4B5563]">
-          <span>Enabled</span>
-          <input
-            type="checkbox"
-            checked={shadowEnabled}
-            onChange={(event) =>
-              onChange({
-                shadow: {
-                  ...shadow,
-                  blur: readNumber(shadow.blur, 8),
-                  offset_y: readNumber(shadow.offset_y, 4),
-                  opacity: event.target.checked
-                    ? Math.max(0.2, readNumber(shadow.opacity, 0.2))
-                    : 0,
-                },
-              })
-            }
-            className="h-4 w-4 accent-[#7A5AF8]"
-          />
-        </label>
-        <ColorField
-          label="Color"
-          color={readColor(shadow.color, "#000000")}
-          onCommit={(color) => onChange({ shadow: { ...shadow, color } })}
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <NumberField
-            label="Blur"
-            value={readNumber(shadow.blur)}
-            min={0}
-            max={100}
-            step={0.5}
-            suffix="px"
-            onCommit={(blur) => onChange({ shadow: { ...shadow, blur } })}
-          />
-          <NumberField
-            label="Opacity"
-            value={readNumber(shadow.opacity, 0.2)}
-            min={0}
-            max={1}
-            step={0.05}
-            onCommit={(opacity) => onChange({ shadow: { ...shadow, opacity } })}
-          />
-          <NumberField
-            label="X"
-            value={readNumber(shadow.offset_x)}
-            step={0.5}
-            suffix="px"
-            onCommit={(offset_x) =>
-              onChange({ shadow: { ...shadow, offset_x } })
-            }
-          />
-          <NumberField
-            label="Y"
-            value={readNumber(shadow.offset_y)}
-            step={0.5}
-            suffix="px"
-            onCommit={(offset_y) =>
-              onChange({ shadow: { ...shadow, offset_y } })
-            }
-          />
-        </div>
-      </PanelControl>
-    </>
-  );
+function ToolbarDivider() {
+  return <span aria-hidden className="h-5 w-px bg-[#EDEEEF]" />;
 }
 
 function ComponentMoreMenu({
@@ -793,7 +435,10 @@ export function TemplateV2LayoutToolbar({
   const hasContainerControls = Boolean(
     element && onChange && layoutType === "container",
   );
-  const hasLayoutControls = hasFlowControls || hasContainerControls;
+  const hasLineControls = Boolean(
+    element && onChange && isTemplateV2LineToolbarElement(element),
+  );
+  const hasLayoutControls = hasFlowControls || hasContainerControls || hasLineControls;
   const ungroupAction = componentActions?.canUngroup
     ? componentActions
     : flowUngroupAction?.canUngroup
@@ -818,14 +463,18 @@ export function TemplateV2LayoutToolbar({
       style={{ top: position?.top, left: position?.left }}
       onMouseDown={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
-      className="fixed z-[10000] flex h-10 items-center rounded-[6px] bg-white p-1.5 text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]"
+      className="fixed z-[10000] inline-flex items-center gap-[6px] rounded-[6px] bg-[#FFF] p-[6px] font-manrope text-[14px] font-medium leading-4 text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]"
     >
       {ungroupAction ? (
         <>
-          <div className="flex p-1.5 items-center gap-2 rounded-[6px] hover:bg-[#F6F6F9] cursor-pointer text-sm font-manrope font-medium text-[#191919]" title="Ungroup" onClick={ungroupAction.onUngroup}>
-            <span >Ungroup</span>
+          <div
+            className="inline-flex h-7 items-center gap-1 rounded-[6px] px-2 hover:bg-[#F6F6F9] cursor-pointer text-[14px] font-manrope font-medium leading-4 text-[#191919]"
+            title="Ungroup"
+            onClick={ungroupAction.onUngroup}
+          >
+            <span>Ungroup</span>
           </div>
-          <Divider />
+          <ToolbarDivider />
         </>
       ) : null}
       {hasFlowControls && element && onChange ? (
@@ -836,24 +485,24 @@ export function TemplateV2LayoutToolbar({
           onToggle={togglePanel}
         />
       ) : hasContainerControls && element && onChange ? (
-        <>
-          <span className="flex items-center gap-1.5 px-1 text-xs font-semibold">
-            <Box size={15} aria-hidden />
-            {capitalize(element.type)}
-          </span>
-          <Divider />
-          <ContainerControls
-            box={box}
-            element={element}
-            onChange={onChange}
-            openPanel={openPanel}
-            onToggle={togglePanel}
-          />
-        </>
+        <TemplateV2ContainerToolbarControls
+          box={box}
+          element={element}
+          onChange={onChange}
+          openPanel={openPanel}
+          onToggle={togglePanel}
+        />
+      ) : hasLineControls && element && onChange && isTemplateV2LineToolbarElement(element) ? (
+        <TemplateV2LineToolbarControls
+          element={element}
+          onChange={onChange}
+          openPanel={openPanel}
+          onToggle={togglePanel}
+        />
       ) : null}
       {componentActions ? (
         <>
-          {hasLayoutControls ? <Divider /> : null}
+          {hasLayoutControls ? <ToolbarDivider /> : null}
           <ComponentMoreMenu
             actions={componentActions}
             openPanel={openPanel}

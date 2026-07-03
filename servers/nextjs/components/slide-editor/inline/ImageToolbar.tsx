@@ -6,7 +6,6 @@ import {
   FlipVertical2,
   Info,
   Image as ImageIcon,
-  Scan,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,7 +16,7 @@ import {
 } from "../lib/element-model";
 import type { ImageSlideElement } from "../state";
 
-type ImagePanel = "radius" | "fit" | "crop" | "opacity" | null;
+type ImagePanel = "fit" | "crop" | "opacity" | null;
 type ImageFit = "contain" | "cover" | "fill";
 
 const FIT_OPTIONS: Array<{ label: string; value: ImageFit }> = [
@@ -114,7 +113,7 @@ export function ImageToolbar({
           top: Math.max(8, box.y * scale - 64),
         }}
         onMouseDown={(event) => event.stopPropagation()}
-        className="fixed z-[10000] flex h-[39px] items-center rounded-[6px] bg-white px-2.5 text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]">
+        className="fixed z-[10000] inline-flex items-center gap-3 rounded-[6px] bg-white px-[10px] py-[6px] text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]">
         <div className="relative">
           <button
             type="button"
@@ -122,19 +121,18 @@ export function ImageToolbar({
             aria-label={`Image type: ${FIT_LABELS[fit]}`}
             aria-expanded={openPanel === "fit"}
             onClick={() => togglePanel("fit")}
-            className={cn(
-              "flex min-w-[85px] items-center justify-between gap-2 rounded-md border-0 bg-transparent text-sm font-medium",
-            )}
+            className="flex min-w-[83px] items-center justify-between gap-2 rounded-[10px] border-0 bg-transparent py-[6px] text-[14px] font-medium font-syne leading-4"
           >
             <span>{FIT_LABELS[fit]}</span>
             <ChevronDown
-              size={18}
+              size={14}
+              strokeWidth={1.8}
               aria-hidden="true"
-              className={cn("transition-transform")}
+              className="transition-transform"
             />
           </button>
           {openPanel === "fit" ? (
-            <Panel className="flex min-w-[110px] flex-col gap-1 rounded-[12px] py-2.5">
+            <Panel className="flex min-w-[170px] flex-col gap-1 rounded-[12px] p-2.5">
               {FIT_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -142,16 +140,43 @@ export function ImageToolbar({
                   aria-pressed={fit === option.value}
                   onClick={() => {
                     update({ fit: option.value });
-                    setOpenPanel(null);
                   }}
                   className={cn(
-                    "flex w-full items-center rounded-[12px] px-4 py-2.5 text-left text-xs text-[#000000] hover:bg-[#F4F3FF]",
+                    "flex w-full items-center rounded-[8px] px-3 py-2 text-left text-[13px] text-[#191919] hover:bg-[#F4F3FF]",
                     fit === option.value && "bg-[#F4F1FF] text-[#7A5AF8]",
                   )}
                 >
                   {option.label}
                 </button>
               ))}
+              <div className="my-1 h-px bg-[#EDEEEF]" />
+              <label className="px-1 text-[12px] font-medium text-[#6B7280]">
+                Radius
+                <input
+                  aria-label="Image border radius"
+                  type="range"
+                  min={0}
+                  max={maxRadius}
+                  step={Math.max(0.01, maxRadius / 100)}
+                  value={radiusDraft}
+                  onChange={(event) => setRadiusDraft(Number(event.target.value))}
+                  onKeyUp={(event) =>
+                    update({
+                      border_radius: uniformBorderRadius(
+                        Number((event.target as HTMLInputElement).value),
+                      ),
+                    })
+                  }
+                  onPointerUp={(event) =>
+                    update({
+                      border_radius: uniformBorderRadius(
+                        Number((event.target as HTMLInputElement).value),
+                      ),
+                    })
+                  }
+                  className="mt-2 w-full cursor-pointer accent-[#7A5AF8]"
+                />
+              </label>
             </Panel>
           ) : null}
         </div>
@@ -166,76 +191,26 @@ export function ImageToolbar({
             setOpenPanel(null);
             onUpload(index);
           }}
-          className="p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]"
+          className="rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]"
         >
-          <ImageIcon size={18} aria-hidden="true" />
+          <ImageIcon size={16} strokeWidth={1.8} aria-hidden="true" />
         </button>
 
         <Divider />
-
-        <div className="relative">
+        <div className="flex items-center gap-3">
           <button
             type="button"
-            title="Image border radius"
-            aria-label="Image border radius"
-            aria-pressed={openPanel === "radius"}
-            onClick={() => togglePanel("radius")}
+            title="Crop image"
+            aria-label="Crop image"
+            aria-pressed={openPanel === "crop"}
+            onClick={() => togglePanel("crop")}
             className={cn(
-              "p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]",
-              openPanel === "radius" && "bg-[#F4F1FF] text-[#7C3AED]",
+              "rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]",
+              openPanel === "crop" && "bg-[#F4F1FF] text-[#7C3AED]",
             )}
           >
-            <Scan size={18} aria-hidden="true" />
+            <Crop size={16} strokeWidth={1.7} aria-hidden="true" />
           </button>
-          {openPanel === "radius" ? (
-            <Panel className="flex min-w-[115px] items-center p-2.5">
-              <input
-                aria-label="Image border radius"
-                type="range"
-                min={0}
-                max={maxRadius}
-                step={Math.max(0.01, maxRadius / 100)}
-                value={radiusDraft}
-                onChange={(event) => setRadiusDraft(Number(event.target.value))}
-                onKeyUp={(event) =>
-                  update({
-                    border_radius: uniformBorderRadius(
-                      Number((event.target as HTMLInputElement).value),
-                    ),
-                  })
-                }
-                onPointerUp={(event) =>
-                  update({
-                    border_radius: uniformBorderRadius(
-                      Number((event.target as HTMLInputElement).value),
-                    ),
-                  })
-                }
-                className="w-full cursor-pointer accent-[#7A5AF8]"
-              />
-            </Panel>
-          ) : null}
-        </div>
-
-        <Divider />
-        <div className="flex items-center gap-3">
-
-
-          <div className="relative">
-            <button
-              type="button"
-              title="Crop image"
-              aria-label="Crop image"
-              aria-pressed={openPanel === "crop"}
-              onClick={() => togglePanel("crop")}
-              className={cn(
-                "p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]",
-                openPanel === "crop" && "bg-[#F4F1FF] text-[#7C3AED]",
-              )}
-            >
-              <Crop size={18} aria-hidden="true" />
-            </button>
-          </div>
 
           <button
             type="button"
@@ -244,11 +219,11 @@ export function ImageToolbar({
             aria-pressed={element.flip_h === true}
             onClick={() => update({ flip_h: !(element.flip_h ?? false) })}
             className={cn(
-              "p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]",
+              "rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]",
               element.flip_h === true && "bg-[#F4F1FF] text-[#7C3AED]",
             )}
           >
-            <FlipHorizontal2 size={18} aria-hidden="true" />
+            <FlipHorizontal2 size={16} strokeWidth={1.7} aria-hidden="true" />
           </button>
 
           <button
@@ -258,11 +233,11 @@ export function ImageToolbar({
             aria-pressed={element.flip_v === true}
             onClick={() => update({ flip_v: !(element.flip_v ?? false) })}
             className={cn(
-              "p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]",
+              "rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]",
               element.flip_v === true && "bg-[#F4F1FF] text-[#7C3AED]",
             )}
           >
-            <FlipVertical2 size={18} aria-hidden="true" />
+            <FlipVertical2 size={16} strokeWidth={1.7} aria-hidden="true" />
           </button>
 
         </div>
@@ -276,7 +251,7 @@ export function ImageToolbar({
             aria-pressed={openPanel === "opacity"}
             onClick={() => togglePanel("opacity")}
             className={cn(
-              "p-1 rounded-[12px] border-0 bg-transparent text-[#05070A] hover:bg-[#F4F3FF]",
+              "rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]",
               openPanel === "opacity" && "bg-[#F4F1FF] text-[#7C3AED]",
             )}
           >
@@ -473,7 +448,7 @@ function Panel({
 }
 
 function Divider() {
-  return <span aria-hidden="true" className="mx-3 h-6 w-px flex-none bg-[#EDEEEF]" />;
+  return <span aria-hidden="true" className="h-[23px] w-px flex-none bg-[#EDEEEF]" />;
 }
 
 

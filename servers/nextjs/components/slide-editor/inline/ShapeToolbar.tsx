@@ -1,10 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  ChevronDown,
   Circle,
-  Maximize2,
-  Move,
-  PaintBucket,
   Scan,
   Square,
 } from "lucide-react";
@@ -24,8 +20,6 @@ type ShapePanel =
   | "fill"
   | "stroke"
   | "radius"
-  | "position"
-  | "size"
   | "opacity"
   | null;
 
@@ -94,56 +88,26 @@ export function ShapeToolbar({
       }}
       onMouseDown={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
-      className="fixed z-[10000] flex h-10 items-center rounded-md bg-white px-2.5 text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]"
+      className="fixed z-[10000] inline-flex items-center gap-3 rounded-[6px] bg-white px-[10px] py-[6px] text-[#191919] shadow-[0_0_4px_rgba(0,0,0,0.15)]"
     >
       <div className="relative">
         <button
           type="button"
-          aria-label="Shape type"
-          aria-expanded={openPanel === "type"}
-          title="Shape type"
-          onClick={() => togglePanel("type")}
-          className="flex min-w-[104px] items-center justify-between gap-2 rounded-md border-0 bg-transparent px-1 text-sm font-medium hover:bg-[#F8F8FA]"
-        >
-          <span>{isRectangle ? "Rectangle" : "Ellipse"}</span>
-          <ChevronDown size={17} aria-hidden="true" />
-        </button>
-        {openPanel === "type" ? (
-          <Panel className="min-w-[150px] p-1.5">
-            {SHAPE_TYPES.map((option) => {
-              const Icon = option.icon;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={element.type === option.value}
-                  onClick={() => updateType(option.value)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs hover:bg-[#F4F3FF]",
-                    element.type === option.value &&
-                      "bg-[#F4F1FF] text-[#7A5AF8]",
-                  )}
-                >
-                  <Icon size={16} aria-hidden="true" />
-                  {option.label}
-                </button>
-              );
-            })}
-          </Panel>
-        ) : null}
-      </div>
-
-      <Divider />
-
-      <div className="relative">
-        <ToolbarButton
+          aria-label="Shape fill"
+          aria-expanded={openPanel === "fill"}
           title="Shape fill"
-          pressed={openPanel === "fill"}
           onClick={() => togglePanel("fill")}
+          className={cn(
+            "grid h-[22px] w-[22px] place-items-center rounded-[999px] border border-[#D7DAE3] hover:bg-[#F8F8FA]",
+            openPanel === "fill" && "ring-2 ring-[#2E90FA]/30",
+          )}
         >
-          <PaintBucket size={18} aria-hidden="true" />
-          <ColorSwatch color={fill.color} />
-        </ToolbarButton>
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 rounded-full"
+            style={{ backgroundColor: withHash(fill.color) }}
+          />
+        </button>
         {openPanel === "fill" ? (
           <Panel className="w-[220px] space-y-3 p-3">
             <ColorField
@@ -172,8 +136,7 @@ export function ShapeToolbar({
           pressed={openPanel === "stroke"}
           onClick={() => togglePanel("stroke")}
         >
-          <Square size={18} aria-hidden="true" />
-          <ColorSwatch color={stroke.color} />
+          <LineWidthIcon />
         </ToolbarButton>
         {openPanel === "stroke" ? (
           <Panel className="w-[220px] space-y-3 p-3">
@@ -206,6 +169,80 @@ export function ShapeToolbar({
         ) : null}
       </div>
 
+      <div className="relative">
+        <ToolbarButton
+          title="Shape type"
+          pressed={openPanel === "type"}
+          onClick={() => togglePanel("type")}
+        >
+          {isRectangle ? <Square size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
+        </ToolbarButton>
+        {openPanel === "type" ? (
+          <Panel className="w-[260px] space-y-3 p-3">
+            <div className="space-y-1.5">
+              {SHAPE_TYPES.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={element.type === option.value}
+                    onClick={() => updateType(option.value)}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs hover:bg-[#F4F3FF]",
+                      element.type === option.value &&
+                        "bg-[#F4F1FF] text-[#7A5AF8]",
+                    )}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="h-px bg-[#EDEEEF]" />
+            <div className="grid grid-cols-2 gap-2">
+              <NumberField
+                label="X"
+                value={box.x}
+                step={0.01}
+                onCommit={(x) =>
+                  update({ position: { x, y: element.position?.y ?? box.y } })
+                }
+              />
+              <NumberField
+                label="Y"
+                value={box.y}
+                step={0.01}
+                onCommit={(y) =>
+                  update({ position: { x: element.position?.x ?? box.x, y } })
+                }
+              />
+              <NumberField
+                label="W"
+                value={box.w}
+                min={0.01}
+                max={SLIDE_W}
+                step={0.01}
+                onCommit={(width) =>
+                  update({ size: { width, height: element.size?.height ?? box.h } })
+                }
+              />
+              <NumberField
+                label="H"
+                value={box.h}
+                min={0.01}
+                max={SLIDE_H}
+                step={0.01}
+                onCommit={(height) =>
+                  update({ size: { width: element.size?.width ?? box.w, height } })
+                }
+              />
+            </div>
+          </Panel>
+        ) : null}
+      </div>
+
       {isRectangle ? (
         <div className="relative">
           <ToolbarButton
@@ -213,7 +250,7 @@ export function ShapeToolbar({
             pressed={openPanel === "radius"}
             onClick={() => togglePanel("radius")}
           >
-            <Scan size={18} aria-hidden="true" />
+            <Scan size={16} aria-hidden="true" />
           </ToolbarButton>
           {openPanel === "radius" ? (
             <Panel className="w-[220px] p-3">
@@ -234,72 +271,18 @@ export function ShapeToolbar({
       ) : null}
 
       <Divider />
-
-      <div className="relative">
-        <ToolbarButton
-          title="Position"
-          pressed={openPanel === "position"}
-          onClick={() => togglePanel("position")}
-        >
-          <Move size={18} aria-hidden="true" />
-        </ToolbarButton>
-        {openPanel === "position" ? (
-          <Panel className="grid w-[220px] grid-cols-2 gap-2 p-3">
-            <NumberField
-              label="X"
-              value={box.x}
-              step={0.01}
-              onCommit={(x) =>
-                update({ position: { x, y: element.position?.y ?? box.y } })
-              }
-            />
-            <NumberField
-              label="Y"
-              value={box.y}
-              step={0.01}
-              onCommit={(y) =>
-                update({ position: { x: element.position?.x ?? box.x, y } })
-              }
-            />
-          </Panel>
-        ) : null}
-      </div>
-
-      <div className="relative">
-        <ToolbarButton
-          title="Size"
-          pressed={openPanel === "size"}
-          onClick={() => togglePanel("size")}
-        >
-          <Maximize2 size={18} aria-hidden="true" />
-        </ToolbarButton>
-        {openPanel === "size" ? (
-          <Panel className="left-auto right-0 grid w-[220px] translate-x-0 grid-cols-2 gap-2 p-3">
-            <NumberField
-              label="W"
-              value={box.w}
-              min={0.01}
-              max={SLIDE_W}
-              step={0.01}
-              onCommit={(width) =>
-                update({ size: { width, height: element.size?.height ?? box.h } })
-              }
-            />
-            <NumberField
-              label="H"
-              value={box.h}
-              min={0.01}
-              max={SLIDE_H}
-              step={0.01}
-              onCommit={(height) =>
-                update({ size: { width: element.size?.width ?? box.w, height } })
-              }
-            />
-          </Panel>
-        ) : null}
-      </div>
-
-      <Divider />
+      <button
+        type="button"
+        title="Shadow"
+        aria-label="Shadow"
+        onClick={() => togglePanel("opacity")}
+        className={cn(
+          "rounded-[4px] px-[6px] py-[6px] text-[14px] font-medium font-manrope leading-4 text-[#191919] hover:bg-[#F8F8FA]",
+          openPanel === "opacity" && "bg-[#F4F1FF] text-[#7C3AED]",
+        )}
+      >
+        Shadow
+      </button>
 
       <div className="relative">
         <ToolbarButton
@@ -346,7 +329,7 @@ export function ToolbarButton({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "relative flex h-7 min-w-7 items-center justify-center gap-1 rounded-md border-0 bg-transparent px-1 text-[#05070A] hover:bg-[#F8F8FA]",
+        "relative flex h-7 min-w-7 items-center justify-center gap-1 rounded-[2px] border-0 bg-transparent px-1 text-[#05070A] hover:bg-[#F8F8FA]",
         pressed && "bg-[#F4F1FF] text-[#7C3AED]",
       )}
     >
@@ -375,17 +358,7 @@ export function Panel({
 }
 
 export function Divider() {
-  return <span aria-hidden="true" className="mx-2.5 h-6 w-px flex-none bg-[#EDEEEF]" />;
-}
-
-function ColorSwatch({ color }: { color: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white shadow-sm"
-      style={{ backgroundColor: withHash(color) }}
-    />
-  );
+  return <span aria-hidden="true" className="h-[23px] w-px flex-none bg-[#EDEEEF]" />;
 }
 
 export function ColorField({
@@ -550,5 +523,15 @@ function CheckerSwatch() {
       aria-hidden="true"
       className="h-[18px] w-[18px] bg-[conic-gradient(#111827_25%,#D1D5DB_0_50%,#111827_0_75%,#D1D5DB_0)] bg-[length:8px_8px]"
     />
+  );
+}
+
+function LineWidthIcon() {
+  return (
+    <span className="flex h-4 w-[13.7px] flex-col justify-center gap-[1.14px]" aria-hidden>
+      <span className="h-[1.71px] w-full bg-current" />
+      <span className="h-[3.43px] w-full bg-current" />
+      <span className="h-[5.71px] w-full bg-current" />
+    </span>
   );
 }
