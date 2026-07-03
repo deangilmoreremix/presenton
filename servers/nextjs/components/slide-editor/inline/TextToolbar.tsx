@@ -17,7 +17,6 @@ import {
   Italic,
   Link,
   List,
-  ListChecks,
   ListOrdered,
   Repeat2,
   Search,
@@ -27,7 +26,7 @@ import {
 } from "lucide-react";
 import type { TextSlideElement } from "../state";
 import { withHash } from "../editorUtils";
-import type { Font } from "../lib/slide-schema";
+import type { Font, Marker } from "../lib/slide-schema";
 import {
   elementFont,
   mergeFont,
@@ -97,18 +96,20 @@ export function TextToolbar({
   element,
   index,
   scale,
-  extraControls,
+  listMarker,
   selectionRange,
   templateFonts = EMPTY_TEMPLATE_FONTS,
   onChange,
+  onListMarkerChange,
 }: {
   element: TextSlideElement;
   index: number;
   scale: number;
-  extraControls?: ReactNode;
+  listMarker?: Marker | null;
   selectionRange?: TextSelectionRange | null;
   templateFonts?: TemplateFontOption[];
   onChange: (index: number, element: TextSlideElement) => void;
+  onListMarkerChange?: (marker: Marker) => void;
 }) {
   const activeSelectionRange = normalizedTextSelectionRange(
     selectionRange,
@@ -212,8 +213,6 @@ export function TextToolbar({
   return (
     <InlineToolbar element={element} scale={scale} offset={52} unstyled>
       <div style={textToolbarStyles.toolbar}>
-        {extraControls}
-        {extraControls ? <Divider /> : null}
         <FontFamilyPicker
           selectedFamily={font.family}
           templateFonts={templateFonts}
@@ -369,9 +368,11 @@ export function TextToolbar({
             <TextSettingsPanel
               opacity={element.opacity ?? 1}
               letterSpacing={letterSpacing}
+              listMarker={listMarker}
               lineHeight={lineHeight}
               onOpacityChange={updateOpacity}
               onLetterSpacingChange={updateLetterSpacing}
+              onListMarkerChange={onListMarkerChange}
               onLineHeightChange={updateLineHeight}
             />
           ) : null}
@@ -703,22 +704,31 @@ function LineHeightIcon() {
 function TextSettingsPanel({
   opacity,
   letterSpacing,
+  listMarker,
   lineHeight,
   onOpacityChange,
   onLetterSpacingChange,
+  onListMarkerChange,
   onLineHeightChange,
 }: {
   opacity: number;
   letterSpacing: number;
+  listMarker?: Marker | null;
   lineHeight: number;
   onOpacityChange: (value: number) => void;
   onLetterSpacingChange: (value: number) => void;
+  onListMarkerChange?: (marker: Marker) => void;
   onLineHeightChange: (value: number) => void;
 }) {
+  const showListControls = listMarker != null && onListMarkerChange;
+
   return (
     <div
       data-inline-edit-ignore="true"
-      style={textToolbarStyles.settingsPanel}
+      style={{
+        ...textToolbarStyles.settingsPanel,
+        minHeight: showListControls ? 230 : 170,
+      }}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <SettingsSliderRow
@@ -751,21 +761,34 @@ function TextSettingsPanel({
         step={0.05}
         onChange={onLineHeightChange}
       />
-      <div style={textToolbarStyles.settingsBulletTitle}>Bullet List</div>
-      <div style={textToolbarStyles.settingsBulletActions}>
-        <SettingsPanelButton label="Bullet list">
-          <List size={19} strokeWidth={2.2} aria-hidden="true" />
-        </SettingsPanelButton>
-        <SettingsPanelButton label="Numbered list">
-          <ListOrdered size={19} strokeWidth={2.2} aria-hidden="true" />
-        </SettingsPanelButton>
-        <SettingsPanelButton label="No list">
-          <Ban size={19} strokeWidth={2.1} aria-hidden="true" />
-        </SettingsPanelButton>
-        <SettingsPanelButton label="Checklist">
-          <ListChecks size={19} strokeWidth={2.2} aria-hidden="true" />
-        </SettingsPanelButton>
-      </div>
+      {showListControls ? (
+        <>
+          <div style={textToolbarStyles.settingsBulletTitle}>Bullet List</div>
+          <div style={textToolbarStyles.settingsBulletActions}>
+            <SettingsPanelButton
+              label="Bullet list"
+              pressed={listMarker === "bullet"}
+              onClick={() => onListMarkerChange("bullet")}
+            >
+              <List size={19} strokeWidth={2.2} aria-hidden="true" />
+            </SettingsPanelButton>
+            <SettingsPanelButton
+              label="Numbered list"
+              pressed={listMarker === "number"}
+              onClick={() => onListMarkerChange("number")}
+            >
+              <ListOrdered size={19} strokeWidth={2.2} aria-hidden="true" />
+            </SettingsPanelButton>
+            <SettingsPanelButton
+              label="No list"
+              pressed={listMarker === "none"}
+              onClick={() => onListMarkerChange("none")}
+            >
+              <Ban size={19} strokeWidth={2.1} aria-hidden="true" />
+            </SettingsPanelButton>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -833,17 +856,26 @@ function SettingsSliderRow({
 function SettingsPanelButton({
   children,
   label,
+  onClick,
+  pressed = false,
 }: {
   children: ReactNode;
   label: string;
+  onClick?: () => void;
+  pressed?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-pressed={pressed}
       title={label}
-      style={textToolbarStyles.settingsBulletButton}
+      style={{
+        ...textToolbarStyles.settingsBulletButton,
+        ...(pressed ? textToolbarStyles.settingsBulletButtonActive : {}),
+      }}
       onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
     >
       {children}
     </button>
@@ -1304,7 +1336,7 @@ const textToolbarStyles = {
   settingsBulletActions: {
     width: "100%",
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
   },
   settingsBulletButton: {
@@ -1318,6 +1350,10 @@ const textToolbarStyles = {
     justifyContent: "center",
     cursor: "pointer",
     padding: 0,
+  },
+  settingsBulletButtonActive: {
+    background: "#EFEAFF",
+    color: "#7C51F8",
   },
   opacityIcon: {
     display: "inline-block",
