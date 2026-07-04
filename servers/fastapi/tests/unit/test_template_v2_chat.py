@@ -149,6 +149,112 @@ def test_template_v2_tool_updates_text_content_and_persists_layout():
     assert session.commit_count == 1
 
 
+def test_template_v2_tool_accepts_chart_and_whole_table_payloads():
+    template = _template()
+    template.layouts["layouts"][0]["components"].extend(
+        [
+            {
+                "id": "chart-block",
+                "description": "Chart block.",
+                "position": {"x": 0, "y": 120},
+                "size": {"width": 100, "height": 60},
+                "elements": [
+                    {
+                        "type": "chart",
+                        "decorative": False,
+                        "name": "Emissions chart",
+                        "chart_type": "bar",
+                        "categories": ["CO2"],
+                        "series": [{"name": "2024", "values": [36.4]}],
+                    }
+                ],
+            },
+            {
+                "id": "table-block",
+                "description": "Table block.",
+                "position": {"x": 0, "y": 190},
+                "size": {"width": 100, "height": 60},
+                "elements": [
+                    {
+                        "type": "table",
+                        "decorative": False,
+                        "name": "Emissions table",
+                        "columns": [
+                            {"runs": [{"text": "Old metric", "font": {"size": 12}}]},
+                            {"runs": [{"text": "Old value", "font": {"size": 12}}]},
+                        ],
+                        "rows": [[{"runs": [{"text": "Old"}]}, {"runs": [{"text": "0"}]}]],
+                        "min_columns": 2,
+                        "max_columns": 3,
+                        "min_rows": 1,
+                        "max_rows": 4,
+                    }
+                ],
+            },
+        ]
+    )
+    session = _FakeTemplateSession(template)
+    tools = TemplateV2ChatTools(TemplateV2ContextStore(session, template.id))
+
+    chart_result = _run(
+        tools.execute_tool_call(
+            AssistantToolCall(
+                id="call_1",
+                name="updateElementContent",
+                arguments=json.dumps(
+                    {
+                        "slideIndex": 0,
+                        "elementPath": "components[2].elements[0]",
+                        "chart": {
+                            "type": "bar",
+                            "title": "GHG Emissions 2024-2025",
+                            "categories": ["CO2", "CH4", "N2O"],
+                            "series": [
+                                {"name": "2024 Gt", "data": [36.4, 2.1, 0.8]},
+                                {"name": "2025 Gt", "data": [36.7, 2.3, 0.84]},
+                            ],
+                        },
+                    }
+                ),
+            )
+        )
+    )
+    table_result = _run(
+        tools.execute_tool_call(
+            AssistantToolCall(
+                id="call_2",
+                name="updateElementContent",
+                arguments=json.dumps(
+                    {
+                        "slideIndex": 0,
+                        "elementPath": "components[3].elements[0]",
+                        "table": {
+                            "headers": ["Metric", "2024 Gt", "2025 Gt"],
+                            "rows": [
+                                ["CO2", "36.4", "36.7"],
+                                ["CH4", "2.1", "2.3"],
+                                ["N2O", "0.8", "0.84"],
+                            ],
+                        },
+                    }
+                ),
+            )
+        )
+    )
+
+    chart = template.layouts["layouts"][0]["components"][2]["elements"][0]
+    table = template.layouts["layouts"][0]["components"][3]["elements"][0]
+    assert chart_result["ok"] is True
+    assert table_result["ok"] is True
+    assert chart["series"][1]["values"] == [36.7, 2.3, 0.84]
+    assert [cell["runs"][0]["text"] for cell in table["columns"]] == [
+        "Metric",
+        "2024 Gt",
+        "2025 Gt",
+    ]
+    assert table["rows"][2][2]["runs"][0]["text"] == "0.84"
+
+
 def test_template_v2_tool_invalid_path_returns_tool_error():
     template = _template()
     tools = TemplateV2ChatTools(TemplateV2ContextStore(_FakeTemplateSession(template), template.id))
@@ -265,6 +371,127 @@ def test_template_v2_tool_ungroups_positioned_group_component():
     ]
     assert components[2]["position"] == {"x": 14.0, "y": 26.0}
     assert components[2]["elements"][0]["position"] == {"x": 0, "y": 0}
+    assert session.commit_count == 1
+
+
+def test_template_v2_tool_swaps_whole_layout_items():
+    template = _template()
+    template.layouts["layouts"][0]["components"] = [
+        {
+            "id": "cards",
+            "description": "Card grid component for swapping.",
+            "position": {"x": 0, "y": 0},
+            "size": {"width": 300, "height": 120},
+            "elements": [
+                {
+                    "type": "grid",
+                    "name": "cards",
+                    "columns": 3,
+                    "min_children": 3,
+                    "max_children": 3,
+                    "children": [
+                        {
+                            "type": "group",
+                            "name": "card_1",
+                            "children": [
+                                {
+                                    "type": "text",
+                                    "decorative": False,
+                                    "name": "title_1",
+                                    "min_length": 1,
+                                    "max_length": 40,
+                                    "runs": [
+                                        {
+                                            "text": "First",
+                                            "font": {"color": "#111111"},
+                                        }
+                                    ],
+                                },
+                                {
+                                    "type": "image",
+                                    "decorative": False,
+                                    "name": "icon_1",
+                                    "data": "/icons/first.svg",
+                                    "is_icon": True,
+                                },
+                            ],
+                        },
+                        {
+                            "type": "group",
+                            "name": "card_2",
+                            "children": [
+                                {
+                                    "type": "text",
+                                    "decorative": False,
+                                    "name": "title_2",
+                                    "min_length": 1,
+                                    "max_length": 40,
+                                    "runs": [{"text": "Second"}],
+                                }
+                            ],
+                        },
+                        {
+                            "type": "group",
+                            "name": "card_3",
+                            "children": [
+                                {
+                                    "type": "text",
+                                    "decorative": False,
+                                    "name": "title_3",
+                                    "min_length": 1,
+                                    "max_length": 40,
+                                    "runs": [
+                                        {
+                                            "text": "Last",
+                                            "font": {"color": "#333333"},
+                                        }
+                                    ],
+                                },
+                                {
+                                    "type": "image",
+                                    "decorative": False,
+                                    "name": "icon_3",
+                                    "data": "/icons/last.svg",
+                                    "is_icon": True,
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+    ]
+    session = _FakeTemplateSession(template)
+    tools = TemplateV2ChatTools(TemplateV2ContextStore(session, template.id))
+
+    result = _run(
+        tools.execute_tool_call(
+            AssistantToolCall(
+                id="call_1",
+                name="swapLayoutItems",
+                arguments=json.dumps(
+                    {
+                        "slideIndex": 0,
+                        "firstPath": "components[0].elements[0].children[0]",
+                        "secondPath": "components[0].elements[0].children[2]",
+                    }
+                ),
+            )
+        )
+    )
+
+    cards = template.layouts["layouts"][0]["components"][0]["elements"][0]["children"]
+    assert result["ok"] is True
+    assert cards[0]["children"][0]["runs"][0] == {
+        "text": "Last",
+        "font": {"color": "#333333"},
+    }
+    assert cards[0]["children"][1]["data"] == "/icons/last.svg"
+    assert cards[2]["children"][0]["runs"][0] == {
+        "text": "First",
+        "font": {"color": "#111111"},
+    }
+    assert cards[2]["children"][1]["data"] == "/icons/first.svg"
     assert session.commit_count == 1
 
 

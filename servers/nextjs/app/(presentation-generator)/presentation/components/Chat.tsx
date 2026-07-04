@@ -420,6 +420,7 @@ const TOOL_LABELS: Record<string, string> = {
   updateElementContent: "Content updater",
   deleteComponent: "Component remover",
   ungroupComponent: "Component ungrouper",
+  swapLayoutItems: "Item swapper",
   swapComponentVariant: "Variant swapper",
   getSlideElements: "Element finder",
   updateSlideElement: "Content updater",
@@ -440,6 +441,7 @@ const MUTATING_TOOLS = new Set([
   "updateElementContent",
   "deleteComponent",
   "ungroupComponent",
+  "swapLayoutItems",
   "swapComponentVariant",
   "updateSlideElement",
   "updateSlideComponent",
@@ -455,6 +457,7 @@ const SLIDE_FOCUS_TOOLS = new Set([
   "updateElementContent",
   "deleteComponent",
   "ungroupComponent",
+  "swapLayoutItems",
   "swapComponentVariant",
   "updateSlideElement",
   "updateSlideComponent",
@@ -710,6 +713,8 @@ const humanActivityForTool = (
       return isDone ? "Removed the selected item." : "Removing the selected item.";
     case "ungroupComponent":
       return isDone ? "Separated the selected items." : "Separating the selected items.";
+    case "swapLayoutItems":
+      return isDone ? "Swapped the selected items." : "Swapping the selected items.";
     case "swapComponentVariant":
       return isDone ? "Updated the component style." : "Trying a better component style.";
     case "addSlideComponent":

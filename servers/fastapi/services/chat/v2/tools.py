@@ -18,6 +18,7 @@ from services.chat.v2.schemas import (
     NoArgsInput,
     SearchTemplateContentInput,
     SwapComponentVariantInput,
+    SwapLayoutItemsInput,
     UngroupComponentInput,
     UpdateElementContentInput,
 )
@@ -40,6 +41,7 @@ class TemplateV2ChatTools:
             "updateElementContent": self._update_element_content,
             "deleteComponent": self._delete_component,
             "ungroupComponent": self._ungroup_component,
+            "swapLayoutItems": self._swap_layout_items,
             "swapComponentVariant": self._swap_component_variant,
         }
 
@@ -89,8 +91,11 @@ class TemplateV2ChatTools:
                 description=(
                     "Patch safe content fields only for one concrete element path: "
                     "text.runs via text, text-list.items via items, one table cell via "
-                    "tableCell, chart title/categories/series via chart, or image/icon "
-                    "data via text. Does not change geometry or create elements."
+                    "tableCell, a whole table via table {columns or headers, rows}, "
+                    "chart title/categories/series via chart, or image/icon data via "
+                    "text. Chart series must use values arrays, not data arrays. Does "
+                    "not change geometry or create elements. Never delete a table/chart "
+                    "just because a data update failed; retry with the correct payload."
                 ),
                 schema=UpdateElementContentInput,
                 strict=True,
@@ -127,6 +132,19 @@ class TemplateV2ChatTools:
                     "and size; replaces description/elements only."
                 ),
                 schema=SwapComponentVariantInput,
+                strict=True,
+            ),
+            Tool(
+                name="swapLayoutItems",
+                description=(
+                    "Swap two complete TemplateV2 layout items by concrete paths from "
+                    "getSlideLayout(includeFullJson=true), such as components[0] or "
+                    "components[0].elements[1].children[2]. Use for requests like "
+                    "swap the first and last card/element/component. Moves the whole "
+                    "item content together, including text runs, icons, and styling; "
+                    "do not use updateElementContent to fake swaps."
+                ),
+                schema=SwapLayoutItemsInput,
                 strict=True,
             ),
         ]
@@ -293,9 +311,12 @@ class TemplateV2ChatTools:
                 raise ValueError("items is required for text-list elements.")
             _update_text_list_element(element, payload.items)
         elif element_type == "table":
-            if payload.table_cell is None:
-                raise ValueError("tableCell is required for table elements.")
-            _update_table_cell(element, payload.table_cell.model_dump(by_alias=False))
+            if payload.table is not None:
+                _update_table_element(element, payload.table.model_dump())
+            elif payload.table_cell is not None:
+                _update_table_cell(element, payload.table_cell.model_dump(by_alias=False))
+            else:
+                raise ValueError("table or tableCell is required for table elements.")
         elif element_type == "chart":
             if payload.chart is None:
                 raise ValueError("chart is required for chart elements.")
@@ -481,6 +502,61 @@ class TemplateV2ChatTools:
             "message": (
                 f"Swapped component '{payload.component_id}' to variant "
                 f"'{variant.id}' on slide {payload.slide_index + 1}."
+            ),
+        }
+
+    async def _swap_layout_items(self, args: dict[str, Any]) -> dict[str, Any]:
+        payload = SwapLayoutItemsInput(**args)
+        if payload.first_path == payload.second_path:
+            raise ValueError("Cannot swap an item with itself.")
+        first_is_descendant = payload.first_path.startswith(f"{payload.second_path}.")
+        second_is_descendant = payload.second_path.startswith(f"{payload.first_path}.")
+        if first_is_descendant or second_is_descendant:
+            raise ValueError("Cannot swap an item with its own descendant.")
+
+        layout = await self._context.get_slide_layout(payload.slide_index)
+        layout_dict = _model_dict(layout)
+        first_parent, first_index = _resolve_layout_item_parent(
+            layout_dict,
+            payload.first_path,
+        )
+        second_parent, second_index = _resolve_layout_item_parent(
+            layout_dict,
+            payload.second_path,
+        )
+        first_item = first_parent[first_index]
+        second_item = second_parent[second_index]
+        if not isinstance(first_item, dict) or not isinstance(second_item, dict):
+            raise ValueError("Both swap targets must be layout objects.")
+
+        first_replacement = copy.deepcopy(second_item)
+        second_replacement = copy.deepcopy(first_item)
+        _preserve_slot_fields(
+            first_replacement,
+            first_item,
+            keep_id=_is_top_level_component_path(payload.first_path),
+        )
+        _preserve_slot_fields(
+            second_replacement,
+            second_item,
+            keep_id=_is_top_level_component_path(payload.second_path),
+        )
+        first_parent[first_index] = first_replacement
+        second_parent[second_index] = second_replacement
+
+        updated_layout = SlideLayout.model_validate(layout_dict)
+        await self._context.save_slide_layout(
+            slide_index=payload.slide_index,
+            layout=updated_layout,
+        )
+        return {
+            "swapped": True,
+            "slide_index": payload.slide_index,
+            "slide_number": payload.slide_index + 1,
+            "first_path": payload.first_path,
+            "second_path": payload.second_path,
+            "message": (
+                f"Swapped layout items on slide {payload.slide_index + 1}."
             ),
         }
 
@@ -833,6 +909,71 @@ def _resolve_element_path(layout_dict: dict[str, Any], path: str) -> dict[str, A
     return current
 
 
+def _resolve_layout_item_parent(
+    layout_dict: dict[str, Any],
+    path: str,
+) -> tuple[list[Any], int]:
+    current: Any = layout_dict
+    segments = path.split(".")
+    if not segments:
+        raise ValueError("Layout item path is required.")
+
+    for segment in segments[:-1]:
+        if segment == "child":
+            if not isinstance(current, dict) or not isinstance(current.get("child"), dict):
+                raise ValueError(f"Invalid layout item path segment: {segment}")
+            current = current["child"]
+            continue
+
+        match = _PATH_SEGMENT_RE.match(segment)
+        if not match:
+            raise ValueError(f"Invalid layout item path segment: {segment}")
+        key = match.group("key")
+        index = int(match.group("index"))
+        if not isinstance(current, dict) or not isinstance(current.get(key), list):
+            raise ValueError(f"Invalid layout item path segment: {segment}")
+        values = current[key]
+        if index >= len(values) or not isinstance(values[index], dict):
+            raise ValueError(f"Invalid layout item path index: {segment}")
+        current = values[index]
+
+    match = _PATH_SEGMENT_RE.match(segments[-1])
+    if not match:
+        raise ValueError(f"Invalid layout item path segment: {segments[-1]}")
+    key = match.group("key")
+    index = int(match.group("index"))
+    if not isinstance(current, dict) or not isinstance(current.get(key), list):
+        raise ValueError(f"Invalid layout item path segment: {segments[-1]}")
+    values = current[key]
+    if index >= len(values):
+        raise ValueError(f"Invalid layout item path index: {segments[-1]}")
+    return values, index
+
+
+def _preserve_slot_fields(
+    target: dict[str, Any],
+    slot: dict[str, Any],
+    *,
+    keep_id: bool,
+) -> None:
+    for key in ("position", "size", "rotation"):
+        if key in slot:
+            target[key] = copy.deepcopy(slot[key])
+        else:
+            target.pop(key, None)
+    if keep_id:
+        target["id"] = slot.get("id")
+
+
+def _is_top_level_component_path(path: str) -> bool:
+    match = _PATH_SEGMENT_RE.match(path)
+    return bool(
+        match
+        and match.group("key") == "components"
+        and match.group(0) == path
+    )
+
+
 def _component_id_for_path(layout_dict: dict[str, Any], path: str) -> str | None:
     first = path.split(".", 1)[0]
     match = _PATH_SEGMENT_RE.match(first)
@@ -917,6 +1058,80 @@ def _update_table_cell(element: dict[str, Any], table_cell: dict[str, Any]) -> N
         text=text,
         fallback_font=target.get("font"),
     )
+
+
+def _update_table_element(element: dict[str, Any], table: dict[str, Any]) -> None:
+    columns = table.get("columns") or table.get("headers")
+    rows = table.get("rows")
+    if not isinstance(columns, list) or not isinstance(rows, list):
+        raise ValueError("table update requires columns/headers and rows.")
+    if not all(isinstance(row, list) for row in rows):
+        raise ValueError("table rows must be lists.")
+
+    column_count = len(columns)
+    if column_count == 0:
+        raise ValueError("table must contain at least one column.")
+    if any(len(row) != column_count for row in rows):
+        raise ValueError("each table row must match the column count.")
+
+    min_columns = int(element.get("min_columns") or 0)
+    max_columns = int(element.get("max_columns") or max(column_count, 100))
+    min_rows = int(element.get("min_rows") or 0)
+    max_rows = int(element.get("max_rows") or max(len(rows), 100))
+    if column_count < min_columns or column_count > max_columns:
+        raise ValueError("table column count is outside this element's limits.")
+    if len(rows) < min_rows or len(rows) > max_rows:
+        raise ValueError("table row count is outside this element's limits.")
+
+    existing_columns = _dicts(element.get("columns"))
+    existing_rows = [
+        _dicts(row) for row in element.get("rows", []) if isinstance(row, list)
+    ]
+
+    element["columns"] = [
+        _replacement_table_cell(
+            value=value,
+            existing=existing_columns[index] if index < len(existing_columns) else None,
+        )
+        for index, value in enumerate(columns)
+    ]
+    element["rows"] = [
+        [
+            _replacement_table_cell(
+                value=value,
+                existing=(
+                    existing_rows[row_index][column_index]
+                    if row_index < len(existing_rows)
+                    and column_index < len(existing_rows[row_index])
+                    else None
+                ),
+            )
+            for column_index, value in enumerate(row)
+        ]
+        for row_index, row in enumerate(rows)
+    ]
+
+
+def _replacement_table_cell(value: Any, existing: dict[str, Any] | None) -> dict[str, Any]:
+    cell = copy.deepcopy(existing) if isinstance(existing, dict) else {}
+    cell["runs"] = _replacement_runs(
+        existing_runs=cell.get("runs"),
+        text=_table_value_text(value),
+        fallback_font=cell.get("font"),
+    )
+    return cell
+
+
+def _table_value_text(value: Any) -> str:
+    if isinstance(value, dict):
+        if isinstance(value.get("text"), str):
+            return value["text"]
+        runs = value.get("runs")
+        if isinstance(runs, list):
+            return _runs_text(runs)
+    if value is None:
+        return ""
+    return str(value)
 
 
 def _update_chart_element(element: dict[str, Any], chart: dict[str, Any]) -> None:

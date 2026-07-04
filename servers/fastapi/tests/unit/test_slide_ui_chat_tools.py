@@ -171,6 +171,107 @@ def test_update_slide_element_edits_ui_size():
     assert session.commit_count == 1
 
 
+def test_update_slide_element_accepts_chart_data_alias_and_type():
+    slide = _slide()
+    slide.ui["components"].append(
+        {
+            "id": "chart-block",
+            "description": "Chart block.",
+            "elements": [
+                {
+                    "type": "chart",
+                    "decorative": False,
+                    "name": "Emissions chart",
+                    "chart_type": "bar",
+                    "categories": ["CO2"],
+                    "series": [{"name": "2024", "values": [36.4]}],
+                }
+            ],
+        }
+    )
+    tools, session = _tools(slide)
+
+    result = _call(
+        tools,
+        "updateSlideElement",
+        {
+            "index": 0,
+            "elementPath": "components[2].elements[0]",
+            "chart": {
+                "type": "bar",
+                "title": "GHG Emissions 2024-2025",
+                "categories": ["CO2", "CH4", "N2O"],
+                "series": [
+                    {"name": "2024 Gt", "data": [36.4, 2.1, 0.8]},
+                    {"name": "2025 Gt", "data": [36.7, 2.3, 0.84]},
+                ],
+            },
+        },
+    )
+
+    chart = slide.ui["components"][2]["elements"][0]
+    assert result["ok"] is True
+    assert chart["title"] == "GHG Emissions 2024-2025"
+    assert chart["series"][0]["values"] == [36.4, 2.1, 0.8]
+    assert "data" not in chart["series"][0]
+    assert session.commit_count == 1
+
+
+def test_update_slide_element_accepts_whole_table_payload():
+    slide = _slide()
+    slide.ui["components"].append(
+        {
+            "id": "table-block",
+            "description": "Table block.",
+            "elements": [
+                {
+                    "type": "table",
+                    "decorative": False,
+                    "name": "Emissions table",
+                    "columns": [
+                        {"runs": [{"text": "Old metric", "font": {"size": 12}}]},
+                        {"runs": [{"text": "Old value", "font": {"size": 12}}]},
+                    ],
+                    "rows": [[{"runs": [{"text": "Old"}]}, {"runs": [{"text": "0"}]}]],
+                    "min_columns": 2,
+                    "max_columns": 3,
+                    "min_rows": 1,
+                    "max_rows": 4,
+                }
+            ],
+        }
+    )
+    tools, session = _tools(slide)
+
+    result = _call(
+        tools,
+        "updateSlideElement",
+        {
+            "index": 0,
+            "elementPath": "components[2].elements[0]",
+            "table": {
+                "headers": ["Metric", "2024 Gt", "2025 Gt"],
+                "rows": [
+                    ["CO2", "36.4", "36.7"],
+                    ["CH4", "2.1", "2.3"],
+                    ["N2O", "0.8", "0.84"],
+                ],
+            },
+        },
+    )
+
+    table = slide.ui["components"][2]["elements"][0]
+    assert result["ok"] is True
+    assert [cell["runs"][0]["text"] for cell in table["columns"]] == [
+        "Metric",
+        "2024 Gt",
+        "2025 Gt",
+    ]
+    assert table["rows"][2][2]["runs"][0]["text"] == "0.84"
+    assert table["columns"][0]["runs"][0]["font"] == {"size": 12}
+    assert session.commit_count == 1
+
+
 def test_update_slide_component_edits_ui_size():
     slide = _slide()
     tools, session = _tools(slide)
@@ -248,6 +349,84 @@ def test_add_slide_component_appends_block():
     assert result["ok"] is True
     assert result["result"]["added"] is True
     assert [c["id"] for c in slide.ui["components"]] == ["hero", "body", "note"]
+
+
+def test_add_slide_component_expands_tiny_chart_block():
+    slide = _slide()
+    tools, _ = _tools(slide)
+    component = {
+        "id": "tiny-chart",
+        "description": "A chart block with bad assistant geometry.",
+        "position": {"x": 0.25, "y": 0.2},
+        "size": {"width": 0.6, "height": 0.5},
+        "elements": [
+            {
+                "type": "chart",
+                "decorative": False,
+                "name": "Model chart",
+                "position": {"x": 0, "y": 0},
+                "size": {"width": 0.6, "height": 0.5},
+                "chart_type": "bar",
+                "categories": ["GPT OSS 20B", "GPT OSS 120B"],
+                "series": [{"name": "Score", "values": [20, 120]}],
+            }
+        ],
+    }
+
+    result = _call(
+        tools,
+        "addSlideComponent",
+        {"index": 0, "component": json.dumps(component)},
+    )
+
+    chart_component = slide.ui["components"][-1]
+    chart = chart_component["elements"][0]
+    assert result["ok"] is True
+    assert chart_component["position"] == {"x": 128.0, "y": 108.0}
+    assert chart_component["size"] == {"width": 1024.0, "height": 460.0}
+    assert chart["position"] == {"x": 0, "y": 0}
+    assert chart["size"] == {"width": 1024.0, "height": 460.0}
+
+
+def test_add_slide_component_expands_tiny_table_block():
+    slide = _slide()
+    tools, _ = _tools(slide)
+    cell = {"runs": [{"text": "Metric", "font": {"size": 12}}]}
+    component = {
+        "id": "tiny-table",
+        "description": "A table block with bad assistant geometry.",
+        "position": {"x": 0.25, "y": 0.2},
+        "size": {"width": 0.6, "height": 0.5},
+        "elements": [
+            {
+                "type": "table",
+                "decorative": False,
+                "name": "Metrics table",
+                "position": {"x": 0, "y": 0},
+                "size": {"width": 0.6, "height": 0.5},
+                "columns": [cell, {"runs": [{"text": "Value"}]}],
+                "rows": [[{"runs": [{"text": "Temperature rise"}]}, {"runs": [{"text": "0.2 C"}]}]],
+                "min_columns": 2,
+                "max_columns": 2,
+                "min_rows": 1,
+                "max_rows": 3,
+            }
+        ],
+    }
+
+    result = _call(
+        tools,
+        "addSlideComponent",
+        {"index": 0, "component": json.dumps(component)},
+    )
+
+    table_component = slide.ui["components"][-1]
+    table = table_component["elements"][0]
+    assert result["ok"] is True
+    assert table_component["position"] == {"x": 128.0, "y": 120.0}
+    assert table_component["size"] == {"width": 1024.0, "height": 410.0}
+    assert table["position"] == {"x": 0, "y": 0}
+    assert table["size"] == {"width": 1024.0, "height": 410.0}
 
 
 def test_ui_tool_reports_non_ui_slide():

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -53,11 +53,43 @@ class ChartSeriesInput(StrictSchemaModel):
     name: str = Field(min_length=1, max_length=200)
     values: list[float] = Field(min_length=1, max_length=100)
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_data_alias(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if "values" not in normalized and "data" in normalized:
+            normalized["values"] = normalized.pop("data")
+        return normalized
+
 
 class ChartUpdateInput(OpenAIStrictSchemaModel):
     title: str | None = Field(..., min_length=0, max_length=500)
     categories: list[str] | None = Field(..., min_length=1, max_length=100)
     series: list[ChartSeriesInput] | None = Field(..., min_length=1, max_length=20)
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_chart_type(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        normalized.pop("type", None)
+        normalized.pop("chart_type", None)
+        return normalized
+
+
+class TableUpdateInput(StrictSchemaModel):
+    columns: list[Any] | None = Field(default=None, min_length=1, max_length=100)
+    headers: list[Any] | None = Field(default=None, min_length=1, max_length=100)
+    rows: list[list[Any]] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_columns_or_headers(self) -> "TableUpdateInput":
+        if self.columns is None and self.headers is None:
+            raise ValueError("columns or headers is required.")
+        return self
 
 
 class UpdateElementContentInput(OpenAIStrictSchemaModel):
@@ -92,8 +124,28 @@ class UpdateElementContentInput(OpenAIStrictSchemaModel):
         ...,
         description="Chart title/categories/series update.",
     )
+    table: TableUpdateInput | None = Field(
+        ...,
+        description="Whole table update with columns/headers and rows.",
+    )
 
     model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_common_llm_payloads(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if "chart" not in normalized and any(
+            key in normalized for key in ("title", "categories", "series")
+        ):
+            normalized["chart"] = {
+                key: normalized.pop(key)
+                for key in ("title", "categories", "series")
+                if key in normalized
+            }
+        return normalized
 
 
 class DeleteComponentInput(StrictSchemaModel):
@@ -107,6 +159,14 @@ class UngroupComponentInput(StrictSchemaModel):
     slide_index: int = Field(alias="slideIndex", ge=0, le=1000)
     component_id: str = Field(alias="componentId", min_length=1, max_length=120)
     reason: str = Field(min_length=20, max_length=500)
+
+    model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
+
+
+class SwapLayoutItemsInput(StrictSchemaModel):
+    slide_index: int = Field(alias="slideIndex", ge=0, le=1000)
+    first_path: str = Field(alias="firstPath", min_length=1, max_length=500)
+    second_path: str = Field(alias="secondPath", min_length=1, max_length=500)
 
     model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
 
