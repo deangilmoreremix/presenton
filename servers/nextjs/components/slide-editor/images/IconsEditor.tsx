@@ -294,6 +294,7 @@ const IconsEditor = ({
       >
         <SheetContent
           side="right"
+          data-inline-edit-ignore="true"
           className="flex h-full w-[370px] max-w-[calc(100vw-16px)] flex-col gap-0 border-l border-[#EDEEEF] bg-white p-0 font-syne shadow-xl sm:max-w-[370px] [&>button]:right-4 [&>button]:top-4"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onClick={(e) => e.stopPropagation()}

@@ -1,4 +1,5 @@
 import { resolveBackendAssetUrl } from "@/utils/api";
+import { normalizeRawTextMarkdownElement } from "@/components/slide-editor/text/template-v2-text";
 
 type JsonRecord = Record<string, unknown>;
 type RenderMode = "absolute" | "flow";
@@ -467,7 +468,7 @@ function renderText(item: JsonRecord, mode: RenderMode): string {
   const alignment = readRecord(item.alignment);
   const horizontal = readString(alignment.horizontal);
   const vertical = readString(alignment.vertical);
-  const runs = readRuns(item);
+  const runs = normalizedRunsForHtml(item, font);
   const runHtml = runs
     .map((run) => {
       const runFont = { ...font, ...readRecord(run.font) };
@@ -490,7 +491,7 @@ function renderTextList(item: JsonRecord, mode: RenderMode): string {
   const font = readRecord(item.font);
   const entries = readArray(item.items)
     .map((entry) => {
-      const runs = readListRuns(entry);
+      const runs = normalizedListRunsForHtml(entry, font);
       const html = runs
         .map(
           (run) =>
@@ -1280,8 +1281,15 @@ function cellText(cellValue: unknown): string {
   }
 
   const cell = readRecord(cellValue);
-  const runs = readArray(cell.runs).map(readRecord);
-  if (runs.length) {
+  const directRuns = readArray(cell.runs).map(readRecord);
+  if (directRuns.length) {
+    const runs = normalizeRunsForHtml(
+      directRuns,
+      Object.prototype.hasOwnProperty.call(cell, "text")
+        ? cell.text
+        : joinedRunText(directRuns),
+      cell.font,
+    );
     return runs
       .map((run) => {
         const runFont = { ...readRecord(cell.font), ...readRecord(run.font) };
@@ -1295,7 +1303,7 @@ function cellText(cellValue: unknown): string {
   const text = cell.text;
   if (typeof text === "string") return escapeHtml(text);
   const textRecord = readRecord(text);
-  const textRuns = readRuns(textRecord);
+  const textRuns = normalizedRunsForHtml(textRecord, textRecord.font);
   if (textRuns.length) {
     return textRuns
       .map((run) => {
@@ -1312,6 +1320,51 @@ function cellText(cellValue: unknown): string {
 function readRuns(item: JsonRecord): JsonRecord[] {
   const runs = readArray(item.runs).map(readRecord);
   return runs.length ? runs : [{ text: readStringValue(item.text) }];
+}
+
+function normalizedRunsForHtml(item: JsonRecord, fallbackFont: unknown): JsonRecord[] {
+  const runs = readRuns(item);
+  return normalizeRunsForHtml(
+    runs,
+    Object.prototype.hasOwnProperty.call(item, "text")
+      ? item.text
+      : joinedRunText(runs),
+    item.font ?? fallbackFont,
+  );
+}
+
+function normalizedListRunsForHtml(value: unknown, fallbackFont: unknown): JsonRecord[] {
+  const runs = readListRuns(value);
+  const record = readRecord(value);
+  return normalizeRunsForHtml(
+    runs,
+    Object.prototype.hasOwnProperty.call(record, "text")
+      ? record.text
+      : joinedRunText(runs),
+    record.font ?? fallbackFont,
+  );
+}
+
+function normalizeRunsForHtml(
+  runs: JsonRecord[],
+  text: unknown,
+  fallbackFont: unknown,
+): JsonRecord[] {
+  const normalized = normalizeRawTextMarkdownElement({
+    type: "text",
+    font: fallbackFont,
+    text: readStringValue(text),
+    runs,
+  }).runs;
+
+  return normalized.map((run) => ({
+    text: run.text,
+    font: run.font,
+  }));
+}
+
+function joinedRunText(runs: JsonRecord[]): string {
+  return runs.map((run) => readStringValue(run.text)).join("");
 }
 
 function readListRuns(value: unknown): JsonRecord[] {

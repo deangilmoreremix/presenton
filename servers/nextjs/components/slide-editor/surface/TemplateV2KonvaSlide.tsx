@@ -381,7 +381,7 @@ function TemplateV2KonvaSlideComponent({
     [selection, surfaceSlideIndex, uiDraft],
   );
   const contentLayerKey = isEditMode
-    ? "template-v2-edit-layer"
+    ? `template-v2-edit-layer:${fontLoadState.revision}`
     : `fonts:${fontLoadState.revision}`;
 
   useEffect(() => {

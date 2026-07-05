@@ -1231,7 +1231,12 @@ function measureContext(): CanvasRenderingContext2D | null {
 function richFontCss(font: RenderTextFont): string {
   const italic = font.italic ? "italic " : "";
   const weight = font.bold ? "700 " : "400 ";
-  return `${italic}${weight}${font.size}px "${font.family}", Helvetica, sans-serif`;
+  return `${italic}${weight}${font.size}px ${quotedFontFamily(font.family)}, Helvetica, sans-serif`;
+}
+
+function quotedFontFamily(family: string): string {
+  const name = (family || DEFAULT_FONT.family).trim() || DEFAULT_FONT.family;
+  return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 function measureRunText(text: string, font: RenderTextFont): number {
@@ -1240,7 +1245,9 @@ function measureRunText(text: string, font: RenderTextFont): number {
   if (!ctx) return text.length * font.size * TEXT_AVERAGE_CHAR_EM;
   ctx.font = richFontCss(font);
   const width = ctx.measureText(text).width;
-  const spacing = font.letterSpacing ? font.letterSpacing * text.length : 0;
+  const spacing = font.letterSpacing
+    ? font.letterSpacing * Math.max(0, text.length - 1)
+    : 0;
   return width + spacing;
 }
 
@@ -1251,8 +1258,7 @@ function measureRenderText(text: string, font: RenderTextFont) {
   renderTextMeasureCanvas ??= document.createElement("canvas");
   const context = renderTextMeasureCanvas.getContext("2d");
   if (!context) return fallbackWidth;
-  context.font = `${font.italic ? "italic " : ""}${font.bold ? "700 " : "400 "
-    }${font.size}px ${font.family}, Helvetica, sans-serif`;
+  context.font = richFontCss(font);
   return (
     context.measureText(text).width +
     (font.letterSpacing ?? 0) * Math.max(0, text.length - 1)
