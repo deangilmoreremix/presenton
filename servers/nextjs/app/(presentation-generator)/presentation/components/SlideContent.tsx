@@ -17,6 +17,8 @@ interface SlideContentProps {
     },
   ) => void;
   isChatEditing?: boolean;
+  showBlankPromptOverlay?: boolean;
+  onBlankPromptOverlayDismiss?: () => void;
   showTemplatePromptOverlay?: boolean;
   onTemplatePromptOverlayDismiss?: () => void;
 }
@@ -27,6 +29,8 @@ const SlideContent = ({
   presentationId,
   onSlideAdded,
   isChatEditing = false,
+  showBlankPromptOverlay = false,
+  onBlankPromptOverlayDismiss,
   showTemplatePromptOverlay = false,
   onTemplatePromptOverlayDismiss,
 }: SlideContentProps) => {
@@ -97,7 +101,8 @@ const SlideContent = ({
             theme={presentationData?.theme || null}
             fonts={presentationData?.fonts}
             renderIndex={index}
-            showBlankPromptOverlay
+            showBlankPromptOverlay={showBlankPromptOverlay}
+            onBlankPromptOverlayDismiss={onBlankPromptOverlayDismiss}
             showTemplatePromptOverlay={showTemplatePromptOverlay}
             onTemplatePromptOverlayDismiss={onTemplatePromptOverlayDismiss}
           />

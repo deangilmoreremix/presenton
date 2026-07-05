@@ -120,6 +120,9 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     null
   );
   const [chatTargetedSlides, setChatTargetedSlides] = useState<number[]>([]);
+  const [blankPromptSlideIds, setBlankPromptSlideIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [templatePromptSlideIds, setTemplatePromptSlideIds] = useState<
     Set<string>
   >(() => new Set());
@@ -279,10 +282,18 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   const handleEditorSlideNavigation = useCallback(
     (index: number, options?: SlideAddedOptions) => {
       handleSlideClick(index);
-      if (
-        options?.promptOverlayKind === "layout" &&
-        options.promptOverlaySlideId
-      ) {
+      if (!options?.promptOverlayKind || !options.promptOverlaySlideId) {
+        return;
+      }
+      if (options.promptOverlayKind === "blank") {
+        setBlankPromptSlideIds((current) => {
+          const next = new Set(current);
+          next.add(options.promptOverlaySlideId!);
+          return next;
+        });
+        return;
+      }
+      if (options.promptOverlayKind === "layout") {
         setTemplatePromptSlideIds((current) => {
           const next = new Set(current);
           next.add(options.promptOverlaySlideId!);
@@ -292,6 +303,16 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     },
     [handleSlideClick],
   );
+
+  const dismissBlankPromptOverlay = useCallback((slideId: unknown) => {
+    if (typeof slideId !== "string" || !slideId) return;
+    setBlankPromptSlideIds((current) => {
+      if (!current.has(slideId)) return current;
+      const next = new Set(current);
+      next.delete(slideId);
+      return next;
+    });
+  }, []);
 
   const dismissTemplatePromptOverlay = useCallback((slideId: unknown) => {
     if (typeof slideId !== "string" || !slideId) return;
@@ -579,6 +600,13 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
                             index={index}
                             presentationId={presentation_id}
                             onSlideAdded={handleEditorSlideNavigation}
+                            showBlankPromptOverlay={
+                              typeof slide?.id === "string" &&
+                              blankPromptSlideIds.has(slide.id)
+                            }
+                            onBlankPromptOverlayDismiss={() =>
+                              dismissBlankPromptOverlay(slide?.id)
+                            }
                             showTemplatePromptOverlay={
                               typeof slide?.id === "string" &&
                               templatePromptSlideIds.has(slide.id)

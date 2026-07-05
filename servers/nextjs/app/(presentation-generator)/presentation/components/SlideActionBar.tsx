@@ -123,8 +123,9 @@ const SlideActionBar = ({
       return;
     }
 
+    const slideId = uuidv4();
     const blankSlide = {
-      id: uuidv4(),
+      id: slideId,
       index: currentIndex,
       content: {},
       ...(isTemplateV2Slide
@@ -140,7 +141,15 @@ const SlideActionBar = ({
     rememberSlides("ADD_BLANK_SLIDE");
     dispatch(addNewSlide({ slideData: blankSlide, index: currentIndex }));
     const insertedIndex = currentIndex + 1;
-    onSlideSelected(insertedIndex);
+    onSlideSelected(
+      insertedIndex,
+      isTemplateV2Slide
+        ? {
+            promptOverlaySlideId: slideId,
+            promptOverlayKind: "blank",
+          }
+        : undefined,
+    );
     trackEvent(MixpanelEvent.Presentation_Slide_Added, {
       pathname,
       presentation_id: presentationId,

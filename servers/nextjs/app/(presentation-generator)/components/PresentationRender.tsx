@@ -18,6 +18,7 @@ const SlideScale = ({
   presentationLayout,
   renderIndex,
   showBlankPromptOverlay = false,
+  onBlankPromptOverlayDismiss,
   showTemplatePromptOverlay = false,
   onTemplatePromptOverlayDismiss,
 }: {
@@ -32,6 +33,7 @@ const SlideScale = ({
   presentationLayout?: unknown;
   renderIndex?: number;
   showBlankPromptOverlay?: boolean;
+  onBlankPromptOverlayDismiss?: () => void;
   showTemplatePromptOverlay?: boolean;
   onTemplatePromptOverlayDismiss?: () => void;
 }) => {
@@ -124,6 +126,7 @@ const SlideScale = ({
               presentationLayout={presentationLayout}
               renderIndex={renderIndex}
               showBlankPromptOverlay={showBlankPromptOverlay}
+              onBlankPromptOverlayDismiss={onBlankPromptOverlayDismiss}
               showTemplatePromptOverlay={showTemplatePromptOverlay}
               onTemplatePromptOverlayDismiss={onTemplatePromptOverlayDismiss}
             />

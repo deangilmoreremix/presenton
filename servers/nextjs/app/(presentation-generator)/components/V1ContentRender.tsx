@@ -155,6 +155,7 @@ export const V1ContentRender = ({
     fonts,
     renderIndex,
     showBlankPromptOverlay = false,
+    onBlankPromptOverlayDismiss,
     showTemplatePromptOverlay = false,
     onTemplatePromptOverlayDismiss,
 }: {
@@ -164,6 +165,7 @@ export const V1ContentRender = ({
     fonts?: unknown,
     renderIndex?: number,
     showBlankPromptOverlay?: boolean,
+    onBlankPromptOverlayDismiss?: () => void,
     showTemplatePromptOverlay?: boolean,
     onTemplatePromptOverlayDismiss?: () => void,
     enableEditMode?: boolean,
@@ -266,7 +268,7 @@ export const V1ContentRender = ({
                             showLayoutPreview={!isBlankSlide}
                             onDismiss={
                                 isBlankSlide
-                                    ? undefined
+                                    ? onBlankPromptOverlayDismiss
                                     : onTemplatePromptOverlayDismiss
                             }
                         />
