@@ -850,6 +850,13 @@ async def upload_fonts_and_preview_handler(
         await asyncio.to_thread(_write_bytes_to_path, pptx_path, pptx_content)
         await asyncio.to_thread(_validate_pptx_package, pptx_path)
         logger.info(f"Saved PPTX file to {pptx_path}")
+        pptx_path = await asyncio.to_thread(
+            _trim_pptx_to_max_slides,
+            pptx_path,
+            slide_cap,
+            temp_dir,
+            logger,
+        )
         variants_by_normalized_name = await asyncio.to_thread(
             _font_variants_by_normalized_name, pptx_path
         )
@@ -880,13 +887,6 @@ async def upload_fonts_and_preview_handler(
         )
         slide_image_paths: List[str] = []
         if get_slide_images:
-            modified_pptx_path = await asyncio.to_thread(
-                _trim_pptx_to_max_slides,
-                modified_pptx_path,
-                slide_cap,
-                temp_dir,
-                logger,
-            )
             slide_image_paths = await create_slide_previews(
                 modified_pptx_path=modified_pptx_path,
                 temp_dir=temp_dir,

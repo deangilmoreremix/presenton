@@ -9,7 +9,18 @@ from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 import uuid
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    Response,
+    UploadFile,
+)
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -25,6 +36,10 @@ from sqlmodel import select
 from models.sql.template_v2 import TemplateV2
 from services.database import get_async_session
 from services.export_task_service import EXPORT_TASK_SERVICE
+from templates.preview import (
+    FontsUploadAndSlidesPreviewResponse,
+    upload_fonts_and_slides_preview_handler,
+)
 from templates.v2.generation import (
     MAX_PARALLEL_SLIDE_LAYOUTS,
     generate_slide_layout,
@@ -41,7 +56,8 @@ from utils.asset_directory_utils import resolve_app_path_to_filesystem
 from utils.file_utils import get_original_file_name
 
 
-TEMPLATES_V2_ROUTER = APIRouter(prefix="/templates", tags=["Templates V2"])
+TEMPLATES_ROUTER = APIRouter(prefix="/templates", tags=["Templates"])
+TEMPLATE_ASSETS_ROUTER = APIRouter(prefix="/template", tags=["Template Assets"])
 LOGGER = logging.getLogger(__name__)
 _TEMPLATE_LAYOUT_PATCH_LOCKS: dict[uuid.UUID, asyncio.Lock] = {}
 _TEMPLATE_LAYOUT_PATCH_LOCKS_GUARD = asyncio.Lock()
@@ -564,7 +580,7 @@ def _generate_indexed_slide_layouts(
     ]
 
 
-@TEMPLATES_V2_ROUTER.get("", response_model=TemplateV2ListResponse)
+@TEMPLATES_ROUTER.get("", response_model=TemplateV2ListResponse)
 async def list_templates_v2(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -607,7 +623,25 @@ async def list_templates_v2(
     )
 
 
-@TEMPLATES_V2_ROUTER.post(
+@TEMPLATE_ASSETS_ROUTER.post(
+    "/fonts-upload-and-slides-preview",
+    response_model=FontsUploadAndSlidesPreviewResponse,
+)
+async def upload_template_fonts_and_slides_preview(
+    pptx_file: UploadFile = File(..., description="PPTX file to preview"),
+    font_files: Optional[list[UploadFile]] = File(
+        default=None, description="Font files to upload"
+    ),
+    original_font_names: Optional[list[str]] = Form(default=None),
+):
+    return await upload_fonts_and_slides_preview_handler(
+        pptx_file=pptx_file,
+        font_files=font_files,
+        original_font_names=original_font_names,
+    )
+
+
+@TEMPLATES_ROUTER.post(
     "/init",
     status_code=201,
     response_model=uuid.UUID,
@@ -651,7 +685,7 @@ async def init_template_v2(
     return template.id
 
 
-@TEMPLATES_V2_ROUTER.post(
+@TEMPLATES_ROUTER.post(
     "",
     status_code=201,
     response_model=TemplateV2Response,
@@ -703,7 +737,7 @@ async def create_template_v2(
     return template
 
 
-@TEMPLATES_V2_ROUTER.post(
+@TEMPLATES_ROUTER.post(
     "/layouts/create",
     response_model=CreateTemplateV2LayoutsResponse,
 )
@@ -786,7 +820,7 @@ async def create_template_v2_slide_layouts(
     return CreateTemplateV2LayoutsResponse(layouts=created_layouts)
 
 
-@TEMPLATES_V2_ROUTER.post(
+@TEMPLATES_ROUTER.post(
     "/generate-blocks",
     response_model=TemplateV2Response,
 )
@@ -835,7 +869,7 @@ async def generate_template_v2_blocks(
     return template
 
 
-@TEMPLATES_V2_ROUTER.patch(
+@TEMPLATES_ROUTER.patch(
     "/{template_id}/layouts",
     response_model=TemplateV2Response,
 )
@@ -883,7 +917,7 @@ async def patch_template_v2_slide_layout(
         return template
 
 
-@TEMPLATES_V2_ROUTER.get("/{template_id}", response_model=TemplateV2Response)
+@TEMPLATES_ROUTER.get("/{template_id}", response_model=TemplateV2Response)
 async def get_template_v2(
     template_id: uuid.UUID = Path(...),
     sql_session: AsyncSession = Depends(get_async_session),
@@ -894,7 +928,7 @@ async def get_template_v2(
     return template
 
 
-@TEMPLATES_V2_ROUTER.delete("/{template_id}", status_code=204)
+@TEMPLATES_ROUTER.delete("/{template_id}", status_code=204)
 async def delete_template_v2(
     template_id: uuid.UUID = Path(...),
     sql_session: AsyncSession = Depends(get_async_session),

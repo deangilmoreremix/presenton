@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import HTTPException
 
-from api.v2.templates.router import (
+from api.v1.ppt.endpoints.templates import (
     CreateTemplateV2LayoutsRequest,
     CreateTemplateV2Request,
     GenerateTemplateV2BlocksRequest,
@@ -145,19 +145,19 @@ def test_create_template_v2_converts_generates_and_persists(tmp_path, fake_async
     pptx_path = tmp_path / "quarterly-review.pptx"
     pptx_path.write_bytes(b"pptx")
     with patch(
-        "api.v2.templates.router.resolve_app_path_to_filesystem",
+        "api.v1.ppt.endpoints.templates.resolve_app_path_to_filesystem",
         return_value=str(pptx_path),
     ), patch(
-        "api.v2.templates.router.EXPORT_TASK_SERVICE.convert_pptx_to_json",
+        "api.v1.ppt.endpoints.templates.EXPORT_TASK_SERVICE.convert_pptx_to_json",
         new=AsyncMock(return_value=PptxToJsonDocument(**RAW_LAYOUTS)),
     ) as convert_mock, patch(
-        "api.v2.templates.router.generate_template",
+        "api.v1.ppt.endpoints.templates.generate_template",
         new=Mock(return_value=GENERATED_LAYOUTS),
     ) as generate_mock, patch(
-        "api.v2.templates.router.merge_similar_components",
+        "api.v1.ppt.endpoints.templates.merge_similar_components",
         new=Mock(return_value=MERGED_COMPONENTS),
     ) as merge_mock, patch(
-        "api.v2.templates.router.random.randint",
+        "api.v1.ppt.endpoints.templates.random.randint",
         return_value=4801,
     ) as randint_mock:
         template = asyncio.run(
@@ -220,19 +220,19 @@ def test_create_template_v2_caps_raw_layouts_to_preview_images(tmp_path, fake_as
         ]
     }
     with patch(
-        "api.v2.templates.router.resolve_app_path_to_filesystem",
+        "api.v1.ppt.endpoints.templates.resolve_app_path_to_filesystem",
         return_value=str(pptx_path),
     ), patch(
-        "api.v2.templates.router.EXPORT_TASK_SERVICE.convert_pptx_to_json",
+        "api.v1.ppt.endpoints.templates.EXPORT_TASK_SERVICE.convert_pptx_to_json",
         new=AsyncMock(return_value=PptxToJsonDocument(**raw_layouts)),
     ), patch(
-        "api.v2.templates.router.generate_template",
+        "api.v1.ppt.endpoints.templates.generate_template",
         new=Mock(return_value=GENERATED_LAYOUTS),
     ) as generate_mock, patch(
-        "api.v2.templates.router.merge_similar_components",
+        "api.v1.ppt.endpoints.templates.merge_similar_components",
         new=Mock(return_value=MERGED_COMPONENTS),
     ), patch(
-        "api.v2.templates.router.random.randint",
+        "api.v1.ppt.endpoints.templates.random.randint",
         return_value=4801,
     ):
         template = asyncio.run(
@@ -258,19 +258,19 @@ def test_create_template_v2_persists_when_component_dedup_fails(
     pptx_path = tmp_path / "dedup-fails.pptx"
     pptx_path.write_bytes(b"pptx")
     with patch(
-        "api.v2.templates.router.resolve_app_path_to_filesystem",
+        "api.v1.ppt.endpoints.templates.resolve_app_path_to_filesystem",
         return_value=str(pptx_path),
     ), patch(
-        "api.v2.templates.router.EXPORT_TASK_SERVICE.convert_pptx_to_json",
+        "api.v1.ppt.endpoints.templates.EXPORT_TASK_SERVICE.convert_pptx_to_json",
         new=AsyncMock(return_value=PptxToJsonDocument(**RAW_LAYOUTS)),
     ), patch(
-        "api.v2.templates.router.generate_template",
+        "api.v1.ppt.endpoints.templates.generate_template",
         new=Mock(return_value=GENERATED_LAYOUTS),
     ), patch(
-        "api.v2.templates.router.merge_similar_components",
+        "api.v1.ppt.endpoints.templates.merge_similar_components",
         new=Mock(side_effect=ValueError("bad clusters")),
     ), patch(
-        "api.v2.templates.router.random.randint",
+        "api.v1.ppt.endpoints.templates.random.randint",
         return_value=4801,
     ):
         template = asyncio.run(
@@ -308,10 +308,10 @@ def test_init_template_v2_persists_assets_without_layouts(tmp_path, fake_async_s
     pptx_path = tmp_path / "quarterly-review.pptx"
     pptx_path.write_bytes(b"pptx")
     with patch(
-        "api.v2.templates.router.resolve_app_path_to_filesystem",
+        "api.v1.ppt.endpoints.templates.resolve_app_path_to_filesystem",
         return_value=str(pptx_path),
     ), patch(
-        "api.v2.templates.router.EXPORT_TASK_SERVICE.convert_pptx_to_json",
+        "api.v1.ppt.endpoints.templates.EXPORT_TASK_SERVICE.convert_pptx_to_json",
         new=AsyncMock(return_value=PptxToJsonDocument(**RAW_LAYOUTS)),
     ) as convert_mock:
         template_id = asyncio.run(
@@ -378,10 +378,10 @@ def test_create_template_v2_slide_layouts_returns_generated_layout(
     )
 
     with patch(
-        "api.v2.templates.router.generate_slide_layout",
+        "api.v1.ppt.endpoints.templates.generate_slide_layout",
         new=Mock(return_value=GENERATED_LAYOUTS.layouts[0]),
     ) as generate_mock, patch(
-        "api.v2.templates.router.random.randint",
+        "api.v1.ppt.endpoints.templates.random.randint",
         return_value=4801,
     ):
         response = asyncio.run(
@@ -483,7 +483,7 @@ def test_create_template_v2_slide_layouts_preserves_image_url_indexes(
     )
 
     with patch(
-        "api.v2.templates.router.generate_slide_layout",
+        "api.v1.ppt.endpoints.templates.generate_slide_layout",
         new=Mock(return_value=GENERATED_LAYOUTS.layouts[0]),
     ) as generate_mock:
         asyncio.run(
@@ -530,7 +530,7 @@ def test_generate_template_v2_blocks_clusters_and_persists(fake_async_session):
     fake_async_session._get_results[template_id] = template
 
     with patch(
-        "api.v2.templates.router.merge_similar_components",
+        "api.v1.ppt.endpoints.templates.merge_similar_components",
         new=Mock(return_value=MERGED_COMPONENTS),
     ) as merge_mock:
         response = asyncio.run(

@@ -24,10 +24,10 @@ from services.chat import ChatTurnResult, PresentationChatService
 from services.database import get_async_session
 
 
-CHAT_V2_ROUTER = APIRouter(prefix="/chat", tags=["Chat V2"])
+CHAT_ROUTER = APIRouter(prefix="/chat", tags=["Chat"])
 
 
-@CHAT_V2_ROUTER.get("/conversations", response_model=list[ChatConversationListItem])
+@CHAT_ROUTER.get("/conversations", response_model=list[ChatConversationListItem])
 async def list_chat_conversations(
     presentation_id: uuid.UUID = Query(..., description="Presentation id"),
     sql_session: AsyncSession = Depends(get_async_session),
@@ -45,7 +45,7 @@ async def list_chat_conversations(
     ]
 
 
-@CHAT_V2_ROUTER.get("/history", response_model=ChatHistoryResponse)
+@CHAT_ROUTER.get("/history", response_model=ChatHistoryResponse)
 async def get_chat_history(
     presentation_id: uuid.UUID = Query(..., description="Presentation id"),
     conversation_id: uuid.UUID = Query(..., description="Conversation thread id"),
@@ -72,7 +72,7 @@ async def get_chat_history(
     )
 
 
-@CHAT_V2_ROUTER.post("/message", response_model=ChatMessageResponse)
+@CHAT_ROUTER.post("/message", response_model=ChatMessageResponse)
 async def chat_message(
     payload: ChatMessageRequest,
     sql_session: AsyncSession = Depends(get_async_session),
@@ -90,7 +90,7 @@ async def chat_message(
     )
 
 
-@CHAT_V2_ROUTER.post("/message/stream")
+@CHAT_ROUTER.post("/message/stream")
 async def chat_message_stream(
     payload: ChatMessageRequest,
     sql_session: AsyncSession = Depends(get_async_session),

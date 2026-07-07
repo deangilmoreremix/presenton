@@ -194,6 +194,112 @@ def test_template_preview_slide_cap_and_pptx_trim(tmp_path):
         assert "/ppt/slides/slide51.xml" not in content_types
 
 
+@pytest.mark.anyio
+async def test_upload_fonts_and_preview_uses_trimmed_pptx_for_processing(
+    monkeypatch,
+    tmp_path,
+):
+    captured = {}
+    slide_path = tmp_path / "slide_1.png"
+    slide_path.write_bytes(b"png")
+
+    def assert_slide_count(path, expected_count):
+        with zipfile.ZipFile(path) as archive:
+            presentation_xml = ET.fromstring(archive.read("ppt/presentation.xml"))
+            slide_ids = presentation_xml.findall(
+                ".//p:sldId", fonts_and_slides_preview.PPT_NS
+            )
+            assert len(slide_ids) == expected_count
+            assert "ppt/slides/slide50.xml" in archive.namelist()
+            assert "ppt/slides/slide51.xml" not in archive.namelist()
+
+    def fake_font_variants(path):
+        captured["font_variant_pptx_path"] = path
+        assert_slide_count(path, 50)
+        return {}
+
+    async def fake_upload_fonts_and_fix_fonts_in_pptx(
+        pptx_path,
+        temp_dir,
+        original_filename,
+        font_files,
+        original_font_names,
+        logger,
+        session_dir,
+        upload_fonts=True,
+    ):
+        del temp_dir, original_filename, font_files, original_font_names, logger
+        del session_dir, upload_fonts
+        captured["font_processing_pptx_path"] = pptx_path
+        assert_slide_count(pptx_path, 50)
+        return set(), {}, {}, [], pptx_path, [], [], {}, [], {}
+
+    async def fake_create_slide_previews(
+        modified_pptx_path,
+        temp_dir,
+        font_paths_for_install,
+        font_mapping,
+        explicit_font_aliases,
+        protected_font_names,
+        max_slides,
+        logger,
+        session_dir,
+    ):
+        del temp_dir, font_paths_for_install, font_mapping, explicit_font_aliases
+        del protected_font_names, logger, session_dir
+        captured["preview_pptx_path"] = modified_pptx_path
+        assert max_slides == 50
+        assert_slide_count(modified_pptx_path, 50)
+        return [str(slide_path)]
+
+    async def fake_upload_presentations(modified_pptx_path, logger, session_dir):
+        del logger, session_dir
+        captured["uploaded_pptx_path"] = modified_pptx_path
+        assert_slide_count(modified_pptx_path, 50)
+        return modified_pptx_path
+
+    monkeypatch.setattr(
+        fonts_and_slides_preview,
+        "_font_variants_by_normalized_name",
+        fake_font_variants,
+    )
+    monkeypatch.setattr(
+        fonts_and_slides_preview,
+        "upload_fonts_and_fix_fonts_in_pptx",
+        fake_upload_fonts_and_fix_fonts_in_pptx,
+    )
+    monkeypatch.setattr(
+        fonts_and_slides_preview,
+        "create_slide_previews",
+        fake_create_slide_previews,
+    )
+    monkeypatch.setattr(
+        fonts_and_slides_preview,
+        "upload_presentations",
+        fake_upload_presentations,
+    )
+    monkeypatch.setattr(
+        fonts_and_slides_preview,
+        "_public_urls_for_local_paths",
+        lambda paths: list(paths),
+    )
+
+    response = await fonts_and_slides_preview.upload_fonts_and_preview_handler(
+        pptx_file=DummyUploadFile("deck.pptx", content=_fake_pptx_bytes(52)),
+        font_files=[],
+        original_font_names=[],
+        temp_dir=str(tmp_path),
+    )
+
+    assert captured["font_variant_pptx_path"].endswith("presentation-first-50.pptx")
+    assert captured["font_processing_pptx_path"] == captured["font_variant_pptx_path"]
+    assert captured["preview_pptx_path"] == captured["font_variant_pptx_path"]
+    assert captured["uploaded_pptx_path"] == captured["font_variant_pptx_path"]
+    assert response.pptx_url == captured["font_variant_pptx_path"]
+    assert response.modified_pptx_url == captured["font_variant_pptx_path"]
+    assert response.slide_image_urls == [str(slide_path)]
+
+
 def test_build_google_fonts_stylesheet_url_sorts_and_deduplicates_weights():
     assert (
         pptx_font_utils.build_google_fonts_stylesheet_url("DM Sans", weights=[700, 400, 700])
