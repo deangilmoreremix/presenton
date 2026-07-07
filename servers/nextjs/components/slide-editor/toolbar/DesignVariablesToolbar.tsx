@@ -30,13 +30,13 @@ export function DesignVariablesToolbar({
   return (
     <FloatingToolbar
       anchorBox={
-	        anchorBox ?? {
-	          x: (element.position?.x ?? 0) * scale,
-	          y: (element.position?.y ?? 0) * scale,
-	          width: (element.size?.width ?? 1) * scale,
-	          height: (element.size?.height ?? 1) * scale,
-	        }
-	      }
+        anchorBox ?? {
+          x: (element.position?.x ?? 0) * scale,
+          y: (element.position?.y ?? 0) * scale,
+          width: (element.size?.width ?? 1) * scale,
+          height: (element.size?.height ?? 1) * scale,
+        }
+      }
       fallbackWidth={160}
       style={inlineStyles.toolbar}
     >

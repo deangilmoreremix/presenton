@@ -1555,16 +1555,16 @@ function TemplateV2KonvaSlideComponent({
         selectedBox &&
         toolbarElement &&
         !isTemplateV2LayoutElement(selectedElement) &&
-	        !isRawIconElement(selectedElement) &&
-	        !(editingTableCell && readString(selectedElement.type) === "table") ? (
-	        <ElementToolbar
-	          element={toolbarElement}
-	          index={selection.componentIndex}
-	          anchorBox={selectedBox}
-	          path={keyForSelection(selection)}
-	          scale={1}
-	          selectedTableCell={selectedTableCell}
-	          templateFonts={templateFonts}
+        !isRawIconElement(selectedElement) &&
+        !(editingTableCell && readString(selectedElement.type) === "table") ? (
+        <ElementToolbar
+          element={toolbarElement}
+          index={selection.componentIndex}
+          anchorBox={selectedBox}
+          path={keyForSelection(selection)}
+          scale={1}
+          selectedTableCell={selectedTableCell}
+          templateFonts={templateFonts}
           textSelectionRange={
             inlineEdit &&
               (inlineEdit.kind === "text" || inlineEdit.kind === "text-list") &&
