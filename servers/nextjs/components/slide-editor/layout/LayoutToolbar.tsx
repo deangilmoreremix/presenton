@@ -37,6 +37,11 @@ import {
   TemplateV2LineToolbarControls,
   type TemplateV2LineToolbarElement,
 } from "@/components/slide-editor/layout/LineToolbarControls";
+import {
+  numericInputMode,
+  preventInvalidNumberInput,
+  sanitizeNumericInput,
+} from "@/components/slide-editor/toolbar/numericInput";
 
 type RawRecord = Record<string, unknown>;
 type LayoutElementType =
@@ -165,6 +170,7 @@ function GapControl({
   onChange: (changes: RawRecord) => void;
 }) {
   const value = readGapValue(element);
+  const numericInputOptions = { allowDecimal: true, min: 0 };
   const commit = (nextValue: number) => {
     const gap = Math.max(0, Math.round(nextValue * 10) / 10);
     onChange({ gap, column_gap: gap, row_gap: gap });
@@ -175,13 +181,23 @@ function GapControl({
       <span>Gap</span>
       <span className="flex gap-2  items-center rounded-md bg-white">
         <input
-          type="number"
-          min={0}
-          step={1}
+          type="text"
+          inputMode={numericInputMode(numericInputOptions)}
           aria-label="Gap"
           value={formatGapValue(value)}
+          onKeyDown={(event) => {
+            if (preventInvalidNumberInput(event, numericInputOptions)) return;
+            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              event.preventDefault();
+              commit(value + (event.key === "ArrowUp" ? 1 : -1));
+            }
+          }}
           onChange={(event) => {
-            const nextValue = Number(event.target.value);
+            const sanitizedValue = sanitizeNumericInput(
+              event.target.value,
+              numericInputOptions,
+            );
+            const nextValue = Number(sanitizedValue);
             if (Number.isFinite(nextValue)) commit(nextValue);
           }}
           className="w-[30px] border-0 bg-transparent p-0 text-center text-[12px] font-medium font-manrope text-[#191919] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"

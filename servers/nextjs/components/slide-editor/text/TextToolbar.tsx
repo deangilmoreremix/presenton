@@ -47,6 +47,11 @@ import {
 } from "@/components/slide-editor/text/text-runs";
 import { DeferredColorInput } from "@/components/slide-editor/toolbar/DeferredColorInput";
 import { inlineStyles } from "@/components/slide-editor/toolbar/inlineStyles";
+import {
+  numericInputMode,
+  preventInvalidNumberInput,
+  sanitizeNumericInput,
+} from "@/components/slide-editor/toolbar/numericInput";
 
 const EMPTY_TEMPLATE_FONTS: TemplateFontOption[] = [];
 
@@ -201,6 +206,10 @@ export function TextToolbar({
   const stepFontSize = (delta: number) => {
     const currentSize = Number.isFinite(font.size) ? font.size : 12;
     commitFontSize(currentSize + delta);
+  };
+  const fontSizeInputOptions = {
+    allowDecimal: true,
+    min: MIN_FONT_SIZE,
   };
 
   const updateAlignment = (
@@ -363,10 +372,15 @@ export function TextToolbar({
             aria-label="Font size"
             title="Font size"
             type="text"
-            inputMode="decimal"
+            inputMode={numericInputMode(fontSizeInputOptions)}
             value={formatToolbarFontSize(font.size)}
-            onChange={(event) => updateFontSize(event.target.value)}
+            onChange={(event) =>
+              updateFontSize(
+                sanitizeNumericInput(event.target.value, fontSizeInputOptions),
+              )
+            }
             onKeyDown={(event) => {
+              if (preventInvalidNumberInput(event, fontSizeInputOptions)) return;
               if (event.key === "ArrowUp") {
                 event.preventDefault();
                 stepFontSize(1);

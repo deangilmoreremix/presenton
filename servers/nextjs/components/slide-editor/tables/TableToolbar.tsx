@@ -177,12 +177,12 @@ export function TableToolbar({
       rows: element.rows.map((row, rowIndex) =>
         rowIndex === activeRow - 1
           ? Array.from(
-              { length: columnCount },
-              (_, colIndex) =>
-                colIndex === activeColumn
-                  ? patchCell(row[colIndex])
-                  : row[colIndex] ?? { runs: [] },
-            )
+            { length: columnCount },
+            (_, colIndex) =>
+              colIndex === activeColumn
+                ? patchCell(row[colIndex])
+                : row[colIndex] ?? { runs: [] },
+          )
           : row,
       ),
     });
@@ -200,7 +200,7 @@ export function TableToolbar({
     const activeIndex = TABLE_CELL_ALIGNMENTS.indexOf(activeCellAlignment);
     const nextAlignment =
       TABLE_CELL_ALIGNMENTS[
-        (activeIndex + 1) % TABLE_CELL_ALIGNMENTS.length
+      (activeIndex + 1) % TABLE_CELL_ALIGNMENTS.length
       ] ?? "left";
     updateActiveCell((cell) => ({
       ...(cell ?? { runs: [] }),
@@ -484,7 +484,7 @@ function nextAlignmentLabel(alignment: TableCellAlignment) {
   const activeIndex = TABLE_CELL_ALIGNMENTS.indexOf(alignment);
   return (
     TABLE_CELL_ALIGNMENTS[
-      (activeIndex + 1) % TABLE_CELL_ALIGNMENTS.length
+    (activeIndex + 1) % TABLE_CELL_ALIGNMENTS.length
     ] ?? "left"
   );
 }
@@ -539,7 +539,11 @@ const dividerStyle: CSSProperties = {
 const colorDotStyle: CSSProperties = {
   width: 20,
   height: 20,
+  boxSizing: "border-box",
   borderRadius: 999,
+  border: "1px solid rgba(15, 23, 42, 0.26)",
+  boxShadow:
+    "inset 0 0 0 1px rgba(255, 255, 255, 0.68), 0 1px 3px rgba(15, 23, 42, 0.22)",
   display: "block",
 };
 

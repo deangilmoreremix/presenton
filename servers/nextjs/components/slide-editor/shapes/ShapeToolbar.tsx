@@ -16,6 +16,11 @@ import { EDITOR_STAGE_HEIGHT, EDITOR_STAGE_WIDTH } from "@/components/slide-edit
 import type { ShapeSlideElement } from "@/components/slide-editor/state/state";
 import { DeferredColorInput } from "@/components/slide-editor/toolbar/DeferredColorInput";
 import { OpacitySwatchIcon } from "@/components/slide-editor/toolbar/OpacitySwatchIcon";
+import {
+  numericInputMode,
+  preventInvalidNumberInput,
+  sanitizeNumericInput,
+} from "@/components/slide-editor/toolbar/numericInput";
 
 type ShapePanel =
   | "type"
@@ -501,6 +506,10 @@ export function NumberField({
   value: number;
 }) {
   const [draft, setDraft] = useState(() => formatNumber(value));
+  const numericInputOptions = {
+    allowDecimal: true,
+    min,
+  };
 
   useEffect(() => {
     setDraft(formatNumber(value));
@@ -524,11 +533,16 @@ export function NumberField({
         <input
           aria-label={label}
           type="text"
-          inputMode="decimal"
+          inputMode={numericInputMode(numericInputOptions)}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) =>
+            setDraft(
+              sanitizeNumericInput(event.target.value, numericInputOptions),
+            )
+          }
           onBlur={commit}
           onKeyDown={(event) => {
+            if (preventInvalidNumberInput(event, numericInputOptions)) return;
             if (event.key === "Enter") {
               event.preventDefault();
               commit();
