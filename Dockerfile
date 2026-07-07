@@ -80,7 +80,8 @@ WORKDIR /app
 
 ARG INSTALL_TESSERACT=true
 ARG TARGETARCH
-ARG CHROME_FOR_TESTING_VERSION=127.0.6533.88
+ARG CHROMIUM_VERSION=149.0.7827.196-1~deb13u1
+ARG CHROMIUM_SNAPSHOT=20260625T180000Z
 
 # LiteParse uses Node + @llamaindex/liteparse (same runner as Electron); OCR uses Tesseract.
 ENV APP_DATA_DIRECTORY=/app_data \
@@ -94,13 +95,12 @@ ENV APP_DATA_DIRECTORY=/app_data \
     PATH="/opt/venv/bin:${PATH}" \
     NODE_ENV=production \
     START_OLLAMA=false \
-    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/google-chrome-for-testing \
-    CHROME_FOR_TESTING_VERSION=${CHROME_FOR_TESTING_VERSION}
-
-COPY scripts/install-chrome-for-testing.sh /tmp/install-chrome-for-testing.sh
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN set -eux; \
-    packages="ca-certificates curl unzip nginx fontconfig imagemagick zstd \
+    printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99snapshot; \
+    printf 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/%s trixie-security main\n' "$CHROMIUM_SNAPSHOT" > /etc/apt/sources.list.d/chromium-snapshot.list; \
+    packages="ca-certificates curl nginx fontconfig imagemagick zstd \
     fonts-liberation fonts-noto-core xdg-utils \
     libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 \
     libcairo2 libcups2t64 libdbus-1-3 libdrm2 libexpat1 libgbm1 \
@@ -109,11 +109,14 @@ RUN set -eux; \
     libxkbcommon0 libxrandr2 libxshmfence1 libxss1 libxtst6"; \
     if [ "$INSTALL_TESSERACT" = "true" ]; then packages="$packages tesseract-ocr tesseract-ocr-eng"; fi; \
     apt-get update; \
-    apt-get install -y --no-install-recommends $packages; \
+    apt-get install -y --no-install-recommends --allow-downgrades \
+    $packages \
+    chromium="${CHROMIUM_VERSION}" \
+    chromium-common="${CHROMIUM_VERSION}" \
+    chromium-driver="${CHROMIUM_VERSION}"; \
+    apt-mark hold chromium chromium-common chromium-driver; \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -; \
     apt-get install -y --no-install-recommends nodejs; \
-    sh /tmp/install-chrome-for-testing.sh "${TARGETARCH:-}"; \
-    rm -f /tmp/install-chrome-for-testing.sh; \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /app/scripts /app/servers/fastapi /app/servers/nextjs

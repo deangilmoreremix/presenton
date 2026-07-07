@@ -4,7 +4,8 @@ FROM python:3.11-slim-trixie
 WORKDIR /app
 
 ARG TARGETARCH
-ARG CHROME_FOR_TESTING_VERSION=127.0.6533.88
+ARG CHROMIUM_VERSION=149.0.7827.196-1~deb13u1
+ARG CHROMIUM_SNAPSHOT=20260625T180000Z
 
 # LiteParse (Node + @llamaindex/liteparse) for document extraction; OCR via Tesseract.
 ENV APP_DATA_DIRECTORY=/app_data \
@@ -19,12 +20,11 @@ ENV APP_DATA_DIRECTORY=/app_data \
     PRESENTON_APP_ROOT=/app \
     HF_HOME=/root/.cache/huggingface \
     PRESENTON_FASTEMBED_ICON_CACHE_DIR=/root/.cache/presenton/fastembed-icons \
-    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/google-chrome-for-testing \
-    CHROME_FOR_TESTING_VERSION=${CHROME_FOR_TESTING_VERSION}
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-COPY scripts/install-chrome-for-testing.sh /tmp/install-chrome-for-testing.sh
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99snapshot \
+    && printf 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/%s trixie-security main\n' "$CHROMIUM_SNAPSHOT" > /etc/apt/sources.list.d/chromium-snapshot.list \
+    && apt-get update && apt-get install -y --no-install-recommends --allow-downgrades \
     ca-certificates curl unzip \
     nginx fontconfig imagemagick zstd \
     fonts-liberation xdg-utils \
@@ -34,9 +34,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 \
     libxkbcommon0 libxrandr2 libxshmfence1 libxss1 libxtst6 \
     tesseract-ocr tesseract-ocr-eng \
+    chromium="${CHROMIUM_VERSION}" \
+    chromium-common="${CHROMIUM_VERSION}" \
+    chromium-driver="${CHROMIUM_VERSION}" \
+    && apt-mark hold chromium chromium-common chromium-driver \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && sh /tmp/install-chrome-for-testing.sh "${TARGETARCH:-}" \
-    && rm -f /tmp/install-chrome-for-testing.sh \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
