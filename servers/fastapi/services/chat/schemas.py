@@ -390,7 +390,10 @@ class AddElementInput(OpenAIStrictSchemaModel):
         ...,
         min_length=2,
         max_length=120000,
-        description="A JSON-serialized rendered UI element object.",
+        description=(
+            "A JSON-serialized rendered UI element object. Use 1280 x 720 stage "
+            "pixels and keep new free-component geometry fully inside that window."
+        ),
     )
     component_id: str | None = Field(
         ...,
@@ -420,7 +423,8 @@ class AddSlideComponentInput(OpenAIStrictSchemaModel):
             "A JSON-serialized component object to add to the slide: "
             '{"id": "...", "description": "...", "position": {"x": 128, "y": 120}, '
             '"size": {"width": 1024, "height": 410}, "elements": [ ... ]}. '
-            "Use 1280 x 720 stage pixels, not normalized 0-1 values. "
+            "Use 1280 x 720 stage pixels, not normalized 0-1 values, and keep "
+            "position/size fully inside that visible window. "
             "Copy the shape of an existing component from getSlideAtIndex(includeFullContent=true)."
         ),
     )

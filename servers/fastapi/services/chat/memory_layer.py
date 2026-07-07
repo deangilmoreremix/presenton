@@ -35,6 +35,8 @@ from utils.process_slides import (
 
 LOGGER = logging.getLogger(__name__)
 MAX_SCHEMA_ERRORS = 10
+SLIDE_STAGE_WIDTH = 1280.0
+SLIDE_STAGE_HEIGHT = 720.0
 # Keep URL runtime fields during validation because many slide schemas require them.
 # Speaker note is handled separately and should not affect JSON-schema checks.
 RUNTIME_CONTENT_FIELDS = {"__speaker_note__"}
@@ -1160,6 +1162,7 @@ class PresentationChatMemoryLayer:
             component = replacement
             self._sync_ui_text_fields(component)
             self._normalize_added_visual_block(component)
+            self._fit_component_to_stage(component)
             updated = True
         if self._update_ui_box(component, position=position, size=size):
             updated = True
@@ -1589,6 +1592,7 @@ class PresentationChatMemoryLayer:
         # actually visible regardless of which field the model populated.
         self._sync_ui_text_fields(new_component)
         self._normalize_added_visual_block(new_component)
+        self._fit_component_to_stage(new_component)
 
         position = (
             len(components)
@@ -1673,6 +1677,9 @@ class PresentationChatMemoryLayer:
                 "elements": [new_element],
             }
             new_element["position"] = {"x": 0, "y": 0}
+            self._fit_component_to_stage(component)
+            if isinstance(component.get("size"), dict):
+                new_element["size"] = copy.deepcopy(component["size"])
             component_position = len(components) if insert_index is None else min(max(0, insert_index), len(components))
             components.insert(component_position, component)
             component_id = str(component["id"])
@@ -1768,6 +1775,26 @@ class PresentationChatMemoryLayer:
                     "width": float(component_size["width"]),
                     "height": float(component_size["height"]),
                 }
+
+    @staticmethod
+    def _fit_component_to_stage(component: dict[str, Any]) -> None:
+        position = component.get("position")
+        size = component.get("size")
+        if not isinstance(position, dict) or not isinstance(size, dict):
+            return
+        x = position.get("x")
+        y = position.get("y")
+        width = size.get("width")
+        height = size.get("height")
+        if not all(isinstance(value, (int, float)) for value in (x, y, width, height)):
+            return
+        width = min(max(1.0, float(width)), SLIDE_STAGE_WIDTH)
+        height = min(max(1.0, float(height)), SLIDE_STAGE_HEIGHT)
+        component["size"] = {"width": width, "height": height}
+        component["position"] = {
+            "x": min(max(0.0, float(x)), SLIDE_STAGE_WIDTH - width),
+            "y": min(max(0.0, float(y)), SLIDE_STAGE_HEIGHT - height),
+        }
 
     @staticmethod
     def _insert_visual_kind(component: dict[str, Any]) -> str | None:

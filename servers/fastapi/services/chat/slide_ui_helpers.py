@@ -50,7 +50,15 @@ def _ungrouped_components_from_component(
     for element in elements:
         if not isinstance(element, dict):
             continue
-        box = _required_box(element, label="element")
+        box = _box_or_default(
+            element,
+            {
+                "x": 0.0,
+                "y": 0.0,
+                "width": component_box["width"],
+                "height": component_box["height"],
+            },
+        )
         entries.extend(
             _ungroup_element_tree(
                 element,
@@ -86,27 +94,16 @@ def _ungroup_element_tree(
     element: dict[str, Any],
     box: dict[str, float],
 ) -> list[dict[str, Any]]:
-    children = element.get("children")
-    if not isinstance(children, list):
-        if any(
-            isinstance(element.get(key), (dict, list))
-            for key in ("child", "elements", "item")
-        ):
-            raise ValueError(
-                "Component contains layout-managed children that cannot be safely ungrouped."
-            )
+    children = _child_items(element)
+    if not children:
         return [{"element": element, "box": box}]
 
-    if element.get("type") != "group":
-        raise ValueError(
-            "Component contains layout-managed children that cannot be safely ungrouped."
-        )
-
-    entries: list[dict[str, Any]] = []
-    for child in children:
-        if not isinstance(child, dict):
-            continue
-        child_box = _required_box(child, label="group child")
+    entries = (
+        [{"element": _strip_element_children(element), "box": box}]
+        if _element_has_visible_box_style(element)
+        else []
+    )
+    for child, child_box in _layout_child_boxes(element, children, box):
         entries.extend(
             _ungroup_element_tree(
                 child,
@@ -121,19 +118,202 @@ def _ungroup_element_tree(
     return entries
 
 
+def _child_items(element: dict[str, Any]) -> list[dict[str, Any]]:
+    for key in ("children", "elements"):
+        value = element.get(key)
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+    child = element.get("child")
+    return [child] if isinstance(child, dict) else []
+
+
+def _layout_child_boxes(
+    parent: dict[str, Any],
+    children: list[dict[str, Any]],
+    parent_box: dict[str, float],
+) -> list[tuple[dict[str, Any], dict[str, float]]]:
+    parent_type = str(parent.get("type") or "")
+    if parent_type in {"flex", "list-view"}:
+        return _layout_flex_child_boxes(parent, children, parent_box)
+    if parent_type in {"grid", "grid-view"}:
+        return _layout_grid_child_boxes(parent, children, parent_box)
+
+    padding = _padding(parent.get("padding")) if parent_type == "container" else {}
+    content = {
+        "x": float(padding.get("left", 0.0)),
+        "y": float(padding.get("top", 0.0)),
+        "width": max(
+            1.0,
+            parent_box["width"]
+            - float(padding.get("left", 0.0))
+            - float(padding.get("right", 0.0)),
+        ),
+        "height": max(
+            1.0,
+            parent_box["height"]
+            - float(padding.get("top", 0.0))
+            - float(padding.get("bottom", 0.0)),
+        ),
+    }
+    return [
+        (
+            child,
+            _box_or_default(
+                child,
+                {
+                    "x": content["x"],
+                    "y": content["y"],
+                    "width": content["width"],
+                    "height": content["height"],
+                },
+            ),
+        )
+        for child in children
+    ]
+
+
+def _layout_flex_child_boxes(
+    parent: dict[str, Any],
+    children: list[dict[str, Any]],
+    parent_box: dict[str, float],
+) -> list[tuple[dict[str, Any], dict[str, float]]]:
+    padding = _padding(parent.get("padding"))
+    direction = "row" if parent.get("direction") == "row" else "column"
+    gap = _number(parent.get("gap")) or 0.0
+    content_x = padding["left"]
+    content_y = padding["top"]
+    content_w = max(1.0, parent_box["width"] - padding["left"] - padding["right"])
+    content_h = max(1.0, parent_box["height"] - padding["top"] - padding["bottom"])
+    count = max(1, len(children))
+    if direction == "row":
+        width = max(1.0, (content_w - gap * (count - 1)) / count)
+        return [
+            (
+                child,
+                _box_or_default(
+                    child,
+                    {
+                        "x": content_x + index * (width + gap),
+                        "y": content_y,
+                        "width": width,
+                        "height": content_h,
+                    },
+                ),
+            )
+            for index, child in enumerate(children)
+        ]
+    height = max(1.0, (content_h - gap * (count - 1)) / count)
+    return [
+        (
+            child,
+            _box_or_default(
+                child,
+                {
+                    "x": content_x,
+                    "y": content_y + index * (height + gap),
+                    "width": content_w,
+                    "height": height,
+                },
+            ),
+        )
+        for index, child in enumerate(children)
+    ]
+
+
+def _layout_grid_child_boxes(
+    parent: dict[str, Any],
+    children: list[dict[str, Any]],
+    parent_box: dict[str, float],
+) -> list[tuple[dict[str, Any], dict[str, float]]]:
+    padding = _padding(parent.get("padding"))
+    gap = _number(parent.get("gap")) or 0.0
+    column_count = _number(parent.get("columns"))
+    if column_count is None and isinstance(parent.get("columns"), list):
+        column_count = len(parent["columns"])
+    columns = max(1, int(column_count or 1))
+    rows = max(1, math.ceil(len(children) / columns))
+    content_w = max(1.0, parent_box["width"] - padding["left"] - padding["right"])
+    content_h = max(1.0, parent_box["height"] - padding["top"] - padding["bottom"])
+    cell_w = max(1.0, (content_w - gap * (columns - 1)) / columns)
+    cell_h = max(1.0, (content_h - gap * (rows - 1)) / rows)
+    return [
+        (
+            child,
+            _box_or_default(
+                child,
+                {
+                    "x": padding["left"] + (index % columns) * (cell_w + gap),
+                    "y": padding["top"] + (index // columns) * (cell_h + gap),
+                    "width": cell_w,
+                    "height": cell_h,
+                },
+            ),
+        )
+        for index, child in enumerate(children)
+    ]
+
+
+def _strip_element_children(element: dict[str, Any]) -> dict[str, Any]:
+    stripped = copy.deepcopy(element)
+    for key in ("child", "children", "elements", "item"):
+        stripped.pop(key, None)
+    return stripped
+
+
+def _element_has_visible_box_style(element: dict[str, Any]) -> bool:
+    if str(element.get("type") or "") not in {
+        "container",
+        "flex",
+        "grid",
+        "grid-view",
+        "group",
+        "list-view",
+        "rectangle",
+    }:
+        return False
+    fill = element.get("fill") if isinstance(element.get("fill"), dict) else {}
+    stroke = element.get("stroke") if isinstance(element.get("stroke"), dict) else {}
+    shadow = element.get("shadow") if isinstance(element.get("shadow"), dict) else {}
+    return bool(
+        fill.get("color")
+        or fill.get("opacity") is not None
+        or stroke.get("color")
+        or (_number(stroke.get("width")) or 0) > 0
+        or shadow.get("color")
+        or shadow.get("opacity") is not None
+        or element.get("border_radius") is not None
+        or element.get("borderRadius") is not None
+        or element.get("color")
+    )
+
+
 def _required_box(value: dict[str, Any], *, label: str) -> dict[str, float]:
+    box = _optional_box(value)
+    if box is None:
+        raise ValueError(f"Cannot safely ungroup {label} without position and size.")
+    return box
+
+
+def _box_or_default(
+    value: dict[str, Any],
+    default: dict[str, float],
+) -> dict[str, float]:
+    return _optional_box(value) or default
+
+
+def _optional_box(value: dict[str, Any]) -> dict[str, float] | None:
     position = value.get("position")
     size = value.get("size")
     if not isinstance(position, dict) or not isinstance(size, dict):
-        raise ValueError(f"Cannot safely ungroup {label} without position and size.")
+        return None
     x = _finite_number(position.get("x"))
     y = _finite_number(position.get("y"))
     width = _finite_number(size.get("width"))
     height = _finite_number(size.get("height"))
     if x is None or y is None or width is None or height is None:
-        raise ValueError(f"Cannot safely ungroup {label} with invalid geometry.")
+        return None
     if width <= 0 or height <= 0:
-        raise ValueError(f"Cannot safely ungroup {label} with non-positive size.")
+        return None
     return {"x": x, "y": y, "width": width, "height": height}
 
 
@@ -142,6 +322,26 @@ def _finite_number(value: Any) -> float | None:
         number = float(value)
         return number if math.isfinite(number) else None
     return None
+
+
+def _number(value: Any) -> float | None:
+    return _finite_number(value)
+
+
+def _padding(value: Any) -> dict[str, float]:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        number = float(value)
+        return {"top": number, "right": number, "bottom": number, "left": number}
+    if not isinstance(value, dict):
+        return {"top": 0.0, "right": 0.0, "bottom": 0.0, "left": 0.0}
+    x = _number(value.get("x")) or _number(value.get("horizontal")) or 0.0
+    y = _number(value.get("y")) or _number(value.get("vertical")) or 0.0
+    return {
+        "top": _number(value.get("top")) or y,
+        "right": _number(value.get("right")) or x,
+        "bottom": _number(value.get("bottom")) or y,
+        "left": _number(value.get("left")) or x,
+    }
 
 
 def _normalize_component_id(value: str) -> str:

@@ -570,6 +570,49 @@ def test_update_component_ungroups_component():
     assert session.commit_count == 1
 
 
+def test_update_component_ungroups_container_child():
+    slide = _slide()
+    slide.ui["components"] = [
+        {
+            "id": "card",
+            "description": "Container card.",
+            "position": {"x": 20, "y": 30},
+            "size": {"width": 240, "height": 120},
+            "elements": [
+                {
+                    "type": "container",
+                    "fill": {"color": "#FFFFFF"},
+                    "padding": {"left": 12, "top": 8, "right": 12, "bottom": 8},
+                    "position": {"x": 0, "y": 0},
+                    "size": {"width": 240, "height": 120},
+                    "child": {
+                        "type": "text",
+                        "name": "Card title",
+                        "runs": [{"text": "Nested title"}],
+                    },
+                }
+            ],
+        }
+    ]
+    tools, session = _tools(slide)
+
+    result = _call(
+        tools,
+        "updateComponent",
+        {"index": 0, "componentId": "card", "action": "ungroup"},
+    )
+
+    assert result["ok"] is True
+    assert result["result"]["updated"] is True
+    assert result["result"]["created_component_ids"] == [
+        "card_part_1",
+        "card_part_2",
+    ]
+    assert slide.ui["components"][1]["position"] == {"x": 32.0, "y": 38.0}
+    assert slide.ui["components"][1]["size"] == {"width": 216.0, "height": 104.0}
+    assert session.commit_count == 1
+
+
 def test_update_component_duplicates_component():
     slide = _slide()
     tools, session = _tools(slide)
@@ -665,6 +708,35 @@ def test_add_slide_component_appends_block():
     assert result["ok"] is True
     assert result["result"]["added"] is True
     assert [c["id"] for c in slide.ui["components"]] == ["hero", "body", "note"]
+
+
+def test_add_slide_component_clamps_to_visible_stage():
+    slide = _slide()
+    tools, _ = _tools(slide)
+    component = {
+        "id": "offscreen",
+        "description": "Bad geometry component.",
+        "position": {"x": 1400, "y": -40},
+        "size": {"width": 2000, "height": 900},
+        "elements": [
+            {
+                "type": "text",
+                "name": "Offscreen",
+                "runs": [{"text": "Visible now"}],
+            }
+        ],
+    }
+
+    result = _call(
+        tools,
+        "addComponent",
+        {"index": 0, "component": json.dumps(component)},
+    )
+
+    added = slide.ui["components"][-1]
+    assert result["ok"] is True
+    assert added["position"] == {"x": 0.0, "y": 0.0}
+    assert added["size"] == {"width": 1280.0, "height": 720.0}
 
 
 def test_add_slide_component_expands_tiny_chart_block():

@@ -45,6 +45,7 @@ import type {
 } from "../../services/api/chat";
 import ToolTip from "@/components/ToolTip";
 import { cn } from "@/lib/utils";
+import type { TemplateV2SurfaceSelectedDetail } from "@/components/slide-editor/events/events";
 
 const suggestions: { id: string; icon: ReactNode; suggestion: string }[] = [
   {
@@ -298,17 +299,7 @@ type ChatProps = {
   resourceLabel?: string;
   variant?: "presentation" | "outline" | "template-v2";
   currentSlide?: number;
-  selectedTemplateV2Target?: {
-    kind: "component" | "element";
-    slideIndex?: number | null;
-    componentIndex?: number;
-    componentId?: string;
-    componentLabel?: string;
-    elementPath?: string;
-    elementType?: string;
-    elementName?: string;
-    targetLabel?: string;
-  } | null;
+  selectedTemplateV2Target?: TemplateV2SurfaceSelectedDetail["selection"];
   onClearChatSlideReference?: () => void;
   onClearChatTargetReference?: () => void;
   onBeforeSend?: () => Promise<void> | void;
@@ -1077,7 +1068,7 @@ const Chat = ({
     }
     if (variant === "template-v2") {
       contextLines.push(
-        "UI context: the user is editing a rendered TemplateV2 presentation with the v2 assistant. Use getTemplateSummary, searchSlide, getSlideAtIndex, addNewSlide, addNewSlideLayout, saveSlide, updateSlide, deleteSlide, addElement, updateElement, deleteElement, addComponent, createComponent, updateComponent, deleteComponent, getPresentationTheme, setPresentationTheme, and generateAssets. For visible edits inside an existing slide, inspect with getSlideAtIndex and use the returned componentId/elementPath exactly. Use updateElement for element toolbar-style properties and updateComponent for component move, resize, duplicate, layer order, group, and ungroup actions."
+        "UI context: the user is editing a rendered TemplateV2 presentation with the v2 assistant. Use getTemplateSummary, searchSlide, getSlideAtIndex, addNewSlide, addNewSlideLayout, saveSlide, updateSlide, deleteSlide, addElement, updateElement, deleteElement, addComponent, createComponent, updateComponent, deleteComponent, getPresentationTheme, setPresentationTheme, and generateAssets. For visible edits inside an existing slide, inspect with getSlideAtIndex and use the returned componentId/elementPath exactly. Use updateElement for element toolbar-style properties and updateComponent for component move, resize, duplicate, layer order, group, and ungroup actions. When adding or creating rendered elements/components, keep their position and size strictly inside the 1280x720 visible slide window."
       );
     }
 
@@ -1089,7 +1080,20 @@ const Chat = ({
       );
     }
 
-    if (selectedTemplateV2Target) {
+    if (selectedTemplateV2Target?.kind === "multi-component") {
+      const target = selectedTemplateV2Target;
+      const componentIds = target.componentIds?.filter(Boolean) ?? [];
+      const labels =
+        target.componentLabels?.filter(Boolean) ??
+        target.components.map((component) => component.componentLabel).filter(Boolean);
+      contextLines.push(
+        `UI context: the user has selected ${target.components.length} TemplateV2 components${
+          labels.length ? ` (${labels.join(", ")})` : ""
+        }${
+          componentIds.length ? ` with componentIds=${componentIds.join(",")}` : ""
+        }. These selected components are the primary target for short edits like "these", "group these", "remove these", "move them", or "resize them"; do not apply those requests to the whole slide unless the user explicitly says slide. For grouping selected components, inspect the selected slide with getSlideAtIndex, then call updateComponent with action=group, componentId set to one selected component id, and componentIds set to all selected component ids exactly.`
+      );
+    } else if (selectedTemplateV2Target) {
       const target = selectedTemplateV2Target;
       const targetParts = [
         `kind=${target.kind}`,
@@ -1839,12 +1843,15 @@ const Chat = ({
   const chatSlideReference =
     typeof currentSlide === "number" ? `Slide ${currentSlide + 1}` : "";
   const chatTargetReference = selectedTemplateV2Target
-    ? selectedTemplateV2Target.targetLabel ||
-      selectedTemplateV2Target.componentLabel ||
-      selectedTemplateV2Target.elementName ||
-      selectedTemplateV2Target.elementType ||
-      selectedTemplateV2Target.componentId ||
-      selectedTemplateV2Target.kind
+    ? selectedTemplateV2Target.kind === "multi-component"
+      ? selectedTemplateV2Target.targetLabel ||
+        `${selectedTemplateV2Target.components.length} components selected`
+      : selectedTemplateV2Target.targetLabel ||
+        selectedTemplateV2Target.componentLabel ||
+        selectedTemplateV2Target.elementName ||
+        selectedTemplateV2Target.elementType ||
+        selectedTemplateV2Target.componentId ||
+        selectedTemplateV2Target.kind
     : "";
 
   return (
