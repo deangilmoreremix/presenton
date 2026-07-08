@@ -55,9 +55,8 @@ const presentonDataLabelPlugin: Plugin = {
     const ctx = chart.ctx;
     ctx.save();
     ctx.fillStyle = labelOptions.color || "#374151";
-    ctx.font = `600 ${labelOptions.fontSize || 11}px ${
-      labelOptions.fontFamily || "Arial, Helvetica, sans-serif"
-    }`;
+    ctx.font = `600 ${labelOptions.fontSize || 11}px ${labelOptions.fontFamily || "Arial, Helvetica, sans-serif"
+      }`;
     ctx.textAlign = "center";
 
     chart.data.datasets.forEach((dataset, datasetIndex) => {
@@ -124,6 +123,7 @@ export function TemplateV2HtmlSlidePreview({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
 
   const html = useMemo(() => {
     if (!slide || typeof slide !== "object") return null;
@@ -220,9 +220,9 @@ export function TemplateV2HtmlSlidePreview({
         style={
           fixedSize
             ? {
-                width: TEMPLATE_V2_HTML_WIDTH,
-                height: TEMPLATE_V2_HTML_HEIGHT,
-              }
+              width: TEMPLATE_V2_HTML_WIDTH,
+              height: TEMPLATE_V2_HTML_HEIGHT,
+            }
             : undefined
         }
       >
@@ -238,13 +238,13 @@ export function TemplateV2HtmlSlidePreview({
       style={
         fixedSize
           ? {
-              width: TEMPLATE_V2_HTML_WIDTH,
-              height: TEMPLATE_V2_HTML_HEIGHT,
-            }
+            width: TEMPLATE_V2_HTML_WIDTH,
+            height: TEMPLATE_V2_HTML_HEIGHT,
+          }
           : {
-              height: scale ? previewHeight : undefined,
-              aspectRatio: scale ? undefined : "16 / 9",
-            }
+            height: scale ? previewHeight : undefined,
+            aspectRatio: scale ? undefined : "16 / 9",
+          }
       }
     >
       <div

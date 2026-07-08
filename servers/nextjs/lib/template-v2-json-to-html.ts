@@ -1038,16 +1038,34 @@ function normalizeChartColor(value: string | null): string | null {
   return normalizeCssColor(value);
 }
 
+function normalizeChartKindValue(value: string | null): string {
+  if (!value) return "";
+  return value
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_");
+}
+
 function chartKindFromValue(value: string | null): ChartKind {
-  if (value === "horizontal_bar") return "horizontal_bar";
-  if (value === "stacked_bar") return "stacked_bar";
-  if (value === "horizontal_stacked_bar") {
+  const normalized = normalizeChartKindValue(value);
+  if (normalized === "horizontal_bar") return "horizontal_bar";
+  if (normalized === "stacked_bar" || normalized === "stackedbar") {
+    return "stacked_bar";
+  }
+  if (
+    normalized === "horizontal_stacked_bar" ||
+    normalized === "horizontal_stack_bar" ||
+    normalized === "horizontalstackedbar" ||
+    normalized === "horizontalstackbar"
+  ) {
     return "horizontal_stacked_bar";
   }
-  if (value === "line") return "line";
-  if (value === "area") return "area";
-  if (value === "pie") return "pie";
-  if (value === "donut" || value === "doughnut") return "donut";
+  if (normalized === "line") return "line";
+  if (normalized === "area") return "area";
+  if (normalized === "pie") return "pie";
+  if (normalized === "donut" || normalized === "doughnut") return "donut";
   return "bar";
 }
 

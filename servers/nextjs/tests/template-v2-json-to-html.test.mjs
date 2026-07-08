@@ -53,6 +53,15 @@ async function loadRenderer() {
 
 const rendererPromise = loadRenderer();
 
+function decodeHtmlAttribute(value) {
+  return value
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
 test("renders icon mask asset URLs without breaking the style attribute", async () => {
   const previousWindow = globalThis.window;
   globalThis.window = {
@@ -101,4 +110,33 @@ test("renders icon mask asset URLs without breaking the style attribute", async 
       globalThis.window = previousWindow;
     }
   }
+});
+
+test("normalizes camelCase stackedBar charts in HTML renderer", async () => {
+  const { templateV2UiToHtmlFragment } = await rendererPromise;
+  const html = templateV2UiToHtmlFragment({
+    elements: [
+      {
+        type: "chart",
+        chartType: "stackedBar",
+        position: { x: 0, y: 0 },
+        size: { width: 420, height: 260 },
+        categories: ["Q1", "Q2"],
+        series: [
+          { name: "Product", values: [30, 45] },
+          { name: "Services", values: [18, 25] },
+        ],
+        colors: ["#7F22FE", "#155DFC"],
+      },
+    ],
+  });
+
+  const match = html.match(/data-chart-config="([^"]+)"/);
+  assert.ok(match);
+
+  const config = JSON.parse(decodeHtmlAttribute(match[1]));
+  assert.equal(config.type, "bar");
+  assert.equal(config.data.datasets.length, 2);
+  assert.equal(config.options.scales.x.stacked, true);
+  assert.equal(config.options.scales.y.stacked, true);
 });
