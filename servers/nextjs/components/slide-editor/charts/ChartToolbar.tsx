@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, Palette } from "lucide-react";
+import { BarChart3, Palette, Pencil } from "lucide-react";
 import type { ChartSlideElement } from "@/components/slide-editor/state/state";
 import {
   appendChartColorTarget,
@@ -7,6 +7,7 @@ import {
   updateChartColorTarget,
 } from "@/components/slide-editor/charts/chart-data";
 import { ChartColorPaletteCard } from "@/components/slide-editor/charts/ChartColorPalette";
+import { ChartDataEditorPopover } from "@/components/slide-editor/charts/ChartEditorContent";
 import {
   FloatingToolbar,
   FloatingToolbarPanel,
@@ -37,11 +38,13 @@ export function ChartToolbarControls({
   element,
   paletteOpen: controlledPaletteOpen,
   onChange,
+  onEdit,
   onPaletteOpenChange,
 }: {
   element: ChartSlideElement;
   paletteOpen?: boolean;
   onChange: (element: ChartSlideElement) => void;
+  onEdit?: () => void;
   onPaletteOpenChange?: (open: boolean) => void;
 }) {
   const [uncontrolledPaletteOpen, setUncontrolledPaletteOpen] =
@@ -98,6 +101,21 @@ export function ChartToolbarControls({
         </select>
       </div>
 
+      {onEdit ? (
+        <button
+          type="button"
+          aria-label="Edit chart data"
+          title="Edit data"
+          onClick={() => {
+            setPaletteOpen(false);
+            onEdit();
+          }}
+          style={inlineStyles.iconButton}
+        >
+          <Pencil size={16} strokeWidth={2} />
+        </button>
+      ) : null}
+
       <div style={{ position: "relative" }}>
         <button
           type="button"
@@ -150,25 +168,39 @@ export function ChartToolbar({
   scale: number;
   onChange: (index: number, element: ChartSlideElement) => void;
 }) {
+  const [editorOpen, setEditorOpen] = useState(false);
+
   return (
-    <FloatingToolbar
-      anchorBox={
-        anchorBox ?? {
-          x: (element.position?.x ?? 0) * scale,
-          y: (element.position?.y ?? 0) * scale,
-          width: (element.size?.width ?? DEFAULT_CHART_TOOLBAR_SIZE.width) * scale,
-          height:
-            (element.size?.height ?? DEFAULT_CHART_TOOLBAR_SIZE.height) * scale,
+    <>
+      <FloatingToolbar
+        anchorBox={
+          anchorBox ?? {
+            x: (element.position?.x ?? 0) * scale,
+            y: (element.position?.y ?? 0) * scale,
+            width:
+              (element.size?.width ?? DEFAULT_CHART_TOOLBAR_SIZE.width) * scale,
+            height:
+              (element.size?.height ?? DEFAULT_CHART_TOOLBAR_SIZE.height) * scale,
+          }
         }
-      }
-      fallbackWidth={220}
-      inlineEditIgnore
-      style={inlineStyles.toolbar}
-    >
-      <ChartToolbarControls
-        element={element}
-        onChange={(element) => onChange(index, element)}
-      />
-    </FloatingToolbar>
+        fallbackWidth={220}
+        inlineEditIgnore
+        style={inlineStyles.toolbar}
+      >
+        <ChartToolbarControls
+          element={element}
+          onChange={(element) => onChange(index, element)}
+          onEdit={() => setEditorOpen(true)}
+        />
+      </FloatingToolbar>
+      {editorOpen ? (
+        <ChartDataEditorPopover
+          chart={element}
+          chartPath={`chart-${index}`}
+          onChange={(chart) => onChange(index, chart)}
+          onClose={() => setEditorOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

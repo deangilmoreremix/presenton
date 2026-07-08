@@ -134,7 +134,6 @@ export function ChartEditorContent({
           {tab === "data" ? (
             <ChartDataPanel
               chart={chart}
-              onChange={onChange}
               onOpenDataModal={() => setDataModalOpen(true)}
             />
           ) : (
@@ -143,17 +142,14 @@ export function ChartEditorContent({
         </div>
       </div>
 
-      {dataModalOpen && typeof document !== "undefined"
-        ? createPortal(
-          <ChartDataModal
-            chart={chart}
-            chartPath={chartPath ?? "chart"}
-            onChange={onChange}
-            onClose={() => setDataModalOpen(false)}
-          />,
-          document.body,
-        )
-        : null}
+      {dataModalOpen ? (
+        <ChartDataEditorPopover
+          chart={chart}
+          chartPath={chartPath ?? "chart"}
+          onChange={onChange}
+          onClose={() => setDataModalOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
@@ -189,11 +185,9 @@ function ChartTypeSelect({
 
 function ChartDataPanel({
   chart,
-  onChange,
   onOpenDataModal,
 }: {
   chart: ChartElement;
-  onChange: (chart: ChartElement) => void;
   onOpenDataModal: () => void;
 }) {
   const categories = safeCategoriesForChart(chart);
@@ -202,24 +196,14 @@ function ChartDataPanel({
   return (
     <div className="space-y-5 pt-5">
       <MiniDataTable categories={categories} series={series} />
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className="flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#E6E6EA] bg-white px-4 text-[12px] font-semibold text-[#191919] transition hover:bg-[#F7F7FA]"
-          onClick={onOpenDataModal}
-        >
-          <Pencil size={15} strokeWidth={2} />
-          Edit data
-        </button>
-        <button
-          type="button"
-          aria-label="Clear chart data"
-          className="grid h-10 w-12 place-items-center rounded-full border border-[#ECECF1] bg-white text-[#191919] transition hover:bg-[#F7F7FA]"
-          onClick={() => onChange(clearChartData(chart))}
-        >
-          <Trash2 size={16} strokeWidth={2} />
-        </button>
-      </div>
+      <button
+        type="button"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[#E6E6EA] bg-white px-4 text-[12px] font-semibold text-[#191919] transition hover:bg-[#F7F7FA]"
+        onClick={onOpenDataModal}
+      >
+        <Pencil size={15} strokeWidth={2} />
+        Edit data
+      </button>
     </div>
   );
 }
@@ -724,6 +708,30 @@ function ColorRow({
   );
 }
 
+export function ChartDataEditorPopover({
+  chart,
+  chartPath,
+  onChange,
+  onClose,
+}: {
+  chart: ChartElement;
+  chartPath: string;
+  onChange: (chart: ChartElement) => void;
+  onClose: () => void;
+}) {
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <ChartDataModal
+      chart={chart}
+      chartPath={chartPath}
+      onChange={onChange}
+      onClose={onClose}
+    />,
+    document.body,
+  );
+}
+
 function ChartDataModal({
   chart,
   chartPath,
@@ -815,16 +823,30 @@ function ChartDataModal({
                 Edit Data Table
               </p>
             </div>
-            <button
-              type="button"
-              className="h-8 min-w-[76px] rounded-full bg-[linear-gradient(100deg,#FFE6A6_0%,#D8B4FE_100%)] px-5 text-[12px] font-semibold text-[#191919] transition hover:brightness-95"
-              onClick={() => {
-                onChange(draftChart);
-                onClose();
-              }}
-            >
-              Save
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-[#E6E6EA] bg-white px-4 text-[11px] font-semibold text-[#191919] transition hover:bg-[#F7F7FA]"
+                onClick={() =>
+                  setDraftChart((currentChart) =>
+                    clearChartData(currentChart),
+                  )
+                }
+              >
+                <Trash2 size={14} strokeWidth={2} />
+                Clear data
+              </button>
+              <button
+                type="button"
+                className="h-8 min-w-[76px] rounded-full bg-[linear-gradient(100deg,#FFE6A6_0%,#D8B4FE_100%)] px-5 text-[12px] font-semibold text-[#191919] transition hover:brightness-95"
+                onClick={() => {
+                  onChange(draftChart);
+                  onClose();
+                }}
+              >
+                Save
+              </button>
+            </div>
           </header>
 
           <div className="flex min-h-0 flex-1 overflow-hidden">

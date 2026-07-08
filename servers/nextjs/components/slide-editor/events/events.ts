@@ -1,7 +1,4 @@
-import type {
-  ChartElement,
-  SlideElement,
-} from "@/components/slide-editor/types";
+import type { SlideElement } from "@/components/slide-editor/types";
 
 export const TEMPLATE_V2_INSERT_ELEMENTS_EVENT =
   "presenton:template-v2-insert-elements";
@@ -9,10 +6,6 @@ export const TEMPLATE_V2_SURFACE_SELECTED_EVENT =
   "presenton:template-v2-surface-selected";
 export const TEMPLATE_V2_ACTIVATE_SURFACE_EVENT =
   "presenton:template-v2-activate-surface";
-export const TEMPLATE_V2_CHART_EDITOR_EVENT =
-  "presenton:template-v2-chart-editor";
-export const TEMPLATE_V2_CHART_UPDATE_EVENT =
-  "presenton:template-v2-chart-update";
 
 export type TemplateV2InsertComponent = {
   id?: string;
@@ -59,24 +52,6 @@ export type TemplateV2SurfaceSelectedDetail = {
 };
 
 export type TemplateV2ActivateSurfaceDetail = {
-  slideId?: string | number | null;
-  slideIndex?: number | null;
-};
-
-export type TemplateV2ChartEditorDetail = {
-  chart?: ChartElement | null;
-  open?: boolean;
-  path?: string | null;
-  rootIndex?: number | null;
-  slideId?: string | number | null;
-  slideIndex?: number | null;
-};
-
-export type TemplateV2ChartUpdateDetail = {
-  action?: "update" | "close";
-  chart?: ChartElement | null;
-  handled?: boolean;
-  path?: string | null;
   slideId?: string | number | null;
   slideIndex?: number | null;
 };

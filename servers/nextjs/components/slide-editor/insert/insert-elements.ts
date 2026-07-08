@@ -1,9 +1,14 @@
 import type { TemplateV2InsertComponent } from "@/components/slide-editor/events/events";
 import { normalizeChartTypeName } from "@/components/slide-editor/charts/chart-data";
+import {
+  measureNoWrapTextWidth,
+  rawFont,
+} from "@/components/slide-editor/text/template-v2-text";
 import type {
   ChartType,
   Fill,
   Font,
+  Marker,
   SlideElement,
   TableCell,
 } from "@/components/slide-editor/types";
@@ -11,6 +16,7 @@ import type {
 const DEFAULT_CHART_INSERT_POSITION = { x: 128, y: 115 };
 const DEFAULT_CHART_INSERT_SIZE = { width: 717, height: 410 };
 const DEFAULT_IMAGE_PLACEHOLDER_SRC = "/placeholder.jpg";
+const TEXT_INSERT_HORIZONTAL_PADDING_PX = 8;
 const TEXT_INSERT_VERTICAL_PADDING_PX = 14;
 const IMAGE_RADIUS = { tl: 10, tr: 10, bl: 10, br: 10 };
 
@@ -89,7 +95,7 @@ function makeTableCell({
   };
 }
 
-function makeBulletListElement(): SlideElement {
+function makeBulletListElement(marker: Marker): SlideElement {
   const baseFont = {
     size: 18,
     family: "Inter",
@@ -102,16 +108,41 @@ function makeBulletListElement(): SlideElement {
     ellipsis: false,
   };
   const items = [
-    [{ text: "Clarify the goal and audience", font: { ...baseFont, bold: true } }],
+    [
+      {
+        text: "Clarify the goal and audience",
+        font: { ...baseFont, bold: true },
+      },
+    ],
     [{ text: "Show the strongest supporting point", font: { ...baseFont } }],
-    [{ text: "Close with the next action", font: { ...baseFont, italic: true } }],
+    [
+      {
+        text: "Close with the next action",
+        font: { ...baseFont, italic: true },
+      },
+    ],
   ];
+  const renderFont = rawFont({ font: baseFont });
+  const fittedWidth = Math.ceil(
+    Math.max(
+      ...items.map((item, index) => {
+        const prefix =
+          marker === "bullet"
+            ? "• "
+            : marker === "number"
+              ? `${index + 1}. `
+              : "";
+        const text = item.map((run) => run.text).join("");
+        return measureNoWrapTextWidth(`${prefix}${text}`, renderFont);
+      }),
+    ) + TEXT_INSERT_HORIZONTAL_PADDING_PX,
+  );
 
   return {
     type: "text-list",
     position: { x: 122, y: 128 },
     size: {
-      width: 691,
+      width: fittedWidth,
       height: fittedTextHeight(
         items.length,
         baseFont.size,
@@ -120,7 +151,8 @@ function makeBulletListElement(): SlideElement {
     },
     rotation: 0,
     font: baseFont,
-    marker: "bullet",
+
+    marker,
     items,
     decorative: false,
     name: "Project task list",
@@ -159,7 +191,11 @@ export function createTextInsertElements(kind?: string): SlideElement[] {
         }),
       ];
     case "bullet-list":
-      return [makeBulletListElement()];
+      return [makeBulletListElement("bullet")];
+    case "numbered-list":
+      return [makeBulletListElement("number")];
+    case "list-item":
+      return [makeBulletListElement("none")];
     case "quote":
       return [
         makeTextElement({

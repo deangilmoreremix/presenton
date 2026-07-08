@@ -45,6 +45,7 @@ import {
   type TableSlideElement,
 } from "@/components/slide-editor/state/state";
 import { ElementToolbar } from "@/components/slide-editor/toolbar/ElementToolbar";
+import { ChartDataEditorPopover } from "@/components/slide-editor/charts/ChartEditorContent";
 import { TableInlineEditor } from "@/components/slide-editor/tables/TableInlineEditor";
 import { TemplateV2InlineEditor } from "@/components/slide-editor/text/TemplateV2InlineEditor";
 
@@ -133,7 +134,6 @@ import {
   readString,
   renderedLocalBoxForElementSelection,
   rootElementsComponent,
-  selectionFromKey,
   selectionWithComponentToggle,
   setComponentPositionsInUi,
   surfaceSelectionTarget,
@@ -153,26 +153,32 @@ import {
 } from "@/components/slide-editor/model/model";
 import {
   TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
-  TEMPLATE_V2_CHART_EDITOR_EVENT,
-  TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
   type TemplateV2ActivateSurfaceDetail,
-  type TemplateV2ChartEditorDetail,
-  type TemplateV2ChartUpdateDetail,
   type TemplateV2InsertElementsDetail,
   type TemplateV2SurfaceSelectedDetail,
 } from "@/components/slide-editor/events/events";
 
+const MIN_EDITING_SCENE_PIXEL_RATIO = 2;
+
+function syncEditingScenePixelRatio(layer: Konva.Layer | null) {
+  if (!layer || typeof window === "undefined") return;
+  const pixelRatio = Math.max(
+    MIN_EDITING_SCENE_PIXEL_RATIO,
+    window.devicePixelRatio || 1,
+  );
+  const canvas = layer.getCanvas();
+  if (Math.abs(canvas.getPixelRatio() - pixelRatio) < 0.01) return;
+  canvas.setPixelRatio(pixelRatio);
+  layer.batchDraw();
+}
+
 export {
   TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
-  TEMPLATE_V2_CHART_EDITOR_EVENT,
-  TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
   type TemplateV2ActivateSurfaceDetail,
-  type TemplateV2ChartEditorDetail,
-  type TemplateV2ChartUpdateDetail,
   type TemplateV2InsertElementsDetail,
   type TemplateV2SurfaceSelectedDetail,
 } from "@/components/slide-editor/events/events";
@@ -227,6 +233,8 @@ function TemplateV2KonvaSlideComponent({
     keyForSelection,
   });
   const [iconEditorSelection, setIconEditorSelection] =
+    useState<ElementSelection | null>(null);
+  const [chartEditorSelection, setChartEditorSelection] =
     useState<ElementSelection | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [, setHistoryAvailability] = useState({
@@ -398,6 +406,7 @@ function TemplateV2KonvaSlideComponent({
     selection ||
     inlineEdit ||
     iconEditorSelection ||
+    chartEditorSelection ||
     selectedTableCell ||
     editingTableCell,
   );
@@ -431,6 +440,9 @@ function TemplateV2KonvaSlideComponent({
   const iconEditorElement = iconEditorSelection
     ? getElementAtSelection(uiDraft, iconEditorSelection)
     : null;
+  const chartEditorElement = chartEditorSelection
+    ? getElementAtSelection(uiDraft, chartEditorSelection)
+    : null;
   const surfaceSlideIndex = useMemo(() => {
     const index = typeof renderIndex === "number" ? renderIndex : slideIndex;
     return Number.isFinite(index) ? index : null;
@@ -455,6 +467,15 @@ function TemplateV2KonvaSlideComponent({
   }, [fontLoadState.ready, fontLoadState.revision]);
 
   useEffect(() => {
+    if (!isEditMode || typeof window === "undefined") return;
+    const refreshPixelRatio = () =>
+      syncEditingScenePixelRatio(contentLayerRef.current);
+    refreshPixelRatio();
+    window.addEventListener("resize", refreshPixelRatio);
+    return () => window.removeEventListener("resize", refreshPixelRatio);
+  }, [isEditMode]);
+
+  useEffect(() => {
     selectedComponentIndexesRef.current = selectedComponentIndexes;
   }, [selectedComponentIndexes]);
 
@@ -467,6 +488,7 @@ function TemplateV2KonvaSlideComponent({
     clearTableCellSelection();
     clearInlineEdit();
     setIconEditorSelection(null);
+    setChartEditorSelection(null);
     undoStackRef.current = [];
     redoStackRef.current = [];
     setHistoryAvailability({ canUndo: false, canRedo: false });
@@ -595,6 +617,7 @@ function TemplateV2KonvaSlideComponent({
       clearTableCellEditing();
       clearInlineEdit();
       setIconEditorSelection(null);
+      setChartEditorSelection(null);
       if (options?.clearActiveSurface) {
         clearSurface();
       }
@@ -889,20 +912,8 @@ function TemplateV2KonvaSlideComponent({
   );
 
   const closeChartEditor = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(
-      new CustomEvent<TemplateV2ChartEditorDetail>(
-        TEMPLATE_V2_CHART_EDITOR_EVENT,
-        {
-          detail: {
-            open: false,
-            slideId,
-            slideIndex: surfaceSlideIndex,
-          },
-        },
-      ),
-    );
-  }, [slideId, surfaceSlideIndex]);
+    setChartEditorSelection(null);
+  }, []);
 
   const deleteComponentAtIndex = useCallback(
     (componentIndex: number) => {
@@ -1352,24 +1363,11 @@ function TemplateV2KonvaSlideComponent({
       if (!element || readString(element.type) !== "chart") return;
       activateSurface(elementSelection);
       setSelection(elementSelection);
-      if (typeof window === "undefined") return;
-      window.dispatchEvent(
-        new CustomEvent<TemplateV2ChartEditorDetail>(
-          TEMPLATE_V2_CHART_EDITOR_EVENT,
-          {
-            detail: {
-              chart: rawChartToEditorChart(element),
-              open: true,
-              path: keyForSelection(elementSelection),
-              rootIndex: elementSelection.componentIndex,
-              slideId,
-              slideIndex: surfaceSlideIndex,
-            },
-          },
-        ),
-      );
+      clearInlineEdit();
+      setIconEditorSelection(null);
+      setChartEditorSelection(elementSelection);
     },
-    [activateSurface, slideId, surfaceSlideIndex],
+    [activateSurface, clearInlineEdit],
   );
 
   const handleImageUploadChange = useCallback(
@@ -1489,36 +1487,6 @@ function TemplateV2KonvaSlideComponent({
         handleInsertElements,
       );
   }, [commitUi, isEditMode, isSurfaceActive, slideId, surfaceSlideIndex]);
-
-  useEffect(() => {
-    if (!isEditMode || typeof window === "undefined") return;
-
-    const handleChartUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<TemplateV2ChartUpdateDetail>).detail;
-      if (!detail || !eventTargetsThisSlide(detail, slideId, surfaceSlideIndex, isSurfaceActive)) {
-        return;
-      }
-
-      if (detail.action === "close") {
-        detail.handled = true;
-        return;
-      }
-
-      if (!detail.chart || !detail.path) return;
-      const parsedSelection = selectionFromKey(detail.path);
-      if (!parsedSelection || parsedSelection.kind !== "element") return;
-      const currentChart = getElementAtSelection(currentUiRef.current, parsedSelection);
-      if (readString(currentChart?.type) !== "chart") return;
-      updateElement(parsedSelection, (element) =>
-        editorChartToRawChart(element, (detail.chart ?? {}) as UnknownRecord),
-      );
-      detail.handled = true;
-    };
-
-    window.addEventListener(TEMPLATE_V2_CHART_UPDATE_EVENT, handleChartUpdate);
-    return () =>
-      window.removeEventListener(TEMPLATE_V2_CHART_UPDATE_EVENT, handleChartUpdate);
-  }, [isEditMode, isSurfaceActive, slideId, surfaceSlideIndex, updateElement]);
 
   useEffect(() => {
     if (!isEditMode || typeof document === "undefined") return;
@@ -1694,7 +1662,11 @@ function TemplateV2KonvaSlideComponent({
               selectedKey={selectedKey}
               selectedKeys={selectedKeys}
               selectionKind={selection?.kind ?? null}
-              suppressSelectedOutline={Boolean(selectedTableCell || inlineEdit)}
+              suppressSelectedOutline={Boolean(
+                selectedTableCell ||
+                  inlineEdit ||
+                  readString(selectedElement?.type) === "chart",
+              )}
             />
           ) : null}
         </Layer>
@@ -1715,6 +1687,11 @@ function TemplateV2KonvaSlideComponent({
         targetComponentActions={targetComponentActions}
         toolbarBounds={selectionToolbarBounds}
         onChartChange={applyChartToolbarElementChange}
+        onChartEdit={() => {
+          if (chartToolbarTarget) {
+            openChartEditor(chartToolbarTarget.selection);
+          }
+        }}
         onDeleteSelection={deleteSelection}
         onDuplicateSelection={duplicateSelection}
         onLayoutChange={applyLayoutElementChange}
@@ -1788,6 +1765,25 @@ function TemplateV2KonvaSlideComponent({
             commitInlineTextRuns(inlineEdit.selection, runs)
           }
           onClose={(commit, runs) => closeInlineEditor(commit, runs)}
+        />
+      ) : null}
+      {isEditMode &&
+        chartEditorSelection &&
+        chartEditorElement &&
+        readString(chartEditorElement.type) === "chart" ? (
+        <ChartDataEditorPopover
+          key={keyForSelection(chartEditorSelection)}
+          chart={rawChartToEditorChart(chartEditorElement)}
+          chartPath={keyForSelection(chartEditorSelection)}
+          onChange={(chart) =>
+            updateElement(chartEditorSelection, (element) =>
+              editorChartToRawChart(
+                element,
+                chart as unknown as UnknownRecord,
+              ),
+            )
+          }
+          onClose={closeChartEditor}
         />
       ) : null}
       {isEditMode &&

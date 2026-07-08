@@ -13,6 +13,7 @@ import {
   Image,
   LineChart,
   List,
+  ListOrdered,
   Minus,
   PieChart,
   Quote,
@@ -22,16 +23,13 @@ import {
   Shapes,
   Table2,
   Type,
+  ListMinus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notify } from "@/components/ui/sonner";
-import {
-  type ChartElement,
-  type SlideElement,
-} from "@/components/slide-editor/types";
+import type { SlideElement } from "@/components/slide-editor/types";
 
-import { ChartEditorContent } from "@/components/slide-editor/charts/ChartEditorContent";
 import {
   createChartInsertElements,
   createElementInsertElements,
@@ -48,12 +46,8 @@ import {
   type TemplateV2ImportResponse,
 } from "@/components/slide-editor/importing/template-v2-import";
 import {
-  TEMPLATE_V2_CHART_EDITOR_EVENT,
   TEMPLATE_V2_INSERT_ELEMENTS_EVENT,
-  TEMPLATE_V2_CHART_UPDATE_EVENT,
   TEMPLATE_V2_SURFACE_SELECTED_EVENT,
-  type TemplateV2ChartEditorDetail,
-  type TemplateV2ChartUpdateDetail,
   type TemplateV2InsertComponent,
   type TemplateV2InsertElementsDetail,
   type TemplateV2SurfaceSelectedDetail,
@@ -89,14 +83,6 @@ type PaletteItem = {
 };
 
 type UnknownRecord = Record<string, unknown>;
-
-type ChartEditorState = {
-  chart: ChartElement;
-  path: string;
-  rootIndex: number;
-  slideId?: string | number | null;
-  slideIndex?: number | null;
-};
 
 type TemplateBlock = {
   key: string;
@@ -151,19 +137,15 @@ function blocksPanelReducer(
 
 type PresentationActionsUiState = {
   activeAction: ActionId;
-  chartEditor: ChartEditorState | null;
 };
 
-type PresentationActionsUiAction =
-  | { type: "selectAction"; activeAction: ActionId }
-  | { type: "openChartEditor"; chartEditor: ChartEditorState }
-  | { type: "closeChartEditor" }
-  | { type: "updateChartEditor"; chart: ChartElement }
-  | { type: "syncCurrentSlide"; currentSlide?: number };
+type PresentationActionsUiAction = {
+  type: "selectAction";
+  activeAction: ActionId;
+};
 
 const initialPresentationActionsUiState: PresentationActionsUiState = {
   activeAction: "ai",
-  chartEditor: null,
 };
 
 function presentationActionsUiReducer(
@@ -173,26 +155,6 @@ function presentationActionsUiReducer(
   switch (action.type) {
     case "selectAction":
       return { ...state, activeAction: action.activeAction };
-    case "openChartEditor":
-      return { activeAction: "charts", chartEditor: action.chartEditor };
-    case "closeChartEditor":
-      return { ...state, chartEditor: null };
-    case "updateChartEditor":
-      if (!state.chartEditor) return state;
-      return {
-        ...state,
-        chartEditor: { ...state.chartEditor, chart: action.chart },
-      };
-    case "syncCurrentSlide":
-      if (
-        !state.chartEditor ||
-        typeof action.currentSlide !== "number" ||
-        typeof state.chartEditor.slideIndex !== "number" ||
-        action.currentSlide === state.chartEditor.slideIndex
-      ) {
-        return state;
-      }
-      return { ...state, chartEditor: null };
     default:
       return state;
   }
@@ -210,6 +172,8 @@ const textItems = [
   { id: "title-block", label: "Title Block", icon: AlignCenter },
   { id: "subtitle", label: "Subtitle", icon: AlignCenter },
   { id: "bullet-list", label: "Bullet List", icon: List },
+  { id: "numbered-list", label: "Order List", icon: ListOrdered },
+  { id: "list-item", label: "List Item", icon: ListMinus },
   { id: "quote", label: "Quote", icon: Quote },
   { id: "body-text", label: "Body Text", icon: Columns2 },
 ] satisfies PaletteItem[];
@@ -1091,11 +1055,8 @@ function ActionsSidebar({
 
 function ActionsPanel({
   activeAction,
-  chartEditor,
   chatProps,
   onBlockSelect,
-  onChartChange,
-  onChartClose,
   onChartItemSelect,
   onElementItemSelect,
   onImageItemSelect,
@@ -1105,11 +1066,8 @@ function ActionsPanel({
   presentationId,
 }: {
   activeAction: ActionId;
-  chartEditor: ChartEditorState | null;
   chatProps: Omit<PresentationActionsProps, "presentationData">;
   onBlockSelect: (block: TemplateBlock) => void;
-  onChartChange: (chart: ChartElement) => void;
-  onChartClose: () => void;
   onChartItemSelect: (item: PaletteItem) => void;
   onElementItemSelect: (item: PaletteItem) => void;
   onImageItemSelect: (item: PaletteItem) => void;
@@ -1138,21 +1096,13 @@ function ActionsPanel({
           onItemSelect={onTextItemSelect}
         />
       )}
-      {activeAction === "charts" &&
-        (chartEditor ? (
-          <ChartEditorContent
-            chart={chartEditor.chart}
-            chartPath={chartEditor.path}
-            onChange={onChartChange}
-            onClose={onChartClose}
-          />
-        ) : (
-          <InsertPanel
-            title="Charts"
-            groups={[{ label: "Chart Type", items: chartTypeItems }]}
-            onItemSelect={onChartItemSelect}
-          />
-        ))}
+      {activeAction === "charts" && (
+        <InsertPanel
+          title="Charts"
+          groups={[{ label: "Chart Type", items: chartTypeItems }]}
+          onItemSelect={onChartItemSelect}
+        />
+      )}
       {activeAction === "tables" && (
         <InsertPanel
           title="Tables"
@@ -1200,7 +1150,7 @@ function templateV2TargetKey(
 
 const PresentationActions = (props: PresentationActionsProps) => {
   const { presentationData, ...chatProps } = props;
-  const [{ activeAction, chartEditor }, dispatchUiState] = useReducer(
+  const [{ activeAction }, dispatchUiState] = useReducer(
     presentationActionsUiReducer,
     initialPresentationActionsUiState,
   );
@@ -1226,53 +1176,6 @@ const PresentationActions = (props: PresentationActionsProps) => {
     hiddenTargetReferenceKey === targetReferenceKey;
 
   useEffect(() => {
-    const handleChartEditorOpen = (event: Event) => {
-      const detail = (event as CustomEvent<TemplateV2ChartEditorDetail>).detail;
-      if (!detail) return;
-
-      if (detail.open === false) {
-        dispatchUiState({ type: "closeChartEditor" });
-        return;
-      }
-
-      if (!detail.chart || !detail.path) return;
-      if (
-        typeof props.currentSlide === "number" &&
-        typeof detail.slideIndex === "number" &&
-        props.currentSlide !== detail.slideIndex
-      ) {
-        return;
-      }
-
-      dispatchUiState({
-        type: "openChartEditor",
-        chartEditor: {
-          chart: detail.chart,
-          path: detail.path,
-          rootIndex: detail.rootIndex ?? 0,
-          slideId: detail.slideId ?? null,
-          slideIndex: detail.slideIndex ?? null,
-        },
-      });
-    };
-
-    window.addEventListener(
-      TEMPLATE_V2_CHART_EDITOR_EVENT,
-      handleChartEditorOpen,
-    );
-    return () => {
-      window.removeEventListener(
-        TEMPLATE_V2_CHART_EDITOR_EVENT,
-        handleChartEditorOpen,
-      );
-    };
-  }, [props.currentSlide]);
-
-  useEffect(() => {
-    dispatchUiState({
-      type: "syncCurrentSlide",
-      currentSlide: props.currentSlide,
-    });
     setSelectedTemplateV2Target(null);
     setHiddenSlideReferenceKey(null);
     setHiddenTargetReferenceKey(null);
@@ -1307,46 +1210,6 @@ const PresentationActions = (props: PresentationActionsProps) => {
       );
     };
   }, [props.currentSlide]);
-
-  const updateChartEditor = (chart: ChartElement) => {
-    if (!chartEditor || typeof window === "undefined") return;
-
-    const detail: TemplateV2ChartUpdateDetail = {
-      action: "update",
-      chart,
-      path: chartEditor.path,
-      slideId: chartEditor.slideId,
-      slideIndex: chartEditor.slideIndex,
-    };
-    window.dispatchEvent(
-      new CustomEvent(TEMPLATE_V2_CHART_UPDATE_EVENT, { detail }),
-    );
-
-    if (!detail.handled) {
-      notify.warning(
-        "Chart unavailable",
-        "Select the chart again before editing it.",
-      );
-      return;
-    }
-
-    dispatchUiState({ type: "updateChartEditor", chart });
-  };
-
-  const closeChartEditor = () => {
-    if (chartEditor && typeof window !== "undefined") {
-      const detail: TemplateV2ChartUpdateDetail = {
-        action: "close",
-        path: chartEditor.path,
-        slideId: chartEditor.slideId,
-        slideIndex: chartEditor.slideIndex,
-      };
-      window.dispatchEvent(
-        new CustomEvent(TEMPLATE_V2_CHART_UPDATE_EVENT, { detail }),
-      );
-    }
-    dispatchUiState({ type: "closeChartEditor" });
-  };
 
   const insertEditorContent = (
     content: EditorInsertContent,
@@ -1454,7 +1317,6 @@ const PresentationActions = (props: PresentationActionsProps) => {
       />
       <ActionsPanel
         activeAction={activeAction}
-        chartEditor={chartEditor}
         chatProps={{
           ...chatProps,
           currentSlide: slideReferenceHidden ? undefined : chatProps.currentSlide,
@@ -1469,8 +1331,6 @@ const PresentationActions = (props: PresentationActionsProps) => {
             : undefined,
         }}
         onBlockSelect={handleBlockSelect}
-        onChartChange={updateChartEditor}
-        onChartClose={closeChartEditor}
         onChartItemSelect={handleChartItemSelect}
         onElementItemSelect={handleElementItemSelect}
         onImageItemSelect={handleImageItemSelect}

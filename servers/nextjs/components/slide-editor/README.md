@@ -598,14 +598,12 @@ Event constants:
   active and what selection/history state exists.
 - `TEMPLATE_V2_ACTIVATE_SURFACE_EVENT`: Programmatically activate one slide
   surface.
-- `TEMPLATE_V2_CHART_EDITOR_EVENT`: Open/close chart editor UI.
-- `TEMPLATE_V2_CHART_UPDATE_EVENT`: Send edited chart data back to the surface.
 
 Why events are used:
 
 - Toolbar/actions may live outside the slide surface React subtree.
 - Multiple slide surfaces can exist in the page.
-- The active surface needs to receive insert/chart commands without prop drilling
+- The active surface needs to receive insert commands without prop drilling
   through the whole app.
 
 When adding a new external editor panel, define a typed event payload in
@@ -974,15 +972,11 @@ Data helpers:
 
 Editing:
 
-- `ChartToolbar` provides chart type and color shortcuts.
-- `openChartEditor()` dispatches `TEMPLATE_V2_CHART_EDITOR_EVENT`.
-- `ChartEditorContent` provides the Presentation Actions Data and Customize
-  tabs and the expanded data table.
-- `ChartCustomizePanel` is shared by Presentation Actions and the expanded
-  chart editor. It edits title, values, colors, axes, and X/Y grids.
-- When finished, chart editor dispatches `TEMPLATE_V2_CHART_UPDATE_EVENT`.
-- `TemplateV2KonvaSlide` listens for update events and writes data to the
-  currently selected chart.
+- `ChartToolbar` provides chart type, edit-data, and color controls.
+- The edit-data button and chart double-click open `ChartDataEditorPopover`
+  directly from `TemplateV2KonvaSlide`.
+- The popover edits chart type, data, colors, title, axes, and X/Y grids, then
+  writes the saved chart back through the selected surface element.
 
 ### Design Variables
 

@@ -37,6 +37,7 @@ type TemplateV2SelectionToolbarProps = {
   targetComponentActions: TemplateV2SelectionComponentActions | null;
   toolbarBounds: TemplateV2ToolbarViewportBounds | null;
   onChartChange: (element: ChartSlideElement) => void;
+  onChartEdit: () => void;
   onDeleteSelection: () => void;
   onDuplicateSelection: () => void;
   onLayoutChange: (changes: Record<string, unknown>) => void;
@@ -62,6 +63,7 @@ export function TemplateV2SelectionToolbar({
   targetComponentActions,
   toolbarBounds,
   onChartChange,
+  onChartEdit,
   onDeleteSelection,
   onDuplicateSelection,
   onLayoutChange,
@@ -98,6 +100,7 @@ export function TemplateV2SelectionToolbar({
       bounds={toolbarBounds}
       componentActions={componentActions}
       onChartChange={chartTarget ? onChartChange : undefined}
+      onChartEdit={chartTarget ? onChartEdit : undefined}
       onChange={layoutTarget ? onLayoutChange : undefined}
       onTableChange={tableTarget ? onTableChange : undefined}
       selectedTableCell={selectedTableCell}

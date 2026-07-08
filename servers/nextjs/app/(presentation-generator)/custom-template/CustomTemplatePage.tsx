@@ -5,24 +5,20 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Check,
   ChevronDown,
   ChevronRight,
-  Download,
   LayoutPanelTop,
   Loader2,
-  RotateCcw,
+  Sparkles,
   Trash2,
   Type,
   Upload,
-  Wrench,
   X,
 } from "lucide-react";
 import { useSelector } from "react-redux";
@@ -30,6 +26,7 @@ import { useSelector } from "react-redux";
 import { notify } from "@/components/ui/sonner";
 import type { RootState } from "@/store/store";
 import { normalizeBackendAssetUrls, resolveBackendAssetUrl } from "@/utils/api";
+import { setupImageUrlConverter } from "@/utils/image-url-converter";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
 
 import { useFontLoader as loadFontAssets } from "../hooks/useFontLoad";
@@ -51,33 +48,16 @@ import {
   showTemplateV2ModelWarningIfNeeded,
 } from "./utils/templateModelWarning";
 
-type LibreOfficeGateState =
-  | "checking"
-  | "ready"
-  | "missing"
-  | "installing"
-  | "error";
-type LibreOfficeGateSnapshot = {
-  status: LibreOfficeGateState;
-  message: string;
-  progress?: number;
-};
-type LibreOfficeGateAction = {
-  type: "set";
-  payload: Partial<LibreOfficeGateSnapshot>;
-};
+
 
 type StudioStep = 1 | 2 | 3 | 4;
 
-const initialLibreOfficeGate: LibreOfficeGateSnapshot = {
-  status: "checking",
-  message: "Checking LibreOffice availability...",
-};
+
 
 const studioSteps: { id: StudioStep; label: string }[] = [
   { id: 1, label: "Upload" },
   { id: 2, label: "Analyze" },
-  { id: 3, label: "Generate" },
+  { id: 3, label: "Preview" },
   { id: 4, label: "Review" },
 ];
 
@@ -93,367 +73,9 @@ function formatFileSize(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function libreOfficeGateReducer(
-  state: LibreOfficeGateSnapshot,
-  action: LibreOfficeGateAction,
-): LibreOfficeGateSnapshot {
-  if (action.type === "set") {
-    return { ...state, ...action.payload };
-  }
-  return state;
-}
 
-const LibreOfficeGate = ({
-  status,
-  message,
-  progress,
-  onInstall,
-  onCancel,
-  onRecheck,
-  onExit,
-}: {
-  status: LibreOfficeGateState;
-  message: string;
-  progress?: number;
-  onInstall: () => void;
-  onCancel: () => void;
-  onRecheck: () => void;
-  onExit: () => void;
-}) => {
-  if (status === "ready") return null;
 
-  const isChecking = status === "checking";
-  const isInstalling = status === "installing";
-  const isBusy = isChecking || isInstalling;
-  const percent =
-    typeof progress === "number" ? Math.max(0, Math.min(100, progress)) : undefined;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#101323]/30 px-4 backdrop-blur-[5px]">
-      <div className="relative w-full max-w-[460px] rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-2xl">
-        <button
-          type="button"
-          onClick={isInstalling ? onCancel : onExit}
-          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#6B7280] transition hover:bg-[#F3F4F6] hover:text-[#101323]"
-          aria-label={isInstalling ? "Cancel LibreOffice installation" : "Go back"}
-          title={isInstalling ? "Cancel install" : "Go back"}
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EBE9FE] text-[#6D5BD0]">
-            {isBusy ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Wrench className="h-5 w-5" />
-            )}
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-[#101323]">
-              Install LibreOffice to continue
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-[#5D6375]">
-              Template Studio uses LibreOffice to convert uploaded PPTX files before
-              generating reusable templates.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-[#EEF0F4] bg-[#FAFAFF] px-4 py-3 text-sm text-[#3A4054]">
-          {message}
-        </div>
-
-        {isInstalling && (
-          <div className="mt-4">
-            <div className="h-2 overflow-hidden rounded-full bg-[#EDEEF5]">
-              <div
-                className={`h-full rounded-full bg-[#6D5BD0] transition-all ${percent === undefined ? "w-1/2 animate-pulse" : ""}`}
-                style={percent === undefined ? undefined : { width: `${percent}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {isInstalling ? (
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              disabled
-              className="inline-flex h-11 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-[#B8BDCB] px-4 text-sm font-semibold text-white"
-            >
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Installing...
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#D9DCE7] px-4 text-sm font-semibold text-[#101323] transition hover:bg-[#F6F7FB]"
-            >
-              <X className="h-4 w-4" />
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={onInstall}
-              disabled={isChecking}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#101323] px-4 text-sm font-semibold text-white transition hover:bg-[#252A3F] disabled:cursor-not-allowed disabled:bg-[#B8BDCB] sm:col-span-2"
-            >
-              {isChecking ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Install LibreOffice
-            </button>
-            <button
-              type="button"
-              onClick={onRecheck}
-              disabled={isChecking}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#D9DCE7] px-4 text-sm font-semibold text-[#101323] transition hover:bg-[#F6F7FB] disabled:cursor-not-allowed disabled:text-[#9AA1B5]"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Recheck
-            </button>
-            <button
-              type="button"
-              onClick={onExit}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#D9DCE7] px-4 text-sm font-semibold text-[#101323] transition hover:bg-[#F6F7FB]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Go back
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-function useLibreOfficeGate(router: ReturnType<typeof useRouter>) {
-  const [libreGate, dispatchLibreGate] = useReducer(
-    libreOfficeGateReducer,
-    initialLibreOfficeGate,
-  );
-
-  const checkLibreOffice = useCallback(async () => {
-    const api = window.electron;
-    if (!api?.checkLibreOffice) {
-      dispatchLibreGate({ type: "set", payload: { status: "ready" } });
-      return;
-    }
-
-    dispatchLibreGate({
-      type: "set",
-      payload: {
-        status: "checking",
-        message: "Checking LibreOffice availability...",
-        progress: undefined,
-      },
-    });
-    try {
-      const result = await api.checkLibreOffice();
-      if (result.installed) {
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            status: "ready",
-            message: "LibreOffice is ready.",
-            progress: undefined,
-          },
-        });
-      } else {
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            status: "missing",
-            message: "LibreOffice is not installed yet. Install it to use Template Studio.",
-            progress: undefined,
-          },
-        });
-      }
-    } catch (error) {
-      dispatchLibreGate({
-        type: "set",
-        payload: {
-          status: "error",
-          message: error instanceof Error ? error.message : "Could not check LibreOffice.",
-          progress: undefined,
-        },
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    void checkLibreOffice();
-  }, [checkLibreOffice]);
-
-  useEffect(() => {
-    const api = window.electron;
-    if (!api?.onLibreOfficeProgress || !api?.onLibreOfficeLog) {
-      return;
-    }
-
-    const offProgress = api.onLibreOfficeProgress((payload) => {
-      if (payload.phase === "downloading" || payload.phase === "installing") {
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            status: "installing",
-            progress: payload.percent,
-            ...(payload.message
-              ? { message: payload.message.split("|").filter(Boolean).join(" - ") }
-              : {}),
-          },
-        });
-      } else if (payload.phase === "done") {
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            progress: 100,
-            message: "LibreOffice is ready.",
-          },
-        });
-        void checkLibreOffice();
-      } else if (payload.phase === "error") {
-        if (payload.message?.toLowerCase().includes("cancelled")) {
-          dispatchLibreGate({
-            type: "set",
-            payload: {
-              status: "missing",
-              progress: undefined,
-              message:
-                "LibreOffice installation cancelled. You can install it later to use Template Studio.",
-            },
-          });
-          return;
-        }
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            status: "error",
-            progress: undefined,
-            message: payload.message || "LibreOffice installation failed.",
-          },
-        });
-      }
-    });
-    const offLog = api.onLibreOfficeLog((payload) => {
-      if (payload.level === "error" && payload.text) {
-        dispatchLibreGate({
-          type: "set",
-          payload: { message: payload.text },
-        });
-      }
-    });
-
-    return () => {
-      offProgress();
-      offLog();
-    };
-  }, [checkLibreOffice]);
-
-  const installLibreOffice = useCallback(async () => {
-    const api = window.electron;
-    if (!api?.installLibreOffice) {
-      dispatchLibreGate({
-        type: "set",
-        payload: {
-          status: "error",
-          message: "LibreOffice installer is unavailable in this build.",
-          progress: undefined,
-        },
-      });
-      return;
-    }
-
-    dispatchLibreGate({
-      type: "set",
-      payload: {
-        status: "installing",
-        progress: undefined,
-        message: "Preparing LibreOffice installer...",
-      },
-    });
-    try {
-      const result = await api.installLibreOffice();
-      if (result?.ok) {
-        await checkLibreOffice();
-        return;
-      }
-      if (result?.cancelled) {
-        dispatchLibreGate({
-          type: "set",
-          payload: {
-            status: "missing",
-            progress: undefined,
-            message:
-              "LibreOffice installation cancelled. You can install it later to use Template Studio.",
-          },
-        });
-        return;
-      }
-      dispatchLibreGate({
-        type: "set",
-        payload: {
-          status: "error",
-          progress: undefined,
-          message: result?.error || "LibreOffice installation failed.",
-        },
-      });
-    } catch (error) {
-      dispatchLibreGate({
-        type: "set",
-        payload: {
-          status: "error",
-          progress: undefined,
-          message: error instanceof Error ? error.message : "LibreOffice installation failed.",
-        },
-      });
-    }
-  }, [checkLibreOffice]);
-
-  const cancelLibreOfficeInstall = useCallback(async () => {
-    const api = window.electron;
-    dispatchLibreGate({
-      type: "set",
-      payload: { message: "Cancelling LibreOffice installation..." },
-    });
-    try {
-      await api?.cancelLibreOfficeInstall?.();
-    } finally {
-      dispatchLibreGate({
-        type: "set",
-        payload: {
-          status: "missing",
-          progress: undefined,
-          message:
-            "LibreOffice installation cancelled. You can install it later to use Template Studio.",
-        },
-      });
-    }
-  }, []);
-
-  const leaveTemplateStudio = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push("/templates");
-  }, [router]);
-
-  return {
-    cancelLibreOfficeInstall,
-    checkLibreOffice,
-    installLibreOffice,
-    leaveTemplateStudio,
-    libreMessage: libreGate.message,
-    libreProgress: libreGate.progress,
-    libreStatus: libreGate.status,
-  };
-}
 
 function activeStudioStep(step: TemplateCreationStep): StudioStep {
   if (step === "font-check" || step === "font-upload") return 2;
@@ -462,19 +84,13 @@ function activeStudioStep(step: TemplateCreationStep): StudioStep {
   return 1;
 }
 
-function StudioTopBar({
-  activeStep,
-  centerAction,
-}: {
-  activeStep: StudioStep;
-  centerAction?: React.ReactNode;
-}) {
+function StudioTopBar({ activeStep }: { activeStep: StudioStep }) {
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[88px] bg-gradient-to-b from-white via-white to-white/0">
-      <div className="relative mx-auto h-full max-w-[1280px] px-[70px]">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[72px] sm:h-[80px] 2xl:h-[96px] bg-gradient-to-b from-white via-white to-white/0">
+      <div className="relative mx-auto flex h-full max-w-[1280px] 2xl:max-w-[1536px] items-center justify-between px-5 sm:px-8 2xl:px-[90px]">
         <a
           href="/dashboard"
-          className="pointer-events-auto absolute left-[70px] top-[26px] block h-[38px] w-[38px]"
+          className="pointer-events-auto block h-8 w-8 sm:h-[34px] sm:w-[34px] 2xl:h-[44px] 2xl:w-[44px] shrink-0"
           aria-label="Dashboard"
         >
           <img
@@ -485,34 +101,31 @@ function StudioTopBar({
           />
         </a>
 
-        {centerAction ? (
-          <div className="pointer-events-auto absolute left-1/2 top-6 -translate-x-1/2">
-            {centerAction}
-          </div>
-        ) : null}
-
         <nav
-          className="pointer-events-auto absolute right-[32px] top-[28px] flex items-center"
+          className="pointer-events-auto flex items-center"
           aria-label="Template Studio progress"
         >
           {studioSteps.map((step, index) => {
             const isActive = step.id === activeStep;
             return (
               <React.Fragment key={step.id}>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 sm:gap-1.5 2xl:gap-2">
                   <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-full border text-[11px] leading-none ${
-                      isActive
-                        ? "border-black bg-black text-white"
-                        : "border-[#E4E5EB] bg-white text-[#9B9CA3]"
-                    }`}
+                    className={`flex h-5 w-5 sm:h-6 sm:w-6 2xl:h-7 2xl:w-7 items-center justify-center rounded-full border text-[10px] sm:text-[11px] 2xl:text-xs leading-none ${isActive
+                      ? "border-black bg-black text-white"
+                      : "border-[#E4E5EB] bg-white text-[#9B9CA3]"
+                      }`}
                   >
                     {step.id}
                   </span>
-                  <span className="text-[11px] font-medium text-black">{step.label}</span>
+                  <span
+                    className={`hidden text-[10px] font-medium sm:inline sm:text-[11px] 2xl:text-xs ${isActive ? "text-black" : "text-[#9B9CA3]"}`}
+                  >
+                    {step.label}
+                  </span>
                 </div>
                 {index < studioSteps.length - 1 ? (
-                  <span className="mx-2 h-px w-[22px] bg-[#E9EAF0]" />
+                  <span className="mx-1.5 sm:mx-2 2xl:mx-2.5 h-px w-3 sm:w-[18px] 2xl:w-[22px] bg-[#E9EAF0]" />
                 ) : null}
               </React.Fragment>
             );
@@ -523,37 +136,58 @@ function StudioTopBar({
   );
 }
 
+function StudioBottomAction({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-5 sm:bottom-6 2xl:bottom-8 z-30 flex justify-center px-4">
+      <div className="pointer-events-auto w-full max-w-[260px] sm:max-w-[300px] 2xl:max-w-[380px]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function GradientPillButton({
   children,
   onClick,
   disabled,
   className = "",
+  mutedWhenDisabled = false,
+  fullWidth = false,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  mutedWhenDisabled?: boolean;
+  fullWidth?: boolean;
 }) {
+  const isMuted = mutedWhenDisabled && disabled;
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-[58px] px-5 text-sm font-medium text-black shadow-none transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
-      style={{ background: pillGradient }}
+      className={`inline-flex ${fullWidth ? "w-full" : ""} h-10 items-center justify-center gap-2 rounded-[58px] px-5 text-sm font-medium text-black shadow-none transition disabled:cursor-not-allowed ${isMuted
+        ? "bg-[#ECECF1] text-[#5C5E68] disabled:opacity-100"
+        : "disabled:opacity-60"
+        } ${className}`}
+      style={isMuted ? undefined : { background: pillGradient }}
     >
       {children}
     </button>
   );
 }
 
-function TemplateStudioTitle() {
+function TemplateStudioTitle({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="px-4 pt-[118px] text-center">
-      <h1 className="font-unbounded text-[52px] font-normal leading-none tracking-[-1.6px] text-[#101323] md:text-[64px]">
+    <div
+      className={`px-4 text-center ${compact ? "pt-[88px] sm:pt-[96px] 2xl:pt-[112px]" : "pt-[96px] sm:pt-[108px] 2xl:pt-[128px]"}`}
+    >
+      <h1 className="font-unbounded text-[36px] font-normal leading-none tracking-[-1.2px] text-[#101323] sm:text-[48px] sm:tracking-[-1.4px] md:text-[56px] 2xl:text-[68px] 2xl:tracking-[-1.8px]">
         Template Studio
       </h1>
-      <p className="mx-auto mt-5 max-w-[550px] text-center font-syne text-[18px] font-normal leading-[1.35] text-[#101323CC]">
+      <p className="mx-auto mt-3 max-w-[480px] text-center font-syne text-[15px] font-normal leading-[1.4] text-[#101323CC] sm:mt-4 sm:max-w-[520px] sm:text-[16px] 2xl:mt-5 2xl:max-w-[600px] 2xl:text-[18px]">
         Upload your PPTX file to extract slides and convert them to a template
         which you can use to generate AI presentations.
       </p>
@@ -597,15 +231,15 @@ function UploadPanel({
     <main className="flex min-h-screen flex-col items-center bg-white font-syne">
       <TemplateStudioTitle />
 
-      <section className="mt-12 w-full max-w-[760px] px-4">
+      <section className="mt-8 w-full max-w-[640px] px-4 sm:mt-10 sm:max-w-[700px] 2xl:mt-12 2xl:max-w-[820px]">
         <div className="group relative">
-          <div className="relative z-10 ml-8 w-max rounded-t-[28px] border border-b-0 border-[#EDEEF4] bg-white px-3 pb-2.5 pt-2">
+          <div className="relative z-10 ml-8 2xl:ml-10 w-max rounded-t-[28px] 2xl:rounded-t-[32px] border border-b-0 border-[#EDEEF4] bg-white px-3 2xl:px-4 pb-2.5 2xl:pb-3 pt-2 2xl:pt-2.5">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex h-[34px] items-center gap-1.5 rounded-[80px] bg-white px-3.5 text-[12px] font-semibold text-black shadow-[0_0_4px_rgba(0,0,0,0.06)]"
+              className="flex h-[34px] 2xl:h-[42px] items-center gap-1.5 2xl:gap-2 rounded-[80px] bg-white px-3.5 2xl:px-4 text-[12px] 2xl:text-sm font-semibold text-black shadow-[0_0_4px_rgba(0,0,0,0.06)]"
             >
-              <Upload className="h-3.5 w-3.5 text-[#7A5AF8]" />
+              <Upload className="h-3.5 w-3.5 2xl:h-4 2xl:w-4 text-[#7A5AF8]" />
               Upload PPTX File
             </button>
             <input
@@ -617,11 +251,10 @@ function UploadPanel({
             />
           </div>
 
-          <div className="relative -mt-px rounded-[28px] border border-[#EDEEF4] bg-white p-2.5 shadow-[0_0_16px_rgba(80,71,230,0.08)] transition-shadow duration-200 group-hover:shadow-[0_8px_32px_rgba(80,71,230,0.16)]">
+          <div className="relative -mt-px rounded-[28px] 2xl:rounded-[32px] border border-[#EDEEF4] bg-white p-2.5 2xl:p-3 shadow-[0_0_16px_rgba(80,71,230,0.08)] transition-shadow duration-200 ">
             <div
-              className={`relative h-[120px] overflow-hidden rounded-[18px] border border-[#E8E8EF] bg-white ${
-                selectedFile ? "" : "cursor-pointer"
-              }`}
+              className={`relative h-[120px] 2xl:h-[150px] overflow-hidden rounded-[18px] 2xl:rounded-[22px] border border-[#E8E8EF] bg-white ${selectedFile ? "" : "cursor-pointer"
+                }`}
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleDrop}
               onClick={() => {
@@ -637,44 +270,47 @@ function UploadPanel({
               />
 
               {selectedFile ? (
-                <div className="relative flex h-full items-center p-2">
+                <div className="relative flex h-full items-center ">
                   <div
-                    className="flex h-full min-w-0 items-center rounded-[14px] bg-[#F6F6FA] px-4 transition-[width] duration-300"
-                    style={{ width: isProcessing ? "62%" : "85%" }}
+                    className="flex  flex-1 h-full min-w-0 items-center rounded-[14px] bg-[#F6F6FA] px-5 transition-[width] duration-300"
+
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-base font-medium text-[#20212A]">
+                      <p className="truncate text-base 2xl:text-lg font-medium text-[#20212A]">
                         {selectedFile.name}
                       </p>
-                      <p className="mt-2 text-sm text-[#777985]">
+                      <p className="mt-2 2xl:mt-2.5 text-sm 2xl:text-base text-[#777985]">
                         {isProcessing ? "62%" : formatFileSize(selectedFile.size)}
                         <span className="px-2">•</span>
                         {isProcessing ? "Process" : "Ready"}
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onRemove();
-                    }}
-                    disabled={isProcessing}
-                    className="absolute right-3 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-[#E8E8EF] bg-[#EFF0F4] text-black disabled:opacity-50"
-                    aria-label="Remove file"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="w-[64px] 2xl:w-[76px] h-full flex justify-center items-center px-3.5">
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onRemove();
+                      }}
+                      disabled={isProcessing}
+                      className="w-[36px] h-[36px] 2xl:w-[44px] 2xl:h-[44px] top-1/2 z-20 flex items-center justify-center rounded-full border border-[#E8E8EF] bg-[#EFF0F4] text-black disabled:opacity-50"
+                      aria-label="Remove file"
+                    >
+                      <X className="h-3.5 w-3.5 2xl:h-4 2xl:w-4" />
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex h-full flex-col items-center justify-center">
+                <div className="flex h-full flex-col py-[28px] 2xl:py-[36px] items-center justify-center">
                   <img
                     src="/upload_icon.png"
                     alt=""
-                    className="h-[40px] w-[52px]"
+                    className="h-[42px] w-[55px] 2xl:h-[52px] 2xl:w-[68px]"
                     draggable={false}
                   />
-                  <p className="mt-4 text-sm font-normal text-[#8A8A93]">
+                  <p className="mt-3 2xl:mt-4 text-sm 2xl:text-base font-normal text-[#808080]">
                     Drag &amp; Drop your files here
                   </p>
                 </div>
@@ -698,19 +334,19 @@ function UploadPanel({
           </div>
         </div>
 
-        <ul className="mx-auto mt-6 flex max-w-[480px] items-center justify-between gap-5">
+        <ul className="mx-auto mt-6 2xl:mt-8 flex max-w-[480px] 2xl:max-w-[600px] items-center justify-between gap-5 2xl:gap-8">
           {["Test in Real Time", "Max 100MB", "5min Generation"].map((item) => (
-            <li key={item} className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#EBE9FE]" />
-              <span className="text-[13px] font-normal text-[#3A3A3A]">{item}</span>
+            <li key={item} className="flex items-center gap-2 2xl:gap-2.5">
+              <span className="h-2.5 w-2.5 2xl:h-3 2xl:w-3 rounded-full bg-[#EBE9FE]" />
+              <span className="text-[13px] 2xl:text-[15px] font-normal text-[#3A3A3A]">{item}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <div className="mt-auto w-full pb-5 pt-12">
-        <div className="mx-auto flex max-w-[558px] items-center gap-2 rounded-[6px] bg-[#F4F7FB] px-3 py-2 text-[11px] leading-tight text-[#505462]">
-          <span className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-[#0B4FBD] text-[10px] font-bold text-white">
+      <div className="mt-auto w-full pb-5 2xl:pb-8 pt-12 2xl:pt-16">
+        <div className="mx-auto flex max-w-[558px] 2xl:max-w-[700px] items-center gap-2 2xl:gap-3 rounded-[6px] bg-[#F4F7FB] px-3 2xl:px-4 py-2 2xl:py-2.5 text-[11px] 2xl:text-[13px] leading-tight text-[#505462]">
+          <span className="flex h-[14px] w-[14px] 2xl:h-4 2xl:w-4 shrink-0 items-center justify-center rounded-full bg-[#0B4FBD] text-[10px] 2xl:text-[11px] font-bold text-white">
             i
           </span>
           <p>
@@ -742,14 +378,14 @@ function AnalyzePanel({
   fontsData,
   uploadedFonts,
   isUploading,
-  onContinue,
   uploadFont,
+  hasPendingMissingFonts,
 }: {
   fontsData: FontData | null;
   uploadedFonts: UploadedFont[];
   isUploading: boolean;
-  onContinue: () => void;
   uploadFont: (fontName: string, file: File) => string | null;
+  hasPendingMissingFonts: boolean;
 }) {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const missingFonts = fontsData?.unavailable_fonts ?? [];
@@ -772,223 +408,181 @@ function AnalyzePanel({
   };
 
   return (
-    <main className="min-h-screen bg-white px-6 pb-24 pt-[132px] font-syne">
-      <section className="mx-auto w-full max-w-[496px]">
-        <div className="relative pl-12">
+    <main className="flex min-h-screen flex-col bg-white px-4 pb-28 font-syne sm:px-6 sm:pb-32 2xl:px-10 2xl:pb-36">
+      <TemplateStudioTitle compact />
+      <section className="mx-auto mt-10 w-full max-w-[570px] sm:mt-12 2xl:mt-14 2xl:max-w-[740px]">
+        <div className="relative w-full">
           {isUploading ? (
-            <div className="absolute left-[15px] top-8 h-[calc(100%-2rem)] w-px bg-[#ECECF2]" />
+            <div className="absolute left-[17px] top-10 h-[calc(100%-2.5rem)] w-px bg-[#ECECF2] 2xl:left-[23px]" />
           ) : null}
 
-          <div className="relative">
-            <div className="absolute -left-12 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F1F5] text-black">
-              <Type className="h-4 w-4" />
+          <div className="relative flex w-full gap-[18px] 2xl:gap-6">
+            <div className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-[#EDEEEF] text-black 2xl:h-[48px] 2xl:w-[48px]">
+              <Type className="h-4 w-4 2xl:h-5 2xl:w-5" />
             </div>
-
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-[17px] font-semibold text-black">
-                {missingFonts.length > 0
-                  ? "Waiting for missing fonts"
-                  : "Fonts detected"}
-              </h2>
-              <span className="shrink-0 text-[10px] font-medium text-[#70737D]">
-                Current State
-              </span>
-            </div>
-
-            <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-3 py-3">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[13px] font-medium text-black">
-                  {missingFonts.length > 0 ? (
-                    <span className="text-[#EF5D3E]">△</span>
-                  ) : (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2CA36B] text-white">
-                      <Check className="h-3 w-3" />
-                    </span>
-                  )}
+            <div className="min-w-0 flex-1">
+              <div className="mb-2.5 flex items-center justify-between gap-3 2xl:mb-3">
+                <h2 className="text-lg font-medium text-black 2xl:text-2xl">
                   {missingFonts.length > 0
-                    ? `${missingFonts.length} fonts require attention`
-                    : "All detected fonts are ready"}
-                </div>
-                {showFontAttentionSpinner ? (
-                  <span className="h-5 w-5 shrink-0 rounded-full border-2 border-[#7A5AF8] border-r-transparent" />
-                ) : fontsStepComplete ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2CA36B] text-[10px] text-white">
-                    <Check className="h-3 w-3" />
-                  </span>
-                ) : null}
+                    ? "Waiting for missing fonts"
+                    : "All fonts are available"}
+                </h2>
+                <span className="shrink-0 text-xs font-medium text-[#666666] 2xl:text-sm">
+                  Current State
+                </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {fontChips.length > 0 ? (
-                  fontChips.map((font, index) => {
-                    const label = chipLabel(font);
-                    const isMissing = missingFontKeys.has(label.toLowerCase());
-                    return (
-                      <span
-                        key={`${font.name}-${index}`}
-                        className={`truncate rounded-full border px-3 py-1 text-center text-[11px] ${
-                          isMissing
+              <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-2.5 py-4 2xl:px-3.5 2xl:py-5">
+                <div className="mb-3 flex items-start justify-between gap-3 2xl:mb-4">
+                  <div className="flex items-center gap-1.5 text-[13px] font-medium text-black 2xl:gap-2 2xl:text-[15px]">
+                    {missingFonts.length > 0 ? (
+                      <span className="text-[#EF5D3E]">△</span>
+                    ) : (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2CA36B] text-white 2xl:h-5 2xl:w-5">
+                        <Check className="h-3 w-3 2xl:h-3.5 2xl:w-3.5" />
+                      </span>
+                    )}
+                    {missingFonts.length > 0
+                      ? `${missingFonts.length} fonts require attention`
+                      : "All fonts successfully resolved"}
+                  </div>
+                  {isUploading ? (
+                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#7A5AF8] border-r-transparent 2xl:h-6 2xl:w-6" />
+                  ) : showFontAttentionSpinner ? (
+                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#7A5AF8] border-r-transparent 2xl:h-6 2xl:w-6" />
+                  ) : fontsStepComplete ? (
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2CA36B] text-white 2xl:h-5 2xl:w-5">
+                      <Check className="h-3 w-3 2xl:h-3.5 2xl:w-3.5" />
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 2xl:gap-2.5">
+                  {fontChips.length > 0 ? (
+                    fontChips.map((font, index) => {
+                      const label = chipLabel(font);
+                      const isMissing = missingFontKeys.has(label.toLowerCase());
+                      return (
+                        <span
+                          key={`${font.name}-${index}`}
+                          className={`truncate rounded-full border px-3 py-1 text-center text-[11px] 2xl:px-3.5 2xl:py-1.5 2xl:text-[13px] ${isMissing
                             ? "border-[#FDBA74] bg-[#FFF7ED] text-[#EA580C]"
                             : "border-[#E1E2E8] bg-[#F0F1F4] text-[#555862]"
-                        }`}
-                        title={label}
-                      >
-                        {label}
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span className="col-span-3 rounded-full border border-[#E1E2E8] bg-[#F0F1F4] px-3 py-1 text-center text-[11px] text-[#555862]">
-                    No fonts detected
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {missingFonts.length > 0 ? (
-              <div className="mt-3 space-y-4">
-                {missingFonts.map((font, index) => {
-                  const fontName = font.name;
-                  const isUploaded = uploadedFontNames.has(fontName);
-                  return (
-                    <div key={`${fontName}-${index}`} className="space-y-2">
-                      <p className="text-[12px] font-medium text-[#4D505A]">{fontName}</p>
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                        <input
-                          ref={(node) => {
-                            fileInputRefs.current[fontName] = node;
-                          }}
-                          type="file"
-                          accept=".ttf,.otf,.woff,.woff2,.eot"
-                          className="hidden"
-                          onChange={(event) => handleFontFile(fontName, event)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRefs.current[fontName]?.click()}
-                          disabled={isUploading}
-                          className="flex h-10 items-center gap-2 rounded-[5px] border border-[#E2E3E8] bg-white px-3 text-left text-[13px] text-[#72757F] transition hover:border-[#B9ABFF] hover:bg-[#FAFAFF] disabled:cursor-not-allowed disabled:opacity-60"
+                            }`}
+                          title={label}
                         >
-                          <Upload className="h-4 w-4 text-black" />
-                          {isUploaded ? "Uploaded" : "Upload .ttf / .otf"}
-                        </button>
-                        <span className="text-[14px] text-black">or</span>
-                        <div className="relative">
-                          <select
-                            aria-label={`Fallback font for ${fontName}`}
+                          {label}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="col-span-3 rounded-full border border-[#E1E2E8] bg-[#F0F1F4] px-3 py-1 text-center text-[11px] text-[#555862] 2xl:text-[13px]">
+                      No fonts detected
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {hasPendingMissingFonts && !isUploading ? (
+                <div className="mt-3 rounded-[5px] border border-[#FDE4C2] bg-[#FFFBF5] px-3 py-2.5 text-[12px] leading-relaxed text-[#8A5B2C] 2xl:mt-4 2xl:px-3.5 2xl:py-3 2xl:text-[13px]">
+                  You can continue without uploading missing fonts, but they will not be applied to
+                  your template.
+                </div>
+              ) : null}
+
+              {missingFonts.length > 0 ? (
+                <div className="mt-3 space-y-4 2xl:mt-4 2xl:space-y-5">
+                  {missingFonts.map((font, index) => {
+                    const fontName = font.name;
+                    const isUploaded = uploadedFontNames.has(fontName);
+                    return (
+                      <div key={`${fontName}-${index}`} className="space-y-2 2xl:space-y-2.5">
+                        <p className="text-[12px] font-medium text-[#4D505A] 2xl:text-sm">{fontName}</p>
+                        <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 2xl:gap-4">
+                          <input
+                            ref={(node) => {
+                              fileInputRefs.current[fontName] = node;
+                            }}
+                            type="file"
+                            accept=".ttf,.otf,.woff,.woff2,.eot"
+                            className="hidden"
+                            onChange={(event) => handleFontFile(fontName, event)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRefs.current[fontName]?.click()}
                             disabled={isUploading}
-                            className="h-10 w-full appearance-none rounded-[5px] border border-[#E2E3E8] bg-white px-4 pr-8 text-[13px] text-[#282A32] outline-none transition hover:border-[#B9ABFF] disabled:cursor-not-allowed disabled:opacity-60"
-                            defaultValue="Poppins"
+                            className="flex h-10 items-center gap-2 rounded-[5px] border border-[#E2E3E8] bg-white px-3 text-left text-[13px] text-[#72757F] transition hover:border-[#B9ABFF] hover:bg-[#FAFAFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-12 2xl:px-4 2xl:text-[15px]"
                           >
-                            <option>Poppins</option>
-                            <option>Inter</option>
-                            <option>Manrope</option>
-                            <option>Syne</option>
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+                            <Upload className="h-4 w-4 text-black 2xl:h-5 2xl:w-5" />
+                            {isUploaded ? "Uploaded" : "Upload .ttf / .otf"}
+                          </button>
+                          <span className="hidden text-[14px] text-black sm:block 2xl:text-base">or</span>
+                          <div className="relative">
+                            <select
+                              aria-label={`Fallback font for ${fontName}`}
+                              disabled={isUploading}
+                              className="h-10 w-full appearance-none rounded-[5px] border border-[#E2E3E8] bg-white px-4 pr-8 text-[13px] text-[#282A32] outline-none transition hover:border-[#B9ABFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-12 2xl:px-5 2xl:pr-10 2xl:text-[15px]"
+                              defaultValue="Poppins"
+                            >
+                              <option>Poppins</option>
+                              <option>Inter</option>
+                              <option>Manrope</option>
+                              <option>Syne</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black 2xl:right-4 2xl:h-5 2xl:w-5" />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {isUploading ? (
-            <div className="relative mt-7">
-              <div className="absolute -left-12 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-black text-white">
-                <LayoutPanelTop className="h-4 w-4" />
+            <div className="relative mt-7 flex w-full gap-[18px] 2xl:mt-9 2xl:gap-6">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-white 2xl:h-10 2xl:w-10">
+                <LayoutPanelTop className="h-4 w-4 2xl:h-5 2xl:w-5" />
               </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex items-center justify-between gap-3 2xl:mb-4">
+                  <h2 className="text-[17px] font-semibold text-black 2xl:text-xl">Creating Template</h2>
+                  <span className="text-[10px] font-medium text-[#70737D] 2xl:text-xs">In Progress</span>
+                </div>
 
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-[17px] font-semibold text-black">Creating Preview</h2>
-                <span className="text-[10px] font-medium text-[#70737D]">In Progress</span>
-              </div>
-
-              <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-3 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2 text-[13px] text-[#777985]">
-                    <p className="font-medium text-black">✓ Checking fonts</p>
-                    <p className="flex items-center gap-2">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7A5AF8]" />
-                      Creating preview
-                    </p>
-                    <p>Waiting to generate layouts</p>
+                <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-3 py-3 2xl:px-4 2xl:py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-2 text-[13px] text-[#777985] 2xl:space-y-2.5 2xl:text-[15px]">
+                      <p className="font-medium text-black">✓ Extracting Slides</p>
+                      <p className="font-medium text-black">✓ Learning Layouts</p>
+                      <p className="flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7A5AF8] 2xl:h-4 2xl:w-4" />
+                        Detecting Colors
+                      </p>
+                    </div>
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#7A5AF8] 2xl:h-6 2xl:w-6" />
                   </div>
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#7A5AF8]" />
                 </div>
               </div>
             </div>
           ) : null}
         </div>
       </section>
-
-      <button
-        type="button"
-        onClick={onContinue}
-        disabled={isUploading}
-        className={`fixed bottom-9 right-7 inline-flex h-[38px] items-center justify-center gap-2 rounded-[58px] px-5 text-[14px] font-medium text-black transition-all ${
-          isUploading
-            ? "cursor-not-allowed shadow-[0_0_22px_rgba(122,90,248,0.32)]"
-            : "hover:shadow-[0_8px_24px_rgba(122,90,248,0.22)]"
-        }`}
-        style={{ background: pillGradient }}
-      >
-        {isUploading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Creating Preview...
-          </>
-        ) : (
-          "Continue"
-        )}
-      </button>
     </main>
   );
 }
 
-function ThumbnailStrip({
-  urls,
-  selectedIndex,
-  onSelect,
-}: {
-  urls: string[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-}) {
-  return (
-    <div className="fixed bottom-[26px] left-1/2 z-20 flex w-[calc(100vw-320px)] max-w-[930px] -translate-x-1/2 items-center gap-4 overflow-x-auto pb-1 hide-scrollbar">
-      {urls.map((url, index) => (
-        <button
-          key={`${url}-${index}`}
-          type="button"
-          onClick={() => onSelect(index)}
-          className={`relative h-[50px] w-[90px] shrink-0 overflow-visible rounded-[6px] border bg-white p-0 transition ${
-            selectedIndex === index ? "border-[#D9D9E2]" : "border-[#ECECF2]"
-          }`}
-        >
-          <img
-            src={resolveBackendAssetUrl(url)}
-            alt={`Slide ${index + 1}`}
-            className="h-full w-full rounded-[6px] object-cover"
-            draggable={false}
-          />
-          <span className="absolute -bottom-2 -left-2 flex h-5 w-5 items-center justify-center rounded-full border border-[#E6E7ED] bg-white text-[11px] text-black shadow-sm">
-            {index + 1}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
+const SLIDE_WIDTH = 1280;
+const SLIDE_HEIGHT = 720;
 
-function ScaledTemplateV2Slide({
-  layout,
-  fonts,
+function ResponsiveSlideViewport({
+  children,
+  className = "",
 }: {
-  layout: TemplateV2Layout;
-  fonts?: Record<string, string>;
+  children: React.ReactNode;
+  className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
@@ -1010,19 +604,148 @@ function ScaledTemplateV2Slide({
     return () => observer.disconnect();
   }, []);
 
-  const scale = width > 0 ? width / 1280 : 1;
+  const scale = width > 0 ? Math.min((width / SLIDE_WIDTH) * 0.98, 1) : 0;
 
   return (
-    <div ref={containerRef} className="relative aspect-video w-full overflow-hidden bg-white">
+    <div
+      ref={containerRef}
+      className={`relative mx-auto w-full max-w-[1280px] ${className}`}
+    >
       <div
-        className="absolute left-0 top-0 h-[720px] w-[1280px]"
+        className="relative mx-auto overflow-hidden"
         style={{
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
+          width: scale > 0 ? SLIDE_WIDTH * scale : "100%",
+          height: scale > 0 ? SLIDE_HEIGHT * scale : undefined,
+          aspectRatio: scale > 0 ? undefined : "16 / 9",
         }}
       >
-        <TemplateV2LayoutPreview layout={layout} fonts={fonts} />
+        <div
+          className="absolute left-0 top-0"
+          style={{
+            width: SLIDE_WIDTH,
+            height: SLIDE_HEIGHT,
+            transformOrigin: "top left",
+            transform: scale > 0 ? `scale(${scale})` : undefined,
+          }}
+        >
+          {scale > 0 ? children : null}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function KonvaLayoutSlide({
+  layout,
+  fonts,
+  slideKey,
+  className = "border border-[#E8E8EF] bg-white shadow-[0_2px_16px_rgba(16,24,40,0.06)]",
+}: {
+  layout: TemplateV2Layout;
+  fonts?: Record<string, string>;
+  slideKey: string;
+  className?: string;
+}) {
+  return (
+    <ResponsiveSlideViewport className={className}>
+      <TemplateV2LayoutPreview
+        key={slideKey}
+        layout={layout}
+        fonts={fonts}
+        useKonvaRenderer
+      />
+    </ResponsiveSlideViewport>
+  );
+}
+
+function GeneratingSlidesOverlay() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center sm:bottom-8">
+      <span className="relative z-20 flex items-center overflow-hidden rounded-[50px] bg-white px-4 py-2.5 text-sm font-medium text-[#666666] shadow-[0_2px_12px_rgba(16,24,40,0.08)]">
+        <span aria-hidden className="generating-slides-background absolute" />
+        <span className="relative z-10 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-[#9034EA]" />
+          Generating slides...
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function EmptyGeneratingSlide() {
+  return (
+    <ResponsiveSlideViewport className="border border-[#E8E8EF] bg-white shadow-[0_2px_16px_rgba(16,24,40,0.06)]">
+      <div className="relative h-full w-full bg-white">
+        <GeneratingSlidesOverlay />
+      </div>
+    </ResponsiveSlideViewport>
+  );
+}
+
+function ScaledScreenshotSlide({ src, alt }: { src: string; alt: string }) {
+  return (
+    <ResponsiveSlideViewport className="border border-[#E8E8EF] bg-white shadow-[0_2px_16px_rgba(16,24,40,0.06)]">
+      <img
+        src={resolveBackendAssetUrl(src)}
+        alt={alt}
+        className="block h-full w-full"
+        draggable={false}
+      />
+    </ResponsiveSlideViewport>
+  );
+}
+
+function ThumbnailStrip({
+  slides,
+  urls,
+  selectedIndex,
+  onSelect,
+  bottomOffset = "bottom-[88px] sm:bottom-[96px] 2xl:bottom-[104px]",
+}: {
+  slides?: ProcessedSlide[];
+  urls?: string[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+  bottomOffset?: string;
+}) {
+  const count = slides?.length ?? urls?.length ?? 0;
+
+  return (
+    <div
+      className={`fixed ${bottomOffset} left-1/2 z-20 flex w-[calc(100vw-2rem)] max-w-[min(100%,1280px)] -translate-x-1/2 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar sm:w-[calc(100vw-4rem)] sm:gap-3 2xl:gap-4`}
+    >
+      {Array.from({ length: count }, (_, index) => {
+        const slide = slides?.[index];
+        const url = urls?.[index] ?? slide?.screenshot_url;
+        const isReady = slide
+          ? Boolean(slide.processed && !slide.processing && slide.v2Layout)
+          : Boolean(url);
+        const isSelected = selectedIndex === index;
+
+        return (
+          <button
+            key={`thumb-${index}`}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={`relative aspect-video w-[76px] shrink-0 overflow-visible rounded-[5px] border bg-white p-0 transition sm:w-[86px] sm:rounded-[6px] 2xl:w-[96px] ${isSelected ? "border-[#D9D9E2] ring-1 ring-[#D9D9E2]" : "border-[#ECECF2]"
+              }`}
+          >
+            {isReady && url ? (
+              <img
+                src={resolveBackendAssetUrl(url)}
+                alt={`Slide ${index + 1}`}
+                className="h-full w-full rounded-[5px] object-cover sm:rounded-[6px]"
+                draggable={false}
+              />
+            ) : (
+              <div className="h-full w-full rounded-[5px] bg-white sm:rounded-[6px]" />
+            )}
+            <span className="absolute -bottom-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[#E6E7ED] bg-white text-[9px] text-black shadow-sm sm:-bottom-2 sm:-left-2 sm:h-5 sm:w-5 sm:text-[10px]">
+              {index + 1}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1030,33 +753,53 @@ function ScaledTemplateV2Slide({
 function ReviewSlideCanvas({
   slide,
   fonts,
+  isGenerating = false,
 }: {
   slide: ProcessedSlide | undefined;
   fonts?: Record<string, string>;
+  isGenerating?: boolean;
 }) {
-  if (!slide) {
-    return <div className="aspect-video w-full bg-white" />;
+  const hasKonvaLayout = Boolean(
+    slide?.v2Layout && slide.processed && !slide.processing,
+  );
+
+  if (hasKonvaLayout && slide?.v2Layout) {
+    return (
+      <KonvaLayoutSlide
+        layout={slide.v2Layout}
+        fonts={fonts}
+        slideKey={`${slide.slide_number}-${slide.v2Layout.id ?? slide.layout_id ?? "layout"}`}
+      />
+    );
   }
 
-  if (slide.v2Layout && slide.processed && !slide.processing) {
-    return <ScaledTemplateV2Slide layout={slide.v2Layout} fonts={fonts} />;
+  if (isGenerating) {
+    return <EmptyGeneratingSlide />;
+  }
+
+  if (!slide) {
+    return (
+      <ResponsiveSlideViewport className="border border-[#E8E8EF] bg-white">
+        <div className="h-full w-full bg-white" />
+      </ResponsiveSlideViewport>
+    );
   }
 
   if (slide.screenshot_url) {
     return (
-      <img
-        src={resolveBackendAssetUrl(slide.screenshot_url)}
+      <ScaledScreenshotSlide
+        src={slide.screenshot_url}
         alt={`Slide ${slide.slide_number}`}
-        className="block w-full"
-        draggable={false}
       />
     );
   }
 
   return (
-    <div className="flex aspect-video w-full items-center justify-center bg-[#F7F7FA] text-sm text-[#777985]">
-      {slide.processing ? "Generating slide..." : "Slide unavailable"}
-    </div>
+    <ResponsiveSlideViewport className="border border-[#E8E8EF] bg-[#F7F7FA]">
+      <div className="flex h-full w-full items-center justify-center text-sm text-[#777985] 2xl:text-base">
+        {slide.processing ? "Generating slide..." : "Slide unavailable"}
+      </div>
+    </ResponsiveSlideViewport>
   );
 }
 
@@ -1092,22 +835,20 @@ function PreviewPanel({
   const selectedUrl = previewUrls[selectedIndex] ?? previewUrls[0];
 
   return (
-    <main className="min-h-screen bg-white px-6 pb-28 pt-[102px] font-syne">
-      <div className="relative mx-auto w-full max-w-[948px]">
-        <div className="overflow-hidden border border-[#E8E8EF] bg-white shadow-[0_2px_16px_rgba(16,24,40,0.06)]">
-          {selectedUrl ? (
-            <img
-              src={resolveBackendAssetUrl(selectedUrl)}
-              alt={`Slide ${selectedIndex + 1}`}
-              className="block w-full"
-              draggable={false}
-            />
-          ) : (
-            <div className="flex aspect-video w-full items-center justify-center bg-[#F7F7FA] text-sm text-[#777985]">
+    <main className="min-h-screen bg-white px-4 pb-44 pt-[80px] font-syne sm:px-6 sm:pb-48 sm:pt-[92px] 2xl:px-10 2xl:pb-52 2xl:pt-[104px]">
+      <div className="relative mx-auto w-full max-w-[1280px]">
+        {selectedUrl ? (
+          <ScaledScreenshotSlide
+            src={selectedUrl}
+            alt={`Slide ${selectedIndex + 1}`}
+          />
+        ) : (
+          <ResponsiveSlideViewport className="border border-[#E8E8EF] bg-[#F7F7FA]">
+            <div className="flex h-full w-full items-center justify-center text-sm text-[#777985] 2xl:text-base">
               Preview unavailable
             </div>
-          )}
-        </div>
+          </ResponsiveSlideViewport>
+        )}
       </div>
 
       <ThumbnailStrip urls={previewUrls} selectedIndex={selectedIndex} onSelect={onSelect} />
@@ -1123,6 +864,7 @@ function ReviewPanel({
   setSlides,
   fonts,
   enableEditing = false,
+  isGenerating = false,
 }: {
   slides: ProcessedSlide[];
   selectedIndex: number;
@@ -1131,12 +873,12 @@ function ReviewPanel({
   setSlides: React.Dispatch<React.SetStateAction<ProcessedSlide[]>>;
   fonts?: Record<string, string>;
   enableEditing?: boolean;
+  isGenerating?: boolean;
 }) {
   const selectedSlide = slides[selectedIndex] ?? slides[0];
-  const thumbnailUrls = slides.map((slide) => slide.screenshot_url).filter(Boolean);
   const isReady =
     Boolean(selectedSlide?.processed && !selectedSlide.processing && selectedSlide.v2Layout) ||
-    Boolean(selectedSlide?.screenshot_url);
+    Boolean(selectedSlide?.screenshot_url && selectedSlide?.processed);
 
   const handleDelete = () => {
     if (!selectedSlide) return;
@@ -1145,45 +887,53 @@ function ReviewPanel({
   };
 
   return (
-    <main className="min-h-screen bg-white px-6 pb-28 pt-[102px] font-syne">
-      <div className="relative mx-auto w-full max-w-[948px]">
+    <main className="min-h-screen bg-white px-4 pb-44 pt-[80px] font-syne sm:px-6 sm:pb-48 sm:pt-[92px] 2xl:px-10 2xl:pb-52 2xl:pt-[104px]">
+      <div className="relative mx-auto w-full max-w-[1280px]">
         <div
-          className={`relative border bg-white shadow-[0_2px_16px_rgba(16,24,40,0.08)] ${
-            enableEditing ? "border-[#7A5AF8]" : "border-[#E8E8EF]"
-          }`}
+          className={`relative ${enableEditing ? "" : ""}`}
         >
           {enableEditing ? (
-            <>
+            <div className="relative border border-[#7A5AF8] bg-white shadow-[0_2px_16px_rgba(16,24,40,0.08)]">
               <SelectionHandles />
-              <div className="absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-[5px] border border-[#E6E7EC] bg-white px-2 py-1.5 shadow-[0_4px_12px_rgba(16,24,40,0.12)]">
-                <div className="flex items-center gap-1">
+              <div className="absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-[5px] border border-[#E6E7EC] bg-white px-2 py-1.5 shadow-[0_4px_12px_rgba(16,24,40,0.12)] sm:top-3 2xl:px-3 2xl:py-2">
+                <div className="flex items-center gap-1 2xl:gap-1.5">
                   <button
                     type="button"
                     onClick={() => retrySlide(selectedIndex)}
                     disabled={!selectedSlide || selectedSlide.processing}
-                    className="h-8 rounded-[4px] px-2.5 text-[12px] font-medium text-black transition hover:bg-[#F6F6F9] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-8 rounded-[4px] px-2.5 text-[12px] font-medium text-black transition hover:bg-[#F6F6F9] disabled:cursor-not-allowed disabled:opacity-50 2xl:h-9 2xl:px-3 2xl:text-sm"
                   >
                     Re-Construct
                   </button>
-                  <span className="h-6 w-px bg-[#E8E8EE]" />
+                  <span className="h-6 w-px bg-[#E8E8EE] 2xl:h-7" />
                   <button
                     type="button"
                     onClick={handleDelete}
                     disabled={!isReady}
-                    className="flex h-8 w-8 items-center justify-center rounded-[4px] text-black transition hover:bg-[#F6F6F9] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-8 w-8 items-center justify-center rounded-[4px] text-black transition hover:bg-[#F6F6F9] disabled:cursor-not-allowed disabled:opacity-50 2xl:h-9 2xl:w-9"
                     aria-label="Delete slide"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 2xl:h-[18px] 2xl:w-[18px]" />
                   </button>
                 </div>
               </div>
-            </>
-          ) : null}
-          <ReviewSlideCanvas slide={selectedSlide} fonts={fonts} />
+              <ReviewSlideCanvas slide={selectedSlide} fonts={fonts} isGenerating={false} />
+            </div>
+          ) : (
+            <ReviewSlideCanvas
+              slide={selectedSlide}
+              fonts={fonts}
+              isGenerating={isGenerating}
+            />
+          )}
         </div>
       </div>
 
-      <ThumbnailStrip urls={thumbnailUrls} selectedIndex={selectedIndex} onSelect={onSelect} />
+      <ThumbnailStrip
+        slides={slides}
+        selectedIndex={selectedIndex}
+        onSelect={onSelect}
+      />
     </main>
   );
 }
@@ -1220,36 +970,36 @@ function SaveTemplateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 font-syne">
-      <div className="relative w-full max-w-[512px] rounded-[14px] bg-white shadow-[0_18px_55px_rgba(16,24,40,0.18)]">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 2xl:px-6 font-syne">
+      <div className="relative w-full max-w-[512px] 2xl:max-w-[600px] rounded-[14px] 2xl:rounded-[16px] bg-white shadow-[0_18px_55px_rgba(16,24,40,0.18)]">
         <button
           type="button"
           onClick={onClose}
           disabled={isSaving}
           aria-label="Close"
-          className="absolute -right-[54px] top-0 flex h-[46px] w-[46px] items-center justify-center rounded-full bg-white text-black shadow-sm disabled:opacity-50"
+          className="absolute -right-[54px] 2xl:-right-[62px] top-0 flex h-[46px] w-[46px] 2xl:h-[52px] 2xl:w-[52px] items-center justify-center rounded-full bg-white text-black shadow-sm disabled:opacity-50"
         >
-          <X className="h-6 w-6" />
+          <X className="h-6 w-6 2xl:h-7 2xl:w-7" />
         </button>
-        <div className="flex h-[74px] items-center justify-between border-b border-[#EDEEF3] px-5">
+        <div className="flex h-[74px] 2xl:h-[84px] items-center justify-between border-b border-[#EDEEF3] px-5 2xl:px-6">
           <div>
-            <h2 className="text-[16px] font-medium text-black">Save Template</h2>
-            <p className="mt-1 text-[11px] text-[#7E818C]">Give your template a name.</p>
+            <h2 className="text-[16px] 2xl:text-lg font-medium text-black">Save Template</h2>
+            <p className="mt-1 text-[11px] 2xl:text-[13px] text-[#7E818C]">Give your template a name.</p>
           </div>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSaving || !name.trim()}
-            className="inline-flex h-8 min-w-[78px] items-center justify-center rounded-[58px] px-5 text-[13px] font-medium text-black disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 2xl:h-9 min-w-[78px] 2xl:min-w-[88px] items-center justify-center rounded-[58px] px-5 2xl:px-6 text-[13px] 2xl:text-sm font-medium text-black disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: pillGradient }}
           >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            {isSaving ? <Loader2 className="h-4 w-4 2xl:h-5 2xl:w-5 animate-spin" /> : "Save"}
           </button>
         </div>
 
-        <div className="space-y-4 px-[18px] pb-[18px] pt-5">
+        <div className="space-y-4 2xl:space-y-5 px-[18px] 2xl:px-6 pb-[18px] 2xl:pb-6 pt-5 2xl:pt-6">
           <label className="block">
-            <span className="mb-2 block text-[12px] font-medium text-[#25272F]">
+            <span className="mb-2 2xl:mb-2.5 block text-[12px] 2xl:text-sm font-medium text-[#25272F]">
               Template Name
             </span>
             <input
@@ -1257,11 +1007,11 @@ function SaveTemplateModal({
               onChange={(event) => setName(event.target.value)}
               disabled={isSaving}
               placeholder="e.g. Modern Tech Pitch Deck"
-              className="h-9 w-full rounded-[5px] border border-[#E1E2E8] bg-white px-3 text-[13px] text-black outline-none placeholder:text-[#8C8E96] focus:border-[#B9ABFF]"
+              className="h-9 2xl:h-10 w-full rounded-[5px] border border-[#E1E2E8] bg-white px-3 2xl:px-4 text-[13px] 2xl:text-[15px] text-black outline-none placeholder:text-[#8C8E96] focus:border-[#B9ABFF]"
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-[12px] font-medium text-[#25272F]">
+            <span className="mb-2 2xl:mb-2.5 block text-[12px] 2xl:text-sm font-medium text-[#25272F]">
               Description
             </span>
             <textarea
@@ -1270,7 +1020,7 @@ function SaveTemplateModal({
               disabled={isSaving}
               placeholder="Briefly describe when or how this template should be used."
               rows={4}
-              className="h-[86px] w-full resize-none rounded-[5px] border border-[#E1E2E8] bg-white px-3 py-3 text-[13px] text-black outline-none placeholder:text-[#8C8E96] focus:border-[#B9ABFF]"
+              className="h-[86px] 2xl:h-[100px] w-full resize-none rounded-[5px] border border-[#E1E2E8] bg-white px-3 2xl:px-4 py-3 2xl:py-3.5 text-[13px] 2xl:text-[15px] text-black outline-none placeholder:text-[#8C8E96] focus:border-[#B9ABFF]"
             />
           </label>
         </div>
@@ -1292,15 +1042,7 @@ const CustomTemplatePage = ({
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
-  const {
-    cancelLibreOfficeInstall,
-    checkLibreOffice,
-    installLibreOffice,
-    leaveTemplateStudio,
-    libreMessage,
-    libreProgress,
-    libreStatus,
-  } = useLibreOfficeGate(router);
+
 
   const {
     selectedFile,
@@ -1330,8 +1072,16 @@ const CustomTemplatePage = ({
   const showReview =
     (state.step === "template-creation" || state.step === "completed") && slides.length > 0;
   const isFinalReview = state.step === "completed";
+  const isGenerating = state.step === "template-creation";
   const generatedSlidesReady =
     isFinalReview && slides.some((slide) => slide.processed && !slide.error);
+
+  const missingFonts = state.fontsData?.unavailable_fonts ?? [];
+  const uploadedFontNames = new Set(uploadedFonts.map((font) => font.fontName));
+  const pendingMissingFonts = missingFonts.filter(
+    (font) => !uploadedFontNames.has(font.name),
+  );
+  const hasPendingMissingFonts = pendingMissingFonts.length > 0;
 
   useEffect(() => {
     showTemplateV2ModelWarningIfNeeded(llmConfig);
@@ -1351,6 +1101,17 @@ const CustomTemplatePage = ({
   }, []);
 
   useEffect(() => {
+    if (!state.previewData?.fonts) return;
+    loadFontAssets(normalizeBackendAssetUrls(state.previewData.fonts));
+  }, [state.previewData?.fonts]);
+
+  useEffect(() => {
+    if (!showReview && !showPreview) return;
+    const observer = setupImageUrlConverter();
+    return () => observer?.disconnect();
+  }, [showPreview, showReview]);
+
+  useEffect(() => {
     setReviewSlideIndex((current) => {
       const slideCount =
         slides.length > 0
@@ -1361,6 +1122,11 @@ const CustomTemplatePage = ({
     });
   }, [slides.length, state.previewData?.slide_image_urls.length]);
 
+  useEffect(() => {
+    if (!isGenerating) return;
+    setReviewSlideIndex(state.currentSlideIndex);
+  }, [isGenerating, state.currentSlideIndex]);
+
   const handleCheckFonts = useCallback(async () => {
     if (!selectedFile) return;
     await checkFonts(selectedFile);
@@ -1368,6 +1134,12 @@ const CustomTemplatePage = ({
 
   const handleFontUploadAndPreview = useCallback(async () => {
     if (!selectedFile) return;
+    if (hasPendingMissingFonts) {
+      notify.warning(
+        "Missing fonts",
+        "Continuing without uploaded fonts. They will not be applied to your template.",
+      );
+    }
     const data = await fontUploadAndPreview(selectedFile);
     if (data) {
       loadFontAssets(normalizeBackendAssetUrls(data.fonts));
@@ -1376,7 +1148,7 @@ const CustomTemplatePage = ({
         slide_count: data.slide_image_urls.length,
       });
     }
-  }, [fontUploadAndPreview, selectedFile]);
+  }, [fontUploadAndPreview, hasPendingMissingFonts, selectedFile]);
 
   const handleGenerateTemplate = useCallback(async () => {
     if (!state.previewData) return;
@@ -1420,11 +1192,31 @@ const CustomTemplatePage = ({
     [router, state.templateId],
   );
 
-  const centerAction = useMemo(() => {
+  const bottomAction = useMemo(() => {
+    if (showAnalyze) {
+      return (
+        <GradientPillButton
+          onClick={handleFontUploadAndPreview}
+          disabled={state.isLoading}
+          className={state.isLoading ? "disabled:opacity-100" : ""}
+          fullWidth
+        >
+          {state.isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin 2xl:h-5 2xl:w-5" />
+              Creating Preview...
+            </>
+          ) : (
+            "Continue"
+          )}
+        </GradientPillButton>
+      );
+    }
+
     if (showPreview) {
       return (
-        <GradientPillButton onClick={handleGenerateTemplate} disabled={state.isLoading}>
-          {state.isLoading ? "Preparing..." : "Generate"}
+        <GradientPillButton onClick={handleGenerateTemplate} disabled={state.isLoading} fullWidth>
+          {state.isLoading ? "Preparing..." : "Generate Template"}
         </GradientPillButton>
       );
     }
@@ -1434,6 +1226,7 @@ const CustomTemplatePage = ({
         <GradientPillButton
           onClick={() => setIsSaveModalOpen(true)}
           disabled={!generatedSlidesReady || state.isLoading}
+          fullWidth
         >
           {generatedSlidesReady ? "Save as Template" : "Generating Template"}
         </GradientPillButton>
@@ -1443,7 +1236,9 @@ const CustomTemplatePage = ({
     return null;
   }, [
     generatedSlidesReady,
+    handleFontUploadAndPreview,
     handleGenerateTemplate,
+    showAnalyze,
     showPreview,
     showReview,
     state.isLoading,
@@ -1451,8 +1246,8 @@ const CustomTemplatePage = ({
 
   return (
     <div className="relative min-h-screen bg-white">
-      <div className={libreStatus === "ready" ? "" : "pointer-events-none select-none blur-[3px]"}>
-        <StudioTopBar activeStep={activeStep} centerAction={centerAction} />
+      <div className={""}>
+        <StudioTopBar activeStep={activeStep} />
 
         {showUpload ? (
           <UploadPanel
@@ -1470,8 +1265,8 @@ const CustomTemplatePage = ({
             fontsData={state.fontsData}
             uploadedFonts={uploadedFonts}
             isUploading={state.isLoading}
-            onContinue={handleFontUploadAndPreview}
             uploadFont={uploadFont}
+            hasPendingMissingFonts={hasPendingMissingFonts}
           />
         ) : null}
 
@@ -1492,9 +1287,12 @@ const CustomTemplatePage = ({
             setSlides={setSlides}
             fonts={state.previewData?.fonts}
             enableEditing={isFinalReview}
+            isGenerating={isGenerating}
           />
         ) : null}
       </div>
+
+      {bottomAction ? <StudioBottomAction>{bottomAction}</StudioBottomAction> : null}
 
       <SaveTemplateModal
         isOpen={isSaveModalOpen}
@@ -1506,15 +1304,7 @@ const CustomTemplatePage = ({
         onSave={handleSaveTemplate}
       />
 
-      <LibreOfficeGate
-        status={libreStatus}
-        message={libreMessage}
-        progress={libreProgress}
-        onInstall={installLibreOffice}
-        onCancel={cancelLibreOfficeInstall}
-        onRecheck={checkLibreOffice}
-        onExit={leaveTemplateStudio}
-      />
+
     </div>
   );
 };

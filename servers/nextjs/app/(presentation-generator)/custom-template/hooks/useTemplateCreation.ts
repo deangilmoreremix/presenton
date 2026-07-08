@@ -18,7 +18,7 @@ import { validateLayoutCodeForClient } from "../utils/layoutCodeValidation";
 
 /** Must match `VISION_LAYOUT_ERROR_MARKER` in FastAPI `utils/template_vision_errors.py`. */
 const TEMPLATE_VISION_MODEL_MARKER = "TEMPLATE_VISION_MODEL_REQUIRED";
-const TEMPLATE_V2_LAYOUT_BATCH_SIZE = 10;
+const TEMPLATE_V2_LAYOUT_BATCH_SIZE = 1;
 
 type CreatedTemplateV2Layout = { index: number; layout: TemplateV2Layout };
 type FailedTemplateV2Layout = { index: number; error: string };

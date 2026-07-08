@@ -76,7 +76,7 @@ const TEXT_TOOLBAR_FALLBACK_HEIGHT = 44;
 const TEXT_TOOLBAR_EDGE_PADDING = 8;
 const TEXT_TOOLBAR_GAP = 8;
 
-type TextToolbarPanel = "settings";
+type TextToolbarPanel = "marker" | "settings";
 type FontPickerSource = "template" | "google";
 type ToolbarSurfaceRect = {
   height: number;
@@ -151,6 +151,10 @@ export function TextToolbar({
   const opacity = font.opacity ?? 1;
   const HorizontalAlignmentIcon =
     HORIZONTAL_ALIGNMENT_ICONS[horizontalAlignment];
+  const ListMarkerIcon =
+    listMarker === "number" ? ListOrdered : listMarker === "none" ? Ban : List;
+  const hasListMarkerControls =
+    listMarker != null && onListMarkerChange != null;
   const templateFontFamilySet = new Set(
     templateFonts.map(({ family }) => family),
   );
@@ -509,6 +513,40 @@ export function TextToolbar({
             </ToolbarButton>
           </div>
           <Divider />
+          {hasListMarkerControls ? (
+            <>
+              <div style={textToolbarStyles.settingsControlWrap}>
+                <ToolbarButton
+                  title="List marker"
+                  controlId="list-marker"
+                  hoveredControl={hoveredControl}
+                  pressed={openPanel === "marker"}
+                  setHoveredControl={setHoveredControl}
+                  onClick={() =>
+                    setOpenPanel((current) =>
+                      current === "marker" ? null : "marker",
+                    )
+                  }
+                >
+                  <ListMarkerIcon
+                    size={18}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                </ToolbarButton>
+                {openPanel === "marker" ? (
+                  <ListMarkerPanel
+                    marker={listMarker}
+                    onChange={(marker) => {
+                      onListMarkerChange(marker);
+                      setOpenPanel(null);
+                    }}
+                  />
+                ) : null}
+              </div>
+              <Divider />
+            </>
+          ) : null}
           <div style={textToolbarStyles.settingsControlWrap}>
             <ToolbarButton
               title="Settings"
@@ -527,11 +565,9 @@ export function TextToolbar({
               <TextSettingsPanel
                 opacity={opacity}
                 letterSpacing={letterSpacing}
-                listMarker={listMarker}
                 lineHeight={lineHeight}
                 onOpacityChange={updateOpacity}
                 onLetterSpacingChange={updateLetterSpacing}
-                onListMarkerChange={onListMarkerChange}
                 onLineHeightChange={updateLineHeight}
               />
             ) : null}
@@ -871,31 +907,22 @@ function LineHeightIcon() {
 function TextSettingsPanel({
   opacity,
   letterSpacing,
-  listMarker,
   lineHeight,
   onOpacityChange,
   onLetterSpacingChange,
-  onListMarkerChange,
   onLineHeightChange,
 }: {
   opacity: number;
   letterSpacing: number;
-  listMarker?: Marker | null;
   lineHeight: number;
   onOpacityChange: (value: number) => void;
   onLetterSpacingChange: (value: number) => void;
-  onListMarkerChange?: (marker: Marker) => void;
   onLineHeightChange: (value: number) => void;
 }) {
-  const showListControls = listMarker != null && onListMarkerChange;
-
   return (
     <FloatingToolbarPanel
       data-inline-edit-ignore="true"
-      style={{
-        ...textToolbarStyles.settingsPanel,
-        minHeight: showListControls ? 230 : 170,
-      }}
+      style={{ ...textToolbarStyles.settingsPanel, minHeight: 170 }}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <SettingsSliderRow
@@ -928,34 +955,46 @@ function TextSettingsPanel({
         step={0.05}
         onChange={onLineHeightChange}
       />
-      {showListControls ? (
-        <>
-          <div style={textToolbarStyles.settingsBulletTitle}>Bullet List</div>
-          <div style={textToolbarStyles.settingsBulletActions}>
-            <SettingsPanelButton
-              label="Bullet list"
-              pressed={listMarker === "bullet"}
-              onClick={() => onListMarkerChange("bullet")}
-            >
-              <List size={19} strokeWidth={2.2} aria-hidden="true" />
-            </SettingsPanelButton>
-            <SettingsPanelButton
-              label="Numbered list"
-              pressed={listMarker === "number"}
-              onClick={() => onListMarkerChange("number")}
-            >
-              <ListOrdered size={19} strokeWidth={2.2} aria-hidden="true" />
-            </SettingsPanelButton>
-            <SettingsPanelButton
-              label="No list"
-              pressed={listMarker === "none"}
-              onClick={() => onListMarkerChange("none")}
-            >
-              <Ban size={19} strokeWidth={2.1} aria-hidden="true" />
-            </SettingsPanelButton>
-          </div>
-        </>
-      ) : null}
+    </FloatingToolbarPanel>
+  );
+}
+
+function ListMarkerPanel({
+  marker,
+  onChange,
+}: {
+  marker: Marker;
+  onChange: (marker: Marker) => void;
+}) {
+  return (
+    <FloatingToolbarPanel
+      aria-label="List marker"
+      style={textToolbarStyles.markerPanel}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <div style={textToolbarStyles.settingsBulletActions}>
+        <SettingsPanelButton
+          label="Bullet list"
+          pressed={marker === "bullet"}
+          onClick={() => onChange("bullet")}
+        >
+          <List size={19} strokeWidth={2.2} aria-hidden="true" />
+        </SettingsPanelButton>
+        <SettingsPanelButton
+          label="Numbered list"
+          pressed={marker === "number"}
+          onClick={() => onChange("number")}
+        >
+          <ListOrdered size={19} strokeWidth={2.2} aria-hidden="true" />
+        </SettingsPanelButton>
+        <SettingsPanelButton
+          label="No list"
+          pressed={marker === "none"}
+          onClick={() => onChange("none")}
+        >
+          <Ban size={19} strokeWidth={2.1} aria-hidden="true" />
+        </SettingsPanelButton>
+      </div>
     </FloatingToolbarPanel>
   );
 }
@@ -1406,6 +1445,15 @@ const textToolbarStyles = {
     boxShadow: "0 18px 44px rgba(15, 23, 42, 0.16)",
     zIndex: 80,
   },
+  markerPanel: {
+    width: 164,
+    boxSizing: "border-box",
+    padding: 10,
+    borderRadius: 6,
+    border: "1px solid #E5E7EB",
+    background: "#FFFFFF",
+    boxShadow: "0 18px 44px rgba(15, 23, 42, 0.16)",
+  },
   settingsSliderRow: {
     width: "100%",
     boxSizing: "border-box",
@@ -1489,16 +1537,6 @@ const textToolbarStyles = {
     fontWeight: 400,
     lineHeight: 1,
     whiteSpace: "nowrap",
-  },
-  settingsBulletTitle: {
-    width: "100%",
-    color: "#151922",
-    fontFamily:
-      "var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
-    fontSize: 15,
-    fontWeight: 500,
-    lineHeight: 1.2,
-    marginTop: 3,
   },
   settingsBulletActions: {
     width: "100%",

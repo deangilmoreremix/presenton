@@ -116,6 +116,7 @@ type TemplateV2LayoutToolbarProps = {
   element?: TemplateV2ToolbarElement | null;
   onChange?: (changes: RawRecord) => void;
   onChartChange?: (element: ChartSlideElement) => void;
+  onChartEdit?: () => void;
   onTableChange?: (element: TableSlideElement) => void;
   selectedTableCell?: { rowIndex: number; colIndex: number } | null;
   position?: { left: number; top: number };
@@ -460,6 +461,7 @@ export function TemplateV2LayoutToolbar({
   element,
   onChange,
   onChartChange,
+  onChartEdit,
   onTableChange,
   selectedTableCell,
   position,
@@ -557,6 +559,14 @@ export function TemplateV2LayoutToolbar({
             element={element}
             paletteOpen={openPanel === "chart-colors"}
             onChange={onChartChange}
+            onEdit={
+              onChartEdit
+                ? () => {
+                    setOpenPanel(null);
+                    onChartEdit();
+                  }
+                : undefined
+            }
             onPaletteOpenChange={(open) => setPanelOpen("chart-colors", open)}
           />
         ) : hasTableControls &&

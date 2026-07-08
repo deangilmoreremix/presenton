@@ -122,6 +122,21 @@ export const TemplateListCard = memo(function TemplateListCard({
   );
 });
 
+export function TemplateListSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <h3 className="font-syne text-sm font-semibold text-[#3A3A3A]">{label}</h3>
+      {children}
+    </section>
+  );
+}
+
 export function TemplateTabSwitcher({
   tab,
   onTabChange,
