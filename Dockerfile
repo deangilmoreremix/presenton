@@ -33,10 +33,7 @@ FROM node:20-bookworm-slim AS nextjs-builder
 
 WORKDIR /app/servers/nextjs
 
-ARG NEXT_PUBLIC_USE_SLIDE_EDITOR_IMPORT=false
-
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_USE_SLIDE_EDITOR_IMPORT=${NEXT_PUBLIC_USE_SLIDE_EDITOR_IMPORT}
 
 COPY servers/nextjs/package.json servers/nextjs/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
@@ -120,13 +117,14 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /app/scripts /app/servers/fastapi /app/servers/nextjs
-RUN mkdir -p /app_data/exports /app_data/images /app_data/uploads /app_data/fonts /app_data/pptx-to-html /app_data/pptx-to-json \
+RUN mkdir -p /app_data/exports /app_data/images /app_data/uploads /app_data/fonts /app_data/templates /app_data/pptx-to-html /app_data/pptx-to-json \
     && chmod -R a+rX /app_data
 
 COPY --from=fastapi-builder /opt/venv /opt/venv
 COPY --from=fastapi-builder /app/servers/fastapi /app/servers/fastapi
 COPY --from=fastapi-builder /root/.cache/huggingface /root/.cache/huggingface
 COPY --from=fastapi-builder /root/.cache/presenton/fastembed-icons /root/.cache/presenton/fastembed-icons
+COPY templates /app/templates
 
 COPY --from=assets-builder /app/package.json /app/package.json
 COPY --from=assets-builder /app/document-extraction-liteparse /app/document-extraction-liteparse
