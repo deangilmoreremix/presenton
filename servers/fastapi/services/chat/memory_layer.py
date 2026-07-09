@@ -44,6 +44,23 @@ DEFAULT_SOURCE_DOCUMENT_CHARS = 12000
 MAX_SOURCE_DOCUMENT_CHARS = 30000
 SLIDE_STAGE_WIDTH = 1280.0
 SLIDE_STAGE_HEIGHT = 720.0
+BLANK_SLIDE_LAYOUT_ID = "__blank_slide__"
+BLANK_TEMPLATE_V2_LAYOUT: dict[str, Any] = {
+    "id": BLANK_SLIDE_LAYOUT_ID,
+    "description": "Empty slide.",
+    "background": "#FFFFFF",
+    "components": [],
+    "elements": [
+        {
+            "type": "rectangle",
+            "position": {"x": 0, "y": 0},
+            "size": {"width": 1280, "height": 720},
+            "fill": {"color": "#FFFFFF"},
+            "decorative": True,
+        }
+    ],
+}
+TEMPLATE_V2_GENERATED_ELEMENT_TYPES = {"text", "image", "text-list", "table", "chart"}
 # Keep URL runtime fields during validation because many slide schemas require them.
 # Speaker note is handled separately and should not affect JSON-schema checks.
 RUNTIME_CONTENT_FIELDS = {"__speaker_note__"}
@@ -801,29 +818,16 @@ class PresentationChatMemoryLayer:
             slide.index += 1
             self._sql_session.add(slide)
 
-        blank_ui = {
-            "id": "__blank_slide__",
-            "description": "Empty slide.",
-            "background": "#FFFFFF",
-            "components": [],
-            "elements": [
-                {
-                    "type": "rectangle",
-                    "position": {"x": 0, "y": 0},
-                    "size": {"width": 1280, "height": 720},
-                    "fill": {"color": "#FFFFFF"},
-                    "decorative": True,
-                }
-            ],
-        }
+        presentation.n_slides = len(slides) + 1
+        self._sql_session.add(presentation)
         new_slide = SlideModel(
             presentation=self._presentation_id,
             layout_group=self._resolve_layout_group(presentation=presentation),
-            layout="__blank_slide__",
+            layout=BLANK_SLIDE_LAYOUT_ID,
             index=insert_index,
             content={},
             speaker_note="",
-            ui=blank_ui,
+            ui=self._blank_slide_ui(),
         )
         self._sql_session.add(new_slide)
         await self._sql_session.commit()
@@ -1033,26 +1037,63 @@ class PresentationChatMemoryLayer:
                 "index": target_index,
             }
 
-        await self._sql_session.delete(slide)
-
+        presentation = await self._sql_session.get(PresentationModel, self._presentation_id)
         slides_result = await self._sql_session.scalars(
-            select(SlideModel).where(SlideModel.presentation == self._presentation_id)
+            select(SlideModel)
+            .where(SlideModel.presentation == self._presentation_id)
+            .order_by(SlideModel.index)
         )
         slides = sorted(list(slides_result), key=lambda each: each.index)
+        deleted_slide_id = str(slide.id)
+
+        if len(slides) <= 1:
+            fallback_slide = self._create_blank_slide_from_reference(
+                presentation=presentation,
+                source_slide=slide,
+                index=0,
+            )
+            await self._sql_session.delete(slide)
+            if presentation:
+                presentation.n_slides = 1
+                self._sql_session.add(presentation)
+            self._sql_session.add(fallback_slide)
+            await self._sql_session.commit()
+            await self._sql_session.refresh(fallback_slide)
+
+            return {
+                "deleted": True,
+                "message": "Deleted the final slide and added a blank fallback slide.",
+                "deleted_slide_id": deleted_slide_id,
+                "slide_id": str(fallback_slide.id),
+                "index": 0,
+                "slide_number": 1,
+                "shifted_slide_count": 0,
+                "blank_fallback": True,
+            }
+
+        await self._sql_session.delete(slide)
+
+        remaining_slides = [
+            each_slide for each_slide in slides if each_slide.id != slide.id
+        ]
         shifted_count = 0
-        for each_slide in slides:
+        for each_slide in remaining_slides:
             if each_slide.index <= target_index:
                 continue
             each_slide.index -= 1
             self._sql_session.add(each_slide)
             shifted_count += 1
 
+        if presentation:
+            presentation.n_slides = len(remaining_slides)
+            self._sql_session.add(presentation)
+
         await self._sql_session.commit()
 
         return {
             "deleted": True,
             "message": f"Slide at index {target_index} was deleted successfully.",
-            "deleted_slide_id": str(slide.id),
+            "deleted_slide_id": deleted_slide_id,
             "index": target_index,
             "shifted_slide_count": shifted_count,
         }
@@ -1074,6 +1115,42 @@ class PresentationChatMemoryLayer:
             copy.deepcopy(presentation.theme)
             if presentation and isinstance(presentation.theme, dict)
             else None
+        )
+
+    @staticmethod
+    def _blank_slide_ui() -> dict[str, Any]:
+        return copy.deepcopy(BLANK_TEMPLATE_V2_LAYOUT)
+
+    def _create_blank_slide_from_reference(
+        self,
+        *,
+        presentation: PresentationModel | None,
+        source_slide: SlideModel,
+        index: int,
+    ) -> SlideModel:
+        layout_group = (
+            source_slide.layout_group.strip()
+            if isinstance(source_slide.layout_group, str)
+            else ""
+        )
+        if not layout_group and presentation:
+            layout_group = self._resolve_layout_group(presentation=presentation)
+        if not layout_group:
+            layout_group = "presentation"
+
+        layout = (
+            f"{layout_group}:{BLANK_SLIDE_LAYOUT_ID}"
+            if layout_group.startswith("custom-")
+            else BLANK_SLIDE_LAYOUT_ID
+        )
+        return SlideModel(
+            presentation=self._presentation_id,
+            layout_group=layout_group,
+            layout=layout,
+            index=index,
+            content={},
+            speaker_note="",
+            ui=self._blank_slide_ui(),
         )
 
     @staticmethod
@@ -1160,6 +1237,7 @@ class PresentationChatMemoryLayer:
         size: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         from services.chat.slide_ui_helpers import (
+            _apply_element_style_patch,
             _apply_image_element_value,
             _component_id_for_path,
             _content_update_requested_for_type,
@@ -1194,6 +1272,7 @@ class PresentationChatMemoryLayer:
                 raise ValueError("element.type must be a string when provided.")
             self._merge_ui_patch(element, element_patch)
             self._sync_ui_text_fields(element)
+            _apply_element_style_patch(element, element_patch)
             element_type = str(element.get("type") or element_type)
             if element_type == "chart":
                 _normalize_chart_element(element, theme)
@@ -2700,27 +2779,85 @@ class PresentationChatMemoryLayer:
         *,
         theme: dict[str, Any] | None = None,
     ) -> None:
+        element_type = element.get("type")
         name = element.get("name")
-        if isinstance(name, str) and name in content:
+        has_value = False
+        value = None
+        if isinstance(name, str):
+            has_value, value = cls._template_v2_content_value(content, name)
+
+        if (
+            has_value
+            and element.get("decorative") is False
+            and element_type in TEMPLATE_V2_GENERATED_ELEMENT_TYPES
+        ):
             cls._set_template_v2_element_value(
                 element,
-                content[name],
+                value,
                 theme=theme,
             )
+            return
+
+        nested_content = value if isinstance(value, dict) else content
 
         child = element.get("child")
         if isinstance(child, dict):
-            cls._apply_template_v2_element_content(child, content, theme=theme)
+            cls._apply_template_v2_element_content(
+                child,
+                nested_content,
+                theme=theme,
+            )
 
         children = element.get("children")
         if isinstance(children, list):
+            if isinstance(value, list) and children:
+                next_children: list[Any] = []
+                for index, item in enumerate(value):
+                    source_child = copy.deepcopy(children[min(index, len(children) - 1)])
+                    if isinstance(source_child, dict):
+                        cls._apply_template_v2_element_content(
+                            source_child,
+                            item if isinstance(item, dict) else {},
+                            theme=theme,
+                        )
+                    next_children.append(source_child)
+                element["children"] = next_children
+                return
+
             for child_element in children:
                 if isinstance(child_element, dict):
                     cls._apply_template_v2_element_content(
                         child_element,
-                        content,
+                        nested_content,
                         theme=theme,
                     )
+
+    @staticmethod
+    def _template_v2_content_value(
+        content: dict[str, Any],
+        name: str,
+    ) -> tuple[bool, Any]:
+        for candidate in PresentationChatMemoryLayer._template_v2_content_name_candidates(
+            name
+        ):
+            if candidate in content:
+                return True, content[candidate]
+        return False, None
+
+    @staticmethod
+    def _template_v2_content_name_candidates(name: str) -> list[str]:
+        without_numeric_token = re.sub(r"_\d+(?=_|$)", "", name)
+        without_prefix = (
+            without_numeric_token.split("_", 1)[1]
+            if "_" in without_numeric_token
+            else without_numeric_token
+        )
+
+        candidates: list[str] = []
+        for candidate in (name, without_numeric_token, without_prefix):
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+        return candidates
 
     @classmethod
     def _set_template_v2_element_value(
@@ -2731,9 +2868,12 @@ class PresentationChatMemoryLayer:
         theme: dict[str, Any] | None = None,
     ) -> None:
         element_type = element.get("type")
-        if element_type == "text" and isinstance(value, str):
-            cls._set_template_v2_runs_text(element, value)
-            element["text"] = value
+        if element_type == "text":
+            text = cls._template_v2_text_value(value)
+            if text is None or text == "":
+                return
+            cls._set_template_v2_runs_text(element, text)
+            element["text"] = text
             return
 
         if element_type == "text-list" and isinstance(value, list):
@@ -2743,7 +2883,7 @@ class PresentationChatMemoryLayer:
             element["items"] = [
                 cls._replacement_runs_from_existing(
                     source_items[index] if index < len(source_items) else None,
-                    str(item),
+                    cls._template_v2_text_value(item) or "",
                     element.get("font"),
                 )
                 for index, item in enumerate(value)
@@ -2768,8 +2908,11 @@ class PresentationChatMemoryLayer:
             _apply_chart_content_update(element, value, theme)
             return
 
-        if element_type == "table" and isinstance(value, list):
-            cls._set_template_v2_table_rows(element, value)
+        if element_type == "table":
+            if isinstance(value, dict):
+                cls._set_template_v2_table_content(element, value)
+            elif isinstance(value, list):
+                cls._set_template_v2_table_rows(element, value)
 
     @classmethod
     def _set_template_v2_runs_text(cls, element: dict[str, Any], text: str) -> None:
@@ -2778,6 +2921,20 @@ class PresentationChatMemoryLayer:
             text,
             element.get("font"),
         )
+
+    @staticmethod
+    def _template_v2_text_value(value: Any) -> str | None:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value)
+        if isinstance(value, dict):
+            text = value.get("text")
+            if isinstance(text, str):
+                return text
+            if isinstance(text, (int, float)) and not isinstance(text, bool):
+                return str(text)
+        return None
 
     @staticmethod
     def _replacement_runs_from_existing(
@@ -2840,6 +2997,58 @@ class PresentationChatMemoryLayer:
         return None
 
     @classmethod
+    def _set_template_v2_table_content(
+        cls,
+        element: dict[str, Any],
+        value: dict[str, Any],
+    ) -> None:
+        columns = value.get("columns")
+        if isinstance(columns, list):
+            existing_columns = (
+                element.get("columns")
+                if isinstance(element.get("columns"), list)
+                else []
+            )
+            element["columns"] = cls._template_v2_table_cells_from_values(
+                existing_columns,
+                columns,
+                element.get("font"),
+            )
+
+        rows = value.get("rows")
+        if isinstance(rows, list):
+            cls._set_template_v2_table_rows(element, rows)
+
+    @classmethod
+    def _template_v2_table_cells_from_values(
+        cls,
+        existing_cells: list[Any],
+        values: list[Any],
+        fallback_font: Any,
+    ) -> list[dict[str, Any]]:
+        fallback_cell = existing_cells[-1] if existing_cells else None
+        cells: list[dict[str, Any]] = []
+        for index, value in enumerate(values):
+            existing_cell = (
+                existing_cells[index]
+                if index < len(existing_cells)
+                else fallback_cell
+            )
+            existing_runs = (
+                existing_cell.get("runs")
+                if isinstance(existing_cell, dict)
+                else None
+            )
+            cell = copy.deepcopy(existing_cell) if isinstance(existing_cell, dict) else {}
+            cell["runs"] = cls._replacement_runs_from_existing(
+                existing_runs,
+                cls._table_cell_text_value(value),
+                cell.get("font") or fallback_font,
+            )
+            cells.append(cell)
+        return cells
+
+    @classmethod
     def _set_template_v2_table_rows(
         cls,
         element: dict[str, Any],
@@ -2859,19 +3068,11 @@ class PresentationChatMemoryLayer:
                 else []
             )
             next_rows.append(
-                [
-                    {
-                        "runs": cls._replacement_runs_from_existing(
-                            existing_row[column_index].get("runs")
-                            if column_index < len(existing_row)
-                            and isinstance(existing_row[column_index], dict)
-                            else None,
-                            str(cell),
-                            element.get("font"),
-                        )
-                    }
-                    for column_index, cell in enumerate(row)
-                ]
+                cls._template_v2_table_cells_from_values(
+                    existing_row,
+                    row,
+                    element.get("font"),
+                )
             )
         element["rows"] = next_rows
 
