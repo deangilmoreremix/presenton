@@ -14,6 +14,14 @@ export interface CloneLayoutPayload {
     layout_name?: string;
 }
 
+export interface CreateTemplatePayload {
+    pptx_url: string;
+    slide_image_urls: string[];
+    fonts: Record<string, unknown>;
+    name: string;
+    description?: string | null;
+}
+
 export interface TemplateListResponse {
     items: TemplateListItem[];
     total: number;
@@ -28,6 +36,9 @@ export interface TemplateListItem {
     layout_count?: number;
     thumbnail?: string | null;
     is_default?: boolean;
+    status?: string | null;
+    generation_status?: string | null;
+    error?: string | null;
     created_at?: string;
     updated_at?: string;
 }
@@ -83,6 +94,20 @@ class TemplateService {
             return await ApiResponseHandler.handleResponse(response, "Failed to get template details");
         } catch (error) {
             console.error("Failed to get Templates v1 details", error);
+            throw error;
+        }
+    }
+
+    static async createTemplate(payload: CreateTemplatePayload): Promise<TemplateDetailsResponse> {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates`), {
+                method: "POST",
+                headers: getHeader(),
+                body: JSON.stringify(payload),
+            });
+            return await ApiResponseHandler.handleResponse(response, "Failed to create template");
+        } catch (error) {
+            console.error("Failed to create template", error);
             throw error;
         }
     }

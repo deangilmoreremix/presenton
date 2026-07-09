@@ -349,30 +349,24 @@ export const useTemplateCreation = ({
             onLayoutCreated?: (layout: CreatedTemplateV2Layout) => void;
         } = {}
     ): Promise<{ layouts: CreatedTemplateV2Layout[]; failures: FailedTemplateV2Layout[] }> => {
-        const results = await Promise.allSettled(
-            indices.map(async (index) => {
-                const layout = await createTemplateV2Layout(templateId, index);
-                options.onLayoutCreated?.(layout);
-                return layout;
-            })
-        );
         const layouts: CreatedTemplateV2Layout[] = [];
         const failures: FailedTemplateV2Layout[] = [];
 
-        results.forEach((result, resultIndex) => {
-            const index = indices[resultIndex];
-            if (result.status === "fulfilled") {
-                layouts.push(result.value);
-                return;
+        for (const index of indices) {
+            try {
+                const layout = await createTemplateV2Layout(templateId, index);
+                options.onLayoutCreated?.(layout);
+                layouts.push(layout);
+            } catch (error) {
+                failures.push({
+                    index,
+                    error: errorMessageFromUnknown(
+                        error,
+                        "Template layout generation failed"
+                    ),
+                });
             }
-            failures.push({
-                index,
-                error: errorMessageFromUnknown(
-                    result.reason,
-                    "Template layout generation failed"
-                ),
-            });
-        });
+        }
 
         if (layouts.length > 0) {
             try {

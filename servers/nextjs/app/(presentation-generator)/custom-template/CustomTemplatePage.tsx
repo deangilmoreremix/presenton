@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   LayoutPanelTop,
   Loader2,
@@ -24,6 +25,10 @@ import {
 import { useSelector } from "react-redux";
 
 import { notify } from "@/components/ui/sonner";
+import {
+  EDITOR_STAGE_HEIGHT,
+  EDITOR_STAGE_WIDTH,
+} from "@/components/slide-editor/types";
 import type { RootState } from "@/store/store";
 import { normalizeBackendAssetUrls, resolveBackendAssetUrl } from "@/utils/api";
 import { setupImageUrlConverter } from "@/utils/image-url-converter";
@@ -73,14 +78,10 @@ function formatFileSize(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-
-
-
-
 function activeStudioStep(step: TemplateCreationStep): StudioStep {
   if (step === "font-check" || step === "font-upload") return 2;
-  if (step === "slides-preview" || step === "template-creation") return 3;
-  if (step === "completed") return 4;
+  if (step === "slides-preview") return 3;
+  if (step === "template-creation" || step === "completed") return 4;
   return 1;
 }
 
@@ -399,6 +400,21 @@ function AnalyzePanel({
   const showFontAttentionSpinner = pendingMissingFonts.length > 0 && !isUploading;
   const fontsStepComplete =
     missingFonts.length === 0 || pendingMissingFonts.length === 0 || isUploading;
+  const availableFontCount = fontsData?.available_fonts.length ?? 0;
+  const uploadedMissingCount = missingFonts.filter((font) =>
+    uploadedFontNames.has(font.name),
+  ).length;
+  const totalDetectedFonts = fontChips.length;
+  const fontStatusLabel = isUploading
+    ? "Preparing Preview"
+    : fontsStepComplete
+      ? "Ready"
+      : "Needs Fonts";
+  const fontStatusClass = isUploading
+    ? "border-[#E7D8FF] bg-[#F6F1FF] text-[#6941C6]"
+    : fontsStepComplete
+      ? "border-[#CFEBDD] bg-[#F0FBF5] text-[#227A50]"
+      : "border-[#FAD7BF] bg-[#FFF7ED] text-[#B45309]";
 
   const handleFontFile = (fontName: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -410,172 +426,211 @@ function AnalyzePanel({
   return (
     <main className="flex min-h-screen flex-col bg-white px-4 pb-28 font-syne sm:px-6 sm:pb-32 2xl:px-10 2xl:pb-36">
       <TemplateStudioTitle compact />
-      <section className="mx-auto mt-10 w-full max-w-[570px] sm:mt-12 2xl:mt-14 2xl:max-w-[740px]">
-        <div className="relative w-full">
-          {isUploading ? (
-            <div className="absolute left-[17px] top-10 h-[calc(100%-2.5rem)] w-px bg-[#ECECF2] 2xl:left-[23px]" />
-          ) : null}
-
-          <div className="relative flex w-full gap-[18px] 2xl:gap-6">
-            <div className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-[#EDEEEF] text-black 2xl:h-[48px] 2xl:w-[48px]">
-              <Type className="h-4 w-4 2xl:h-5 2xl:w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="mb-2.5 flex items-center justify-between gap-3 2xl:mb-3">
-                <h2 className="text-lg font-medium text-black 2xl:text-2xl">
-                  {missingFonts.length > 0
-                    ? "Waiting for missing fonts"
-                    : "All fonts are available"}
-                </h2>
-                <span className="shrink-0 text-xs font-medium text-[#666666] 2xl:text-sm">
-                  Current State
+      <section className="mx-auto mt-8 w-full max-w-[980px] sm:mt-10 2xl:mt-12 2xl:max-w-[1180px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_400px] 2xl:gap-5">
+          <div className="rounded-[10px] border border-[#E7E8EE] bg-white p-4 shadow-[0_8px_28px_rgba(16,24,40,0.05)] sm:p-5 2xl:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0EFFD] text-[#5146E5] 2xl:h-12 2xl:w-12">
+                  <Type className="h-4 w-4 2xl:h-5 2xl:w-5" />
                 </span>
-              </div>
-
-              <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-2.5 py-4 2xl:px-3.5 2xl:py-5">
-                <div className="mb-3 flex items-start justify-between gap-3 2xl:mb-4">
-                  <div className="flex items-center gap-1.5 text-[13px] font-medium text-black 2xl:gap-2 2xl:text-[15px]">
-                    {missingFonts.length > 0 ? (
-                      <span className="text-[#EF5D3E]">△</span>
-                    ) : (
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2CA36B] text-white 2xl:h-5 2xl:w-5">
-                        <Check className="h-3 w-3 2xl:h-3.5 2xl:w-3.5" />
-                      </span>
-                    )}
-                    {missingFonts.length > 0
-                      ? `${missingFonts.length} fonts require attention`
-                      : "All fonts successfully resolved"}
-                  </div>
-                  {isUploading ? (
-                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#7A5AF8] border-r-transparent 2xl:h-6 2xl:w-6" />
-                  ) : showFontAttentionSpinner ? (
-                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-[#7A5AF8] border-r-transparent 2xl:h-6 2xl:w-6" />
-                  ) : fontsStepComplete ? (
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2CA36B] text-white 2xl:h-5 2xl:w-5">
-                      <Check className="h-3 w-3 2xl:h-3.5 2xl:w-3.5" />
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 2xl:gap-2.5">
-                  {fontChips.length > 0 ? (
-                    fontChips.map((font, index) => {
-                      const label = chipLabel(font);
-                      const isMissing = missingFontKeys.has(label.toLowerCase());
-                      return (
-                        <span
-                          key={`${font.name}-${index}`}
-                          className={`truncate rounded-full border px-3 py-1 text-center text-[11px] 2xl:px-3.5 2xl:py-1.5 2xl:text-[13px] ${isMissing
-                            ? "border-[#FDBA74] bg-[#FFF7ED] text-[#EA580C]"
-                            : "border-[#E1E2E8] bg-[#F0F1F4] text-[#555862]"
-                            }`}
-                          title={label}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <span className="col-span-3 rounded-full border border-[#E1E2E8] bg-[#F0F1F4] px-3 py-1 text-center text-[11px] text-[#555862] 2xl:text-[13px]">
-                      No fonts detected
-                    </span>
-                  )}
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-[#161820] 2xl:text-2xl">
+                    Font Readiness
+                  </h2>
+                  <p className="mt-1 max-w-[560px] text-[13px] leading-relaxed text-[#686B76] 2xl:text-[15px]">
+                    Review detected fonts before creating the slide preview.
+                  </p>
                 </div>
               </div>
+              <span
+                className={`inline-flex w-fit shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium 2xl:text-sm ${fontStatusClass}`}
+              >
+                {isUploading || showFontAttentionSpinner ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : fontsStepComplete ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : null}
+                {fontStatusLabel}
+              </span>
+            </div>
 
-              {hasPendingMissingFonts && !isUploading ? (
-                <div className="mt-3 rounded-[5px] border border-[#FDE4C2] bg-[#FFFBF5] px-3 py-2.5 text-[12px] leading-relaxed text-[#8A5B2C] 2xl:mt-4 2xl:px-3.5 2xl:py-3 2xl:text-[13px]">
-                  You can continue without uploading missing fonts, but they will not be applied to
-                  your template.
+            <div className="mt-5 grid grid-cols-3 gap-2 2xl:mt-6 2xl:gap-3">
+              {[
+                { label: "Detected", value: totalDetectedFonts },
+                { label: "Available", value: availableFontCount },
+                { label: "Uploaded", value: uploadedMissingCount },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-[8px] border border-[#ECECF2] bg-[#F8F8FB] px-3 py-3 2xl:px-4 2xl:py-4"
+                >
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#777985] 2xl:text-xs">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold text-[#15161C] 2xl:text-3xl">
+                    {item.value}
+                  </p>
                 </div>
-              ) : null}
+              ))}
+            </div>
 
-              {missingFonts.length > 0 ? (
-                <div className="mt-3 space-y-4 2xl:mt-4 2xl:space-y-5">
-                  {missingFonts.map((font, index) => {
-                    const fontName = font.name;
-                    const isUploaded = uploadedFontNames.has(fontName);
+            <div className="mt-5 2xl:mt-6">
+              <div className="mb-2 flex items-center justify-between gap-3 2xl:mb-3">
+                <p className="text-[13px] font-medium text-[#30323A] 2xl:text-[15px]">
+                  Detected Fonts
+                </p>
+                <p className="text-[12px] text-[#777985] 2xl:text-sm">
+                  {missingFonts.length} missing
+                </p>
+              </div>
+              <div className="flex max-h-[172px] flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-color:#C7CBD6_transparent] [scrollbar-width:thin] 2xl:max-h-[220px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#C7CBD6] [&::-webkit-scrollbar-track]:bg-transparent">
+                {fontChips.length > 0 ? (
+                  fontChips.map((font, index) => {
+                    const label = chipLabel(font);
+                    const isMissing = missingFontKeys.has(label.toLowerCase());
                     return (
-                      <div key={`${fontName}-${index}`} className="space-y-2 2xl:space-y-2.5">
-                        <p className="text-[12px] font-medium text-[#4D505A] 2xl:text-sm">{fontName}</p>
-                        <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 2xl:gap-4">
-                          <input
-                            ref={(node) => {
-                              fileInputRefs.current[fontName] = node;
-                            }}
-                            type="file"
-                            accept=".ttf,.otf,.woff,.woff2,.eot"
-                            className="hidden"
-                            onChange={(event) => handleFontFile(fontName, event)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRefs.current[fontName]?.click()}
-                            disabled={isUploading}
-                            className="flex h-10 items-center gap-2 rounded-[5px] border border-[#E2E3E8] bg-white px-3 text-left text-[13px] text-[#72757F] transition hover:border-[#B9ABFF] hover:bg-[#FAFAFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-12 2xl:px-4 2xl:text-[15px]"
-                          >
-                            <Upload className="h-4 w-4 text-black 2xl:h-5 2xl:w-5" />
-                            {isUploaded ? "Uploaded" : "Upload .ttf / .otf"}
-                          </button>
-                          <span className="hidden text-[14px] text-black sm:block 2xl:text-base">or</span>
-                          <div className="relative">
-                            <select
-                              aria-label={`Fallback font for ${fontName}`}
-                              disabled={isUploading}
-                              className="h-10 w-full appearance-none rounded-[5px] border border-[#E2E3E8] bg-white px-4 pr-8 text-[13px] text-[#282A32] outline-none transition hover:border-[#B9ABFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-12 2xl:px-5 2xl:pr-10 2xl:text-[15px]"
-                              defaultValue="Poppins"
-                            >
-                              <option>Poppins</option>
-                              <option>Inter</option>
-                              <option>Manrope</option>
-                              <option>Syne</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black 2xl:right-4 2xl:h-5 2xl:w-5" />
-                          </div>
-                        </div>
-                      </div>
+                      <span
+                        key={`${font.name}-${index}`}
+                        className={`max-w-full truncate rounded-full border px-3 py-1.5 text-[12px] 2xl:px-3.5 2xl:text-[13px] ${isMissing
+                          ? "border-[#FDBA74] bg-[#FFF7ED] text-[#C2410C]"
+                          : "border-[#DDEADF] bg-[#F4FBF6] text-[#236C4A]"
+                          }`}
+                        title={label}
+                      >
+                        {label}
+                      </span>
                     );
-                  })}
-                </div>
-              ) : null}
+                  })
+                ) : (
+                  <span className="rounded-full border border-[#E1E2E8] bg-[#F0F1F4] px-3 py-1.5 text-[12px] text-[#555862] 2xl:text-[13px]">
+                    No fonts detected
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          {isUploading ? (
-            <div className="relative mt-7 flex w-full gap-[18px] 2xl:mt-9 2xl:gap-6">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-white 2xl:h-10 2xl:w-10">
-                <LayoutPanelTop className="h-4 w-4 2xl:h-5 2xl:w-5" />
+          <aside className="rounded-[10px] border border-[#E7E8EE] bg-[#FBFBFD] p-4 shadow-[0_8px_28px_rgba(16,24,40,0.04)] sm:p-5 2xl:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-semibold text-[#181A22] 2xl:text-lg">
+                  Missing Fonts
+                </h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-[#70737D] 2xl:text-sm">
+                  Upload exact font files or continue with fallbacks.
+                </p>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="mb-3 flex items-center justify-between gap-3 2xl:mb-4">
-                  <h2 className="text-[17px] font-semibold text-black 2xl:text-xl">Creating Template</h2>
-                  <span className="text-[10px] font-medium text-[#70737D] 2xl:text-xs">In Progress</span>
-                </div>
+              <span className="rounded-full border border-[#E5E7EF] bg-white px-2.5 py-1 text-[11px] font-medium text-[#555862] 2xl:text-xs">
+                {pendingMissingFonts.length} left
+              </span>
+            </div>
 
-                <div className="rounded-[5px] border border-[#E8E8EF] bg-[#F7F7FA] px-3 py-3 2xl:px-4 2xl:py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-2 text-[13px] text-[#777985] 2xl:space-y-2.5 2xl:text-[15px]">
-                      <p className="font-medium text-black">✓ Extracting Slides</p>
-                      <p className="font-medium text-black">✓ Learning Layouts</p>
-                      <p className="flex items-center gap-2">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7A5AF8] 2xl:h-4 2xl:w-4" />
-                        Detecting Colors
-                      </p>
+            {hasPendingMissingFonts && !isUploading ? (
+              <div className="mt-4 rounded-[7px] border border-[#FDE4C2] bg-[#FFFBF5] px-3 py-2.5 text-[12px] leading-relaxed text-[#8A5B2C] 2xl:text-[13px]">
+                Continuing without uploads will use available fallback fonts.
+              </div>
+            ) : null}
+
+            {missingFonts.length > 0 ? (
+              <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#C7CBD6_transparent] [scrollbar-width:thin] 2xl:mt-5 2xl:max-h-[430px] 2xl:space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#C7CBD6] [&::-webkit-scrollbar-track]:bg-transparent">
+                {missingFonts.map((font, index) => {
+                  const fontName = font.name;
+                  const isUploaded = uploadedFontNames.has(fontName);
+                  return (
+                    <div key={`${fontName}-${index}`} className="rounded-[8px] border border-[#ECECF2] bg-white p-3 2xl:p-4">
+                      <div className="mb-2 flex items-center justify-between gap-2 2xl:mb-3">
+                        <p className="min-w-0 truncate text-[12px] font-medium text-[#30323A] 2xl:text-sm" title={fontName}>
+                          {fontName}
+                        </p>
+                        {isUploaded ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#ECFDF3] px-2 py-0.5 text-[10px] font-medium text-[#237A50] 2xl:text-[11px]">
+                            <Check className="h-3 w-3" />
+                            Uploaded
+                          </span>
+                        ) : null}
+                      </div>
+                      <input
+                        ref={(node) => {
+                          fileInputRefs.current[fontName] = node;
+                        }}
+                        type="file"
+                        accept=".ttf,.otf,.woff,.woff2,.eot"
+                        className="hidden"
+                        onChange={(event) => handleFontFile(fontName, event)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[fontName]?.click()}
+                        disabled={isUploading}
+                        className="flex h-9 w-full items-center justify-center gap-2 rounded-[5px] border border-[#D9DAE2] bg-white px-3 text-[12px] font-medium text-[#25272F] transition hover:border-[#B9ABFF] hover:bg-[#FAFAFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-10 2xl:text-[13px]"
+                      >
+                        <Upload className="h-3.5 w-3.5 2xl:h-4 2xl:w-4" />
+                        {isUploaded ? "Replace Font File" : "Upload Font File"}
+                      </button>
+                      <div className="relative mt-2 2xl:mt-2.5">
+                        <select
+                          aria-label={`Fallback font for ${fontName}`}
+                          disabled={isUploading}
+                          className="h-9 w-full appearance-none rounded-[5px] border border-[#D9DAE2] bg-white px-3 pr-8 text-[12px] text-[#282A32] outline-none transition hover:border-[#B9ABFF] disabled:cursor-not-allowed disabled:opacity-60 2xl:h-10 2xl:text-[13px]"
+                          defaultValue="Poppins"
+                        >
+                          <option>Poppins</option>
+                          <option>Inter</option>
+                          <option>Manrope</option>
+                          <option>Syne</option>
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+                      </div>
                     </div>
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#7A5AF8] 2xl:h-6 2xl:w-6" />
-                  </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 flex min-h-[180px] flex-col items-center justify-center rounded-[8px] border border-[#DDEADF] bg-[#F4FBF6] px-4 text-center 2xl:min-h-[220px]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2CA36B] text-white 2xl:h-11 2xl:w-11">
+                  <Check className="h-4 w-4 2xl:h-5 2xl:w-5" />
+                </span>
+                <p className="mt-3 text-[13px] font-medium text-[#236C4A] 2xl:text-[15px]">
+                  All fonts resolved
+                </p>
+              </div>
+            )}
+          </aside>
+        </div>
+
+        {isUploading ? (
+          <div className="mt-4 rounded-[10px] border border-[#E7E8EE] bg-white p-4 shadow-[0_8px_28px_rgba(16,24,40,0.05)] sm:p-5 2xl:mt-5 2xl:p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white 2xl:h-11 2xl:w-11">
+                <LayoutPanelTop className="h-4 w-4 2xl:h-5 2xl:w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-[16px] font-semibold text-black 2xl:text-xl">
+                    Creating Preview
+                  </h2>
+                  <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#7A5AF8] 2xl:h-6 2xl:w-6" />
+                </div>
+                <div className="mt-3 grid gap-2 text-[13px] text-[#777985] sm:grid-cols-3 2xl:text-[15px]">
+                  <p className="font-medium text-black">Extracting Slides</p>
+                  <p className="font-medium text-black">Preparing Fonts</p>
+                  <p className="flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7A5AF8] 2xl:h-4 2xl:w-4" />
+                    Rendering Preview
+                  </p>
                 </div>
               </div>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );
 }
 
-const SLIDE_WIDTH = 1280;
-const SLIDE_HEIGHT = 720;
+const SLIDE_WIDTH = EDITOR_STAGE_WIDTH;
+const SLIDE_HEIGHT = EDITOR_STAGE_HEIGHT;
 
 function ResponsiveSlideViewport({
   children,
@@ -709,45 +764,122 @@ function ThumbnailStrip({
   bottomOffset?: string;
 }) {
   const count = slides?.length ?? urls?.length ?? 0;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+
+    const maxScrollLeft = node.scrollWidth - node.clientWidth;
+    setCanScrollLeft(node.scrollLeft > 1);
+    setCanScrollRight(node.scrollLeft < maxScrollLeft - 1);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+
+    const node = scrollRef.current;
+    if (!node) return;
+
+    node.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateScrollState)
+        : null;
+    observer?.observe(node);
+
+    return () => {
+      node.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+      observer?.disconnect();
+    };
+  }, [count, updateScrollState]);
+
+  const scrollThumbnails = useCallback(
+    (direction: -1 | 1) => {
+      const node = scrollRef.current;
+      if (!node) return;
+
+      const distance = Math.max(180, node.clientWidth * 0.72);
+      node.scrollBy({ left: direction * distance, behavior: "smooth" });
+      window.setTimeout(updateScrollState, 260);
+    },
+    [updateScrollState],
+  );
 
   return (
     <div
-      className={`fixed ${bottomOffset} left-1/2 z-20 flex w-[calc(100vw-2rem)] max-w-[min(100%,1280px)] -translate-x-1/2 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar sm:w-[calc(100vw-4rem)] sm:gap-3 2xl:gap-4`}
+      className={`fixed ${bottomOffset} left-1/2 z-20 w-[calc(100vw-2rem)] max-w-[min(100%,1280px)] -translate-x-1/2 sm:w-[calc(100vw-4rem)]`}
     >
-      {Array.from({ length: count }, (_, index) => {
-        const slide = slides?.[index];
-        const url = urls?.[index] ?? slide?.screenshot_url;
-        const isReady = slide
-          ? Boolean(slide.processed && !slide.processing && slide.v2Layout)
-          : Boolean(url);
-        const isSelected = selectedIndex === index;
+      <button
+        type="button"
+        onClick={() => scrollThumbnails(-1)}
+        aria-label="Scroll thumbnails left"
+        className={`absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#E6E7ED] bg-white/95 text-black shadow-[0_2px_10px_rgba(16,24,40,0.14)] transition sm:h-9 sm:w-9 ${canScrollLeft ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      >
+        <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+      </button>
+      <div
+        ref={scrollRef}
+        className="hide-scrollbar flex max-w-full items-center gap-2 overflow-x-auto overscroll-x-contain rounded-[8px] px-1 pb-3 pt-1 [-webkit-overflow-scrolling:touch] sm:gap-3 2xl:gap-4"
+      >
+        {Array.from({ length: count }, (_, index) => {
+          const slide = slides?.[index];
+          const url = urls?.[index] ?? slide?.screenshot_url;
+          const isReady = slide
+            ? Boolean(slide.processed && !slide.processing && slide.v2Layout)
+            : Boolean(url);
+          const isSelected = selectedIndex === index;
 
-        return (
-          <button
-            key={`thumb-${index}`}
-            type="button"
-            onClick={() => onSelect(index)}
-            className={`relative aspect-video w-[76px] shrink-0 overflow-visible rounded-[5px] border bg-white p-0 transition sm:w-[86px] sm:rounded-[6px] 2xl:w-[96px] ${isSelected ? "border-[#D9D9E2] ring-1 ring-[#D9D9E2]" : "border-[#ECECF2]"
-              }`}
-          >
-            {isReady && url ? (
-              <img
-                src={resolveBackendAssetUrl(url)}
-                alt={`Slide ${index + 1}`}
-                className="h-full w-full rounded-[5px] object-cover sm:rounded-[6px]"
-                draggable={false}
-              />
-            ) : (
-              <div className="h-full w-full rounded-[5px] bg-white sm:rounded-[6px]" />
-            )}
-            <span className="absolute -bottom-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[#E6E7ED] bg-white text-[9px] text-black shadow-sm sm:-bottom-2 sm:-left-2 sm:h-5 sm:w-5 sm:text-[10px]">
-              {index + 1}
-            </span>
-          </button>
-        );
-      })}
+          return (
+            <button
+              key={`thumb-${index}`}
+              type="button"
+              onClick={() => onSelect(index)}
+              className={`relative aspect-video w-[76px] shrink-0 overflow-visible rounded-[5px] border bg-white p-0 transition sm:w-[86px] sm:rounded-[6px] 2xl:w-[96px] ${isSelected ? "border-[#D9D9E2] ring-1 ring-[#D9D9E2]" : "border-[#ECECF2]"
+                }`}
+            >
+              {isReady && url ? (
+                <img
+                  src={resolveBackendAssetUrl(url)}
+                  alt={`Slide ${index + 1}`}
+                  className="h-full w-full rounded-[5px] object-cover sm:rounded-[6px]"
+                  draggable={false}
+                />
+              ) : (
+                <div className="h-full w-full rounded-[5px] bg-white sm:rounded-[6px]" />
+              )}
+              <span className="absolute -bottom-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[#E6E7ED] bg-white text-[9px] text-black shadow-sm sm:-bottom-2 sm:-left-2 sm:h-5 sm:w-5 sm:text-[10px]">
+                {index + 1}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => scrollThumbnails(1)}
+        aria-label="Scroll thumbnails right"
+        className={`absolute right-0 top-1/2 z-10 flex h-8 w-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#E6E7ED] bg-white/95 text-black shadow-[0_2px_10px_rgba(16,24,40,0.14)] transition sm:h-9 sm:w-9 ${canScrollRight ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      >
+        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+      </button>
     </div>
   );
+}
+
+function hasRenderableKonvaLayout(
+  slide: ProcessedSlide | undefined,
+): slide is ProcessedSlide & { v2Layout: TemplateV2Layout } {
+  return Boolean(slide?.v2Layout && slide.processed && !slide.processing);
 }
 
 function ReviewSlideCanvas({
@@ -759,11 +891,7 @@ function ReviewSlideCanvas({
   fonts?: Record<string, string>;
   isGenerating?: boolean;
 }) {
-  const hasKonvaLayout = Boolean(
-    slide?.v2Layout && slide.processed && !slide.processing,
-  );
-
-  if (hasKonvaLayout && slide?.v2Layout) {
+  if (hasRenderableKonvaLayout(slide)) {
     return (
       <KonvaLayoutSlide
         layout={slide.v2Layout}
@@ -942,12 +1070,18 @@ function SaveTemplateModal({
   isOpen,
   defaultName,
   isSaving,
+  title = "Save Template",
+  subtitle = "Give your template a name.",
+  submitLabel = "Save",
   onClose,
   onSave,
 }: {
   isOpen: boolean;
   defaultName: string;
   isSaving: boolean;
+  title?: string;
+  subtitle?: string;
+  submitLabel?: string;
   onClose: () => void;
   onSave: (name: string, description: string) => Promise<void>;
 }) {
@@ -983,8 +1117,8 @@ function SaveTemplateModal({
         </button>
         <div className="flex h-[74px] 2xl:h-[84px] items-center justify-between border-b border-[#EDEEF3] px-5 2xl:px-6">
           <div>
-            <h2 className="text-[16px] 2xl:text-lg font-medium text-black">Save Template</h2>
-            <p className="mt-1 text-[11px] 2xl:text-[13px] text-[#7E818C]">Give your template a name.</p>
+            <h2 className="text-[16px] 2xl:text-lg font-medium text-black">{title}</h2>
+            <p className="mt-1 text-[11px] 2xl:text-[13px] text-[#7E818C]">{subtitle}</p>
           </div>
           <button
             type="button"
@@ -993,7 +1127,7 @@ function SaveTemplateModal({
             className="inline-flex h-8 2xl:h-9 min-w-[78px] 2xl:min-w-[88px] items-center justify-center rounded-[58px] px-5 2xl:px-6 text-[13px] 2xl:text-sm font-medium text-black disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: pillGradient }}
           >
-            {isSaving ? <Loader2 className="h-4 w-4 2xl:h-5 2xl:w-5 animate-spin" /> : "Save"}
+            {isSaving ? <Loader2 className="h-4 w-4 2xl:h-5 2xl:w-5 animate-spin" /> : submitLabel}
           </button>
         </div>
 
@@ -1039,10 +1173,8 @@ const CustomTemplatePage = ({
   const router = useRouter();
   const llmConfig = useSelector((state: RootState) => state.userConfig.llm_config);
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-
-
+  const [templateModalMode, setTemplateModalMode] = useState<"create" | "save" | null>(null);
+  const [isSubmittingTemplate, setIsSubmittingTemplate] = useState(false);
 
   const {
     selectedFile,
@@ -1059,7 +1191,6 @@ const CustomTemplatePage = ({
     checkFonts,
     uploadFont,
     fontUploadAndPreview,
-    initTemplateCreation,
     retrySlide,
   } = useTemplateCreation({ useTemplateV2Generation });
 
@@ -1075,6 +1206,8 @@ const CustomTemplatePage = ({
   const isGenerating = state.step === "template-creation";
   const generatedSlidesReady =
     isFinalReview && slides.some((slide) => slide.processed && !slide.error);
+  const isTemplateModalOpen = templateModalMode !== null;
+  const isCreateTemplateModal = templateModalMode === "create";
 
   const missingFonts = state.fontsData?.unavailable_fonts ?? [];
   const uploadedFontNames = new Set(uploadedFonts.map((font) => font.fontName));
@@ -1124,8 +1257,22 @@ const CustomTemplatePage = ({
 
   useEffect(() => {
     if (!isGenerating) return;
-    setReviewSlideIndex(state.currentSlideIndex);
-  }, [isGenerating, state.currentSlideIndex]);
+    setReviewSlideIndex((currentIndex) => {
+      const currentGeneratingSlide = slides[state.currentSlideIndex];
+      if (
+        hasRenderableKonvaLayout(currentGeneratingSlide) ||
+        (currentGeneratingSlide?.error && !currentGeneratingSlide.processing)
+      ) {
+        return state.currentSlideIndex;
+      }
+
+      if (hasRenderableKonvaLayout(slides[currentIndex])) {
+        return currentIndex;
+      }
+
+      return state.currentSlideIndex;
+    });
+  }, [isGenerating, slides, state.currentSlideIndex]);
 
   const handleCheckFonts = useCallback(async () => {
     if (!selectedFile) return;
@@ -1148,21 +1295,45 @@ const CustomTemplatePage = ({
         slide_count: data.slide_image_urls.length,
       });
     }
-  }, [fontUploadAndPreview, hasPendingMissingFonts, selectedFile]);
+  }, [fontUploadAndPreview, hasPendingMissingFonts, loadFontAssets, selectedFile]);
 
-  const handleGenerateTemplate = useCallback(async () => {
-    if (!state.previewData) return;
-    trackEvent(MixpanelEvent.Templates_Build_Template_Clicked, {
-      source: "template_studio_generate",
-      slide_count: state.previewData.slide_image_urls.length,
-    });
-    await initTemplateCreation(
-      {
-        name: defaultTemplateName,
-      },
-      state.previewData,
-    );
-  }, [defaultTemplateName, initTemplateCreation, state.previewData]);
+  const handleCreateTemplate = useCallback(
+    async (name: string, description: string) => {
+      if (!state.previewData) {
+        notify.error("Preview unavailable", "Create the slide preview before continuing.");
+        return;
+      }
+
+      setIsSubmittingTemplate(true);
+      try {
+        trackEvent(MixpanelEvent.Templates_Build_Template_Clicked, {
+          source: "template_studio_create_async",
+          slide_count: state.previewData.slide_image_urls.length,
+        });
+        await TemplateService.createTemplate({
+          pptx_url: state.previewData.modified_pptx_url,
+          slide_image_urls: state.previewData.slide_image_urls,
+          fonts: state.previewData.fonts,
+          name,
+          description: description || null,
+        });
+        notify.success(
+          "Template generation started",
+          "You can track the template status from the Templates page.",
+        );
+        setTemplateModalMode(null);
+        router.push("/templates?tab=custom");
+      } catch (error) {
+        notify.error(
+          "Failed to create template",
+          error instanceof Error ? error.message : "An unexpected error occurred",
+        );
+      } finally {
+        setIsSubmittingTemplate(false);
+      }
+    },
+    [router, state.previewData],
+  );
 
   const handleSaveTemplate = useCallback(
     async (name: string, description: string) => {
@@ -1171,14 +1342,14 @@ const CustomTemplatePage = ({
         return;
       }
 
-      setIsSavingTemplate(true);
+      setIsSubmittingTemplate(true);
       try {
         await TemplateService.updateTemplateMetadata(state.templateId, {
           name,
           description: description || null,
         });
         notify.success("Template saved", "The template was saved successfully.");
-        setIsSaveModalOpen(false);
+        setTemplateModalMode(null);
         router.push(`/template-preview?templateV2Id=${encodeURIComponent(state.templateId)}`);
       } catch (error) {
         notify.error(
@@ -1186,10 +1357,21 @@ const CustomTemplatePage = ({
           error instanceof Error ? error.message : "An unexpected error occurred",
         );
       } finally {
-        setIsSavingTemplate(false);
+        setIsSubmittingTemplate(false);
       }
     },
     [router, state.templateId],
+  );
+
+  const handleTemplateModalSubmit = useCallback(
+    async (name: string, description: string) => {
+      if (templateModalMode === "save") {
+        await handleSaveTemplate(name, description);
+        return;
+      }
+      await handleCreateTemplate(name, description);
+    },
+    [handleCreateTemplate, handleSaveTemplate, templateModalMode],
   );
 
   const bottomAction = useMemo(() => {
@@ -1215,8 +1397,12 @@ const CustomTemplatePage = ({
 
     if (showPreview) {
       return (
-        <GradientPillButton onClick={handleGenerateTemplate} disabled={state.isLoading} fullWidth>
-          {state.isLoading ? "Preparing..." : "Generate Template"}
+        <GradientPillButton
+          onClick={() => setTemplateModalMode("create")}
+          disabled={state.isLoading || isSubmittingTemplate}
+          fullWidth
+        >
+          {isSubmittingTemplate ? "Creating Template..." : "Create Template"}
         </GradientPillButton>
       );
     }
@@ -1224,8 +1410,8 @@ const CustomTemplatePage = ({
     if (showReview) {
       return (
         <GradientPillButton
-          onClick={() => setIsSaveModalOpen(true)}
-          disabled={!generatedSlidesReady || state.isLoading}
+          onClick={() => setTemplateModalMode("save")}
+          disabled={!generatedSlidesReady || state.isLoading || isSubmittingTemplate}
           fullWidth
         >
           {generatedSlidesReady ? "Save as Template" : "Generating Template"}
@@ -1236,8 +1422,8 @@ const CustomTemplatePage = ({
     return null;
   }, [
     generatedSlidesReady,
+    isSubmittingTemplate,
     handleFontUploadAndPreview,
-    handleGenerateTemplate,
     showAnalyze,
     showPreview,
     showReview,
@@ -1295,13 +1481,20 @@ const CustomTemplatePage = ({
       {bottomAction ? <StudioBottomAction>{bottomAction}</StudioBottomAction> : null}
 
       <SaveTemplateModal
-        isOpen={isSaveModalOpen}
+        isOpen={isTemplateModalOpen}
         defaultName={defaultTemplateName}
-        isSaving={isSavingTemplate}
+        isSaving={isSubmittingTemplate}
+        title={isCreateTemplateModal ? "Create Template" : "Save Template"}
+        subtitle={
+          isCreateTemplateModal
+            ? "Name this template before generation starts."
+            : "Give your template a name."
+        }
+        submitLabel={isCreateTemplateModal ? "Create" : "Save"}
         onClose={() => {
-          if (!isSavingTemplate) setIsSaveModalOpen(false);
+          if (!isSubmittingTemplate) setTemplateModalMode(null);
         }}
-        onSave={handleSaveTemplate}
+        onSave={handleTemplateModalSubmit}
       />
 
 

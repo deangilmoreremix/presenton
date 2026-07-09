@@ -19,6 +19,11 @@ const LayoutPreview = () => {
   const { defaultTemplates, customTemplates, loading } = useTemplateSummaries();
 
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab === "custom" || requestedTab === "default") {
+      setTab(requestedTab);
+    }
+
     trackEvent(MixpanelEvent.Templates_Page_Viewed);
     const existingScript = document.querySelector('script[src*="tailwindcss.com"]');
     if (!existingScript) {
