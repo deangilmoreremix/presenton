@@ -29,7 +29,6 @@ const CHART_TYPE_OPTIONS: Array<{
     { value: "pie", label: "Pie Chart" },
     { value: "donut", label: "Donut Chart" },
     { value: "scatter", label: "Scatter Chart" },
-    { value: "bubble", label: "Bubble Chart" },
     { value: "radar", label: "Radar Chart" },
     { value: "polar_area", label: "Polar Area" },
   ];

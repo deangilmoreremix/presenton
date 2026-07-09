@@ -53,7 +53,6 @@ const CHART_TYPES: Array<{ label: string; value: ChartType }> = [
   { label: "Pie Chart", value: "pie" },
   { label: "Donut Chart", value: "donut" },
   { label: "Scatter Chart", value: "scatter" },
-  { label: "Bubble Chart", value: "bubble" },
   { label: "Radar Chart", value: "radar" },
   { label: "Polar Area", value: "polar_area" },
 ];
@@ -178,7 +177,7 @@ function ChartTypeSelect({
       <BarChart3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#191919]" />
       <select
         aria-label="Chart type"
-        className={`${compact ? "h-9 rounded-lg pl-10 pr-9 text-[11px]" : "h-12 rounded-xl pl-11 pr-10 text-[13px]"} w-full appearance-none border border-[#E6E6EA] bg-white font-medium text-[#191919] outline-none transition focus:border-[#7C51F8]`}
+        className={`${compact ? "h-9 rounded-lg pl-10 pr-9 text-[12px]" : "h-12 rounded-xl pl-11 pr-10 text-[13px]"} w-full appearance-none border border-[#E6E6EA] bg-white font-medium text-[#191919] outline-none transition focus:border-[#7C51F8]`}
         value={value}
         onChange={(event) => onChange(event.target.value as ChartType)}
       >
@@ -246,7 +245,7 @@ function DataLabelsControl({
               role="tab"
               aria-selected={active && enabled}
               disabled={!enabled}
-              className={`h-8 rounded-md px-1 text-[11px] font-semibold transition ${active && enabled
+              className={`h-8 rounded-md px-1 text-[12px] font-semibold transition ${active && enabled
                 ? "bg-white text-[#191919] shadow-sm"
                 : "text-[#686873] hover:text-[#191919]"
                 } disabled:cursor-not-allowed disabled:hover:text-[#686873]`}
@@ -665,7 +664,7 @@ function AccordionSection({
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary
-        className={`${compact ? "h-9 gap-2 px-2 text-[11px]" : "h-12 gap-3 px-3 text-[13px]"} flex cursor-pointer list-none items-center rounded-lg font-medium text-[#191919] transition hover:bg-[#F7F7FA] group-open:bg-[#F7F7FA] [&::-webkit-details-marker]:hidden`}
+        className={`${compact ? "h-9 gap-2 px-2 text-[12px]" : "h-12 gap-3 px-3 text-[13px]"} flex cursor-pointer list-none items-center rounded-lg font-medium text-[#191919] transition hover:bg-[#F7F7FA] group-open:bg-[#F7F7FA] [&::-webkit-details-marker]:hidden`}
       >
         <span className={`${compact ? "h-5 w-5 [&>svg]:h-3.5 [&>svg]:w-3.5" : "h-6 w-6"} grid shrink-0 place-items-center text-[#191919]`}>
           {icon}
@@ -895,17 +894,17 @@ function ChartDataModal({
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(16,24,40,0.24)]">
           <header className="flex h-[70px] shrink-0 items-center justify-between border-b border-[#ECECF1] px-5">
             <div>
-              <h2 className="text-[14px] font-semibold text-[#191919]">
+              <h2 className="text-[15px] font-semibold text-[#191919]">
                 Edit Data Table
               </h2>
-              <p className="mt-1 text-[10px] text-[#8B8B94]">
+              <p className="mt-1 text-[11px] text-[#8B8B94]">
                 Edit Data Table
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="flex h-8 items-center gap-1.5 rounded-full border border-[#E6E6EA] bg-white px-4 text-[11px] font-semibold text-[#191919] transition hover:bg-[#F7F7FA]"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-[#E6E6EA] bg-white px-4 text-[12px] font-semibold text-[#191919] transition hover:bg-[#F7F7FA]"
                 onClick={() =>
                   setDraftChart((currentChart) =>
                     clearChartData(currentChart),
@@ -930,7 +929,7 @@ function ChartDataModal({
 
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <aside className="min-h-0 w-[255px] shrink-0 overflow-y-auto overscroll-contain border-r border-[#ECECF1] px-4 py-4 hide-scrollbar">
-              <label className="mb-2 block text-[11px] font-medium text-[#191919]">
+              <label className="mb-2 block text-[12px] font-medium text-[#191919]">
                 Charts
               </label>
               <ChartTypeSelect
@@ -1059,6 +1058,14 @@ function EditableDataTable({
     allowDecimal: true,
     allowNegative: true,
   };
+  const categoryColumnWidth = 160;
+  const seriesColumnWidth = 190;
+  const actionColumnWidth = 48;
+  const minimumTableWidth =
+    categoryColumnWidth +
+    safeSeries.length * seriesColumnWidth +
+    actionColumnWidth;
+  const dataGridTemplateColumns = `${categoryColumnWidth}px repeat(${safeSeries.length}, minmax(${seriesColumnWidth}px, 1fr)) ${actionColumnWidth}px`;
 
   const updateCategory = (rowIndex: number, value: string) => {
     onUpdate(
@@ -1211,11 +1218,11 @@ function EditableDataTable({
     >
       {selectedSeries && seriesMenu && selectedSeriesIndex != null ? (
         <div
-          className="absolute top-0 z-20 flex h-8 w-[154px] -translate-x-1/2 items-center overflow-hidden rounded-xl border border-[#E6E6EA] bg-white pl-3 pr-1 text-[#191919] shadow-[0_3px_12px_rgba(16,24,40,0.10)]"
+          className="absolute top-0 z-20 flex h-8 w-[168px] -translate-x-1/2 items-center overflow-hidden rounded-xl border border-[#E6E6EA] bg-white pl-3 pr-1 text-[#191919] shadow-[0_3px_12px_rgba(16,24,40,0.10)]"
           style={{ left: seriesMenu.left }}
         >
           <input
-            className="h-full min-w-0 flex-1 bg-transparent text-[10px] font-medium outline-none"
+            className="h-full min-w-0 flex-1 bg-transparent text-[12px] font-medium outline-none"
             value={selectedSeries.name}
             onChange={(event) =>
               updateSeriesName(selectedSeriesIndex, event.target.value)
@@ -1296,145 +1303,150 @@ function EditableDataTable({
       ) : null}
 
       <div className="relative rounded-b-lg bg-[#F3F4F6] pb-9 pr-9">
-        <div className="max-h-[390px] overflow-auto">
-          <table className="min-w-full border-collapse text-[11px] text-[#191919]">
-            <thead>
-              <tr>
-                <th className="sticky left-0 top-0 z-10 w-0 border-b border-[#E8E8EC] bg-[#F6F7F8]" />
-                <th className="sticky left-0 top-0 z-10 min-w-[190px] border-b border-r border-[#E8E8EC] bg-[#F6F7F8]" />
-                {safeSeries.map((item, seriesIndex) => (
-                  <th
-                    key={`${chartPath}-series-${seriesIndex}`}
-                    className="min-w-[190px] border-b border-r border-[#E8E8EC] bg-[#F6F7F8] px-3 py-2 text-center text-[11px] font-medium"
-                    onMouseEnter={(event) =>
+        <div className="relative z-10 max-h-[390px] overflow-auto">
+          <div
+            className="min-w-full text-[12px] text-[#191919]"
+            style={{
+              minWidth: minimumTableWidth,
+              width: "100%",
+            }}
+          >
+            <div
+              className="sticky top-0 z-20 grid"
+              style={{ gridTemplateColumns: dataGridTemplateColumns }}
+            >
+              <div className="sticky left-0 z-20 border-b border-r border-[#E8E8EC] bg-[#F6F7F8]" />
+              {safeSeries.map((item, seriesIndex) => (
+                <div
+                  key={`${chartPath}-series-${seriesIndex}`}
+                  className="border-b border-r border-[#E8E8EC] bg-[#F6F7F8] px-3 py-2 text-center text-[12px] font-medium"
+                  onMouseEnter={(event) =>
+                    showSeriesMenu(seriesIndex, event.currentTarget)
+                  }
+                >
+                  <button
+                    type="button"
+                    className="w-full truncate text-center outline-none"
+                    onFocus={(event) =>
                       showSeriesMenu(seriesIndex, event.currentTarget)
                     }
                   >
-                    <button
-                      type="button"
-                      className="w-full truncate text-center outline-none"
-                      onFocus={(event) =>
-                        showSeriesMenu(seriesIndex, event.currentTarget)
-                      }
-                    >
-                      {item.name}
-                    </button>
-                  </th>
-                ))}
-                <th className="sticky right-0 top-0 w-10 border-b border-[#E8E8EC] bg-[#F3F4F6]" />
-              </tr>
-            </thead>
-            <tbody>
-              {safeCategories.map((category, rowIndex) => (
-                <tr
-                  key={`${chartPath}-row-${rowIndex}`}
-                  onMouseEnter={() => setSelectedRowIndex(rowIndex)}
-                >
-                  <td className="sticky left-0 relative w-0 border-b border-[#E8E8EC] bg-[#F6F7F8] text-center text-[#A9AAB4]">
-                    <span className="absolute -left-6 top-1/2 flex -translate-y-1/2 items-center justify-center">
-                      <GripVertical size={13} strokeWidth={2.1} />
-                    </span>
-                  </td>
-                  <td className="sticky left-0 min-w-[190px] border-b border-r border-[#E8E8EC] bg-[#F7F8FA] px-3 py-1.5">
-                    <input
-                      className="h-7 w-full rounded-md border border-transparent bg-transparent px-0 text-[11px] font-medium outline-none focus:border-[#7C51F8] focus:bg-white focus:px-2"
-                      value={category}
-                      onFocus={() => setSelectedRowIndex(rowIndex)}
-                      onChange={(event) =>
-                        updateCategory(rowIndex, event.target.value)
-                      }
-                    />
-                  </td>
-                  {safeSeries.map((item, seriesIndex) => {
-                    const draftKey = `${seriesIndex}:${rowIndex}`;
-                    const hasDraft = Object.prototype.hasOwnProperty.call(
-                      valueDrafts,
-                      draftKey,
-                    );
-                    const displayValue = hasDraft
-                      ? valueDrafts[draftKey]
-                      : item.values[rowIndex] ?? "";
+                    {item.name}
+                  </button>
+                </div>
+              ))}
+              <div className="sticky right-0 z-20 border-b border-[#E8E8EC] bg-[#F3F4F6]" />
+            </div>
 
-                    return (
-                      <td
-                        key={`${chartPath}-cell-${rowIndex}-${seriesIndex}`}
-                        className="border-b border-r border-[#E8E8EC] bg-white px-3 py-1.5"
-                      >
-                        <input
-                          className="h-7 w-full rounded-md border border-transparent bg-transparent px-0 text-[11px] outline-none focus:border-[#7C51F8] focus:bg-[#FAFAFF] focus:px-2"
-                          type="text"
-                          inputMode={numericInputMode(chartValueInputOptions)}
-                          value={displayValue}
-                          onFocus={() => setSelectedRowIndex(rowIndex)}
-                          onBlur={() => {
+            {safeCategories.map((category, rowIndex) => (
+              <div
+                key={`${chartPath}-row-${rowIndex}`}
+                className="grid"
+                style={{ gridTemplateColumns: dataGridTemplateColumns }}
+                onMouseEnter={() => setSelectedRowIndex(rowIndex)}
+              >
+                <div className="sticky left-0 z-10 border-b border-r border-[#E8E8EC] bg-[#F7F8FA] px-3 py-1.5">
+                  <span className="absolute -left-6 top-1/2 flex -translate-y-1/2 items-center justify-center">
+                    <GripVertical size={13} strokeWidth={2.1} />
+                  </span>
+                  <input
+                    className="h-7 w-full rounded-md border border-transparent bg-transparent px-0 text-[12px] font-medium outline-none focus:border-[#7C51F8] focus:bg-white focus:px-2"
+                    value={category}
+                    onFocus={() => setSelectedRowIndex(rowIndex)}
+                    onChange={(event) =>
+                      updateCategory(rowIndex, event.target.value)
+                    }
+                  />
+                </div>
+                {safeSeries.map((item, seriesIndex) => {
+                  const draftKey = `${seriesIndex}:${rowIndex}`;
+                  const hasDraft = Object.prototype.hasOwnProperty.call(
+                    valueDrafts,
+                    draftKey,
+                  );
+                  const displayValue = hasDraft
+                    ? valueDrafts[draftKey]
+                    : item.values[rowIndex] ?? "";
+
+                  return (
+                    <div
+                      key={`${chartPath}-cell-${rowIndex}-${seriesIndex}`}
+                      className="border-b border-r border-[#E8E8EC] bg-white px-3 py-1.5"
+                    >
+                      <input
+                        className="h-7 w-full rounded-md border border-transparent bg-transparent px-0 text-[12px] outline-none focus:border-[#7C51F8] focus:bg-[#FAFAFF] focus:px-2"
+                        type="text"
+                        inputMode={numericInputMode(chartValueInputOptions)}
+                        value={displayValue}
+                        onFocus={() => setSelectedRowIndex(rowIndex)}
+                        onBlur={() => {
+                          const draft = valueDrafts[draftKey];
+                          if (!isCompleteNumericInput(draft)) return;
+                          setValueDrafts((current) => {
+                            const next = { ...current };
+                            delete next[draftKey];
+                            return next;
+                          });
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            preventInvalidNumberInput(
+                              event,
+                              chartValueInputOptions,
+                            )
+                          ) {
+                            return;
+                          }
+                          if (
+                            event.key === "ArrowUp" ||
+                            event.key === "ArrowDown"
+                          ) {
+                            event.preventDefault();
+                            const direction =
+                              event.key === "ArrowUp" ? 1 : -1;
                             const draft = valueDrafts[draftKey];
-                            if (!isCompleteNumericInput(draft)) return;
-                            setValueDrafts((current) => {
-                              const next = { ...current };
-                              delete next[draftKey];
-                              return next;
-                            });
-                          }}
-                          onKeyDown={(event) => {
-                            if (
-                              preventInvalidNumberInput(
-                                event,
-                                chartValueInputOptions,
-                              )
-                            ) {
-                              return;
-                            }
-                            if (
-                              event.key === "ArrowUp" ||
-                              event.key === "ArrowDown"
-                            ) {
-                              event.preventDefault();
-                              const direction =
-                                event.key === "ArrowUp" ? 1 : -1;
-                              const draft = valueDrafts[draftKey];
-                              const currentValue = isCompleteNumericInput(draft)
-                                ? Number(draft)
-                                : item.values[rowIndex] ?? 0;
-                              const nextValue = String(currentValue + direction);
-                              updateValueDraft(
-                                seriesIndex,
-                                rowIndex,
-                                nextValue,
-                              );
-                            }
-                          }}
-                          onChange={(event) =>
+                            const currentValue = isCompleteNumericInput(draft)
+                              ? Number(draft)
+                              : item.values[rowIndex] ?? 0;
+                            const nextValue = String(currentValue + direction);
                             updateValueDraft(
                               seriesIndex,
                               rowIndex,
-                              sanitizeNumericInput(
-                                event.target.value,
-                                chartValueInputOptions,
-                              ),
-                            )
+                              nextValue,
+                            );
                           }
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="sticky right-0 border-b border-[#E8E8EC] bg-[#F3F4F6] px-1">
-                    <button
-                      type="button"
-                      aria-label={`Delete ${category || `row ${rowIndex + 1}`}`}
-                      className="grid h-7 w-7 place-items-center rounded-md text-[#8E8E98] transition hover:bg-white hover:text-[#191919] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#8E8E98]"
-                      disabled={safeCategories.length <= 1}
-                      onClick={() => deleteRow(rowIndex)}
-                    >
-                      <Trash2 size={12} strokeWidth={2.1} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        }}
+                        onChange={(event) =>
+                          updateValueDraft(
+                            seriesIndex,
+                            rowIndex,
+                            sanitizeNumericInput(
+                              event.target.value,
+                              chartValueInputOptions,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                  );
+                })}
+                <div className="sticky right-0 grid place-items-center border-b border-[#E8E8EC] bg-[#F3F4F6] px-1">
+                  <button
+                    type="button"
+                    aria-label={`Delete ${category || `row ${rowIndex + 1}`}`}
+                    className="grid h-7 w-7 place-items-center rounded-md text-[#8E8E98] transition hover:bg-white hover:text-[#191919] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[#8E8E98]"
+                    disabled={safeCategories.length <= 1}
+                    onClick={() => deleteRow(rowIndex)}
+                  >
+                    <Trash2 size={12} strokeWidth={2.1} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="absolute bottom-0 right-0 top-0 w-9 rounded-r-lg bg-[#EDEEF0]" />
-        <div className="absolute bottom-0 left-0 right-9 h-9 rounded-b-lg bg-[#EDEEF0]" />
+        <div className="absolute bottom-0 right-0 top-0 z-0 w-9 rounded-r-lg bg-[#EDEEF0]" />
+        <div className="absolute bottom-0 left-0 right-9 z-0 h-9 rounded-b-lg bg-[#EDEEF0]" />
         {allowMultipleSeries ? (
           <button
             type="button"

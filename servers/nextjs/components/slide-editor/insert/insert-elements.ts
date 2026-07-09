@@ -232,7 +232,6 @@ function chartTypeFromPaletteId(id?: string): ChartType | null {
   switch (normalized) {
     case "area":
     case "bar":
-    case "bubble":
     case "donut":
     case "horizontal_bar":
     case "line":
@@ -445,8 +444,6 @@ function makeChartElement(chartType: ChartType): SlideElement {
 
 function chartLabel(chartType: ChartType) {
   switch (chartType) {
-    case "bubble":
-      return "Bubble chart";
     case "horizontal_bar":
       return "Horizontal bar";
     case "donut":
