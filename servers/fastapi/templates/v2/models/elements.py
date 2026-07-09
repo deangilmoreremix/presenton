@@ -44,12 +44,6 @@ class LayoutAlignment(str, Enum):
     STRETCH = "stretch"
 
 
-class TextWrap(str, Enum):
-    WORD = "word"
-    CHAR = "char"
-    NONE = "none"
-
-
 class Marker(str, Enum):
     BULLET = "bullet"
     NUMBER = "number"
@@ -119,7 +113,6 @@ class Font(BaseModel):
     italic: Optional[bool] = None
     line_height: Optional[float] = None
     letter_spacing: Optional[float] = None
-    wrap: Optional[TextWrap] = None
     ellipsis: Optional[bool] = None
     opacity: Optional[float] = None
 
@@ -482,6 +475,5 @@ __all__ = [
     "Text",
     "TextList",
     "TextRun",
-    "TextWrap",
     "VerticalAlignment",
 ]
