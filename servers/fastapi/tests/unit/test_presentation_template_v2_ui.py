@@ -134,7 +134,7 @@ def test_apply_template_v2_content_to_ui_uses_schema_content_keys():
                 "chart_type": "line",
                 "categories": ["Q1", "Q2"],
                 "series": [{"name": "Revenue", "values": [10, 20]}],
-                "data_labels": True,
+                "data_labels": "top",
             },
             "cards": [
                 {
@@ -169,7 +169,7 @@ def test_apply_template_v2_content_to_ui_uses_schema_content_keys():
     assert hero_elements[3]["rows"][1][1]["runs"][0]["text"] == "true"
     assert hero_elements[4]["chart_type"] == "line"
     assert hero_elements[4]["categories"] == ["Q1", "Q2"]
-    assert hero_elements[4]["data_labels"] is True
+    assert hero_elements[4]["data_labels"] == "top"
 
     cards = hero_elements[5]["children"]
     assert cards[0]["children"][0]["runs"][0]["text"] == "First card"

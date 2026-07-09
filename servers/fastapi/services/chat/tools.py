@@ -245,7 +245,7 @@ class ChatTools:
                     "by getSlideAtIndex. Supports text, lists, table, chart, image data, "
                     "position, size, and toolbar-style element property patches. For "
                     "charts, use the chart field for chartType, categories, "
-                    "series.values, colors, axes, dataLabels, and legend."
+                    "series.values, colors, axes, dataLabels placement, and legend."
                 ),
                 schema=UpdateSlideElementInput,
                 strict=True,
