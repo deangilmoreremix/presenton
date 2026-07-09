@@ -54,6 +54,9 @@ export const TemplateListCard = memo(function TemplateListCard({
 }) {
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.currentTarget.getAttribute("aria-disabled") === "true") {
+        return;
+      }
       if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
@@ -63,21 +66,43 @@ export const TemplateListCard = memo(function TemplateListCard({
     [onClick]
   );
 
+  const rawStatus =
+    template.generation_status ??
+    template.status ??
+    (!template.is_default && (template.layout_count ?? 0) === 0 ? "generating" : null);
+  const status = rawStatus?.toLowerCase().replace(/[_-]+/g, " ") ?? null;
+  const isGenerating =
+    status === "generating" ||
+    status === "processing" ||
+    status === "pending" ||
+    status === "queued" ||
+    status === "running" ||
+    status === "in progress";
+  const statusLabel = isGenerating
+    ? "Generating"
+    : status
+      ? status.replace(/\b\w/g, (char) => char.toUpperCase())
+      : null;
+
   return (
     <Card
       role="button"
       tabIndex={0}
+      aria-disabled={isGenerating}
       aria-pressed={isSelected}
       aria-label={`${showArrow ? "Open" : "Select"} ${template.name} template`}
       className={cn(
-        "cursor-pointer relative transition-all duration-200 group overflow-hidden rounded-[22px] bg-white border outline-none",
-        "hover:-translate-y-1 hover:border-[#7A5AF8] hover:ring-2 hover:ring-[#7A5AF8]/20 hover:shadow-[0_18px_40px_rgba(34,31,54,0.12)]",
-        "focus-visible:-translate-y-1 focus-visible:border-[#7A5AF8] focus-visible:ring-2 focus-visible:ring-[#7A5AF8]/30 focus-visible:shadow-[0_18px_40px_rgba(34,31,54,0.12)]",
+        "relative transition-all duration-200 group overflow-hidden rounded-[22px] bg-white border outline-none",
+        isGenerating
+          ? "cursor-default opacity-90"
+          : "cursor-pointer hover:-translate-y-1 hover:border-[#7A5AF8] hover:ring-2 hover:ring-[#7A5AF8]/20 hover:shadow-[0_18px_40px_rgba(34,31,54,0.12)] focus-visible:-translate-y-1 focus-visible:border-[#7A5AF8] focus-visible:ring-2 focus-visible:ring-[#7A5AF8]/30 focus-visible:shadow-[0_18px_40px_rgba(34,31,54,0.12)]",
         isSelected
           ? " border-[#7A5AF8] ring-2 ring-[#7A5AF8]/25 shadow-[0_14px_34px_rgba(34,31,54,0.12)]"
           : " border-[#E8E9EC]"
       )}
-      onClick={onClick}
+      onClick={() => {
+        if (!isGenerating) onClick();
+      }}
       onKeyDown={handleKeyDown}
     >
       <div className="pointer-events-none absolute inset-0 z-30 rounded-[22px] bg-[#7A5AF8]/[0.04] opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100" />
@@ -112,6 +137,19 @@ export const TemplateListCard = memo(function TemplateListCard({
             >
               {template.description}
             </p>
+          )}
+          {statusLabel && (
+            <span
+              className={cn(
+                "mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+                isGenerating
+                  ? "border-[#E7D8FF] bg-[#F6F1FF] text-[#6941C6]"
+                  : "border-[#E7E8EE] bg-[#F6F7FA] text-[#60636F]"
+              )}
+            >
+              {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              {statusLabel}
+            </span>
           )}
         </div>
         {showArrow && (

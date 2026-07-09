@@ -4,6 +4,10 @@ import {
   type TemplateV2Layout as EditorTemplateV2Layout,
   withEqualTemplateV2FlowChildSizes,
 } from "@/components/slide-editor/importing/template-v2-import";
+import {
+  EDITOR_STAGE_HEIGHT,
+  EDITOR_STAGE_WIDTH,
+} from "@/components/slide-editor/types";
 import { resolveBackendAssetUrl } from "@/utils/api";
 import { TemplateV2KonvaSlide } from "@/components/slide-editor/surface/TemplateV2KonvaSlide";
 import {
@@ -57,6 +61,11 @@ interface TemplateV2LayoutPreviewProps {
   fonts?: Record<string, string>;
 }
 
+const previewStageStyle: React.CSSProperties = {
+  width: EDITOR_STAGE_WIDTH,
+  height: EDITOR_STAGE_HEIGHT,
+};
+
 export const TemplateV2LayoutPreview: React.FC<TemplateV2LayoutPreviewProps> = ({
   layout,
   slideDisplayRef,
@@ -67,7 +76,8 @@ export const TemplateV2LayoutPreview: React.FC<TemplateV2LayoutPreviewProps> = (
     return (
       <div
         ref={slideDisplayRef}
-        className="relative mx-auto h-[720px] w-[1280px] select-none overflow-hidden bg-white"
+        className="relative mx-auto select-none overflow-hidden bg-white"
+        style={previewStageStyle}
       >
         <TemplateV2KonvaSlide
           layout={layout as EditorTemplateV2Layout}
@@ -85,7 +95,8 @@ export const TemplateV2LayoutPreview: React.FC<TemplateV2LayoutPreviewProps> = (
   return (
     <div
       ref={slideDisplayRef}
-      className="relative mx-auto h-[720px] w-[1280px] overflow-hidden bg-white"
+      className="relative mx-auto overflow-hidden bg-white"
+      style={previewStageStyle}
     >
       {elements.map((element) =>
         renderElement(element, `layout-element-${layoutElementKey(element)}`, "absolute")

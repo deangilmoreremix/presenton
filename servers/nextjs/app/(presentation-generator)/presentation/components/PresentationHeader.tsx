@@ -26,6 +26,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { notify } from "@/components/ui/sonner";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { sanitizeAnalyticsError } from "@/utils/analytics";
 import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
 import ToolTip from "@/components/ToolTip";
 import {
@@ -42,19 +43,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ThemeSelector from "./ThemeSelector";
-import { DEFAULT_THEMES } from "../../(dashboard)/theme/components/ThemePanel/constants";
-import ThemeApi from "../../services/api/theme";
-import { Theme } from "../../services/api/types";
 import MarkdownRenderer from "@/components/MarkDownRender";
 import { cn } from "@/lib/utils";
 
 const MAX_EXPORT_TITLE_LENGTH = 40;
-const ENABLED_FEATURE_FLAG_VALUES = new Set(["1", "true", "yes", "on"]);
-
-function isEnabledFeatureFlag(value: string | undefined): boolean {
-  return ENABLED_FEATURE_FLAG_VALUES.has((value ?? "").trim().toLowerCase());
-}
 
 function hasTemplateV2Slides(slides: unknown): boolean {
   return (
@@ -126,7 +118,6 @@ const PresentationHeader = ({
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
-  const [themes, setThemes] = useState<Theme[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isRegenerateConfirmOpen, setIsRegenerateConfirmOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
@@ -140,38 +131,9 @@ const PresentationHeader = ({
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
   );
-  const isSlideEditorImportEnabled = isEnabledFeatureFlag(
-    process.env.NEXT_PUBLIC_USE_SLIDE_EDITOR_IMPORT ??
-    process.env.USE_SLIDE_EDITOR_IMPORT
-  );
-  const firstSlideLayout =
-    typeof presentationData?.slides?.[0]?.layout === "string"
-      ? presentationData.slides[0].layout
-      : "";
-  const shouldShowThemeSelector = Boolean(
-    presentationData &&
-    !isSlideEditorImportEnabled &&
-    !hasTemplateV2Slides(presentationData.slides) &&
-    !hasTemplateV2Layouts(presentationData.layout) &&
-    presentationData.slides &&
-    !firstSlideLayout.includes("custom")
-  );
-
-  useEffect(() => {
-    if (!shouldShowThemeSelector || themes.length > 0) {
-      return;
-    }
-
-    const load = async () => {
-      try {
-        const [customThemes] = await Promise.all([ThemeApi.getThemes()]);
-        setThemes([...customThemes, ...DEFAULT_THEMES]);
-      } catch (e: any) {
-        notify.error("Could not load themes", e?.message || "Failed to load themes.");
-      }
-    };
-    load();
-  }, [shouldShowThemeSelector, themes.length]);
+  const isTemplateV2Presentation =
+    hasTemplateV2Slides(presentationData?.slides) ||
+    hasTemplateV2Layouts(presentationData?.layout);
 
   const { onUndo, onRedo, canUndo, canRedo } = usePresentationUndoRedo();
 
@@ -252,6 +214,10 @@ const PresentationHeader = ({
     if (isStreaming) return;
 
     let exportToastId: string | number | undefined;
+    const startedAt = Date.now();
+    const exportRuntime = window.electron?.exportPresentation
+      ? "electron"
+      : "browser_api";
     try {
       trackEvent(MixpanelEvent.Presentation_Export_Started, {
         pathname,
@@ -301,8 +267,27 @@ const PresentationHeader = ({
         "Your PPTX file has been downloaded.",
         { id: exportToastId }
       );
+      trackEvent(MixpanelEvent.Presentation_Export_Completed, {
+        pathname,
+        presentation_id,
+        format: "pptx",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+      });
     } catch (error) {
       console.error("Export failed:", error);
+      trackEvent(MixpanelEvent.Presentation_Export_Failed, {
+        pathname,
+        presentation_id,
+        format: "pptx",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+        error_message: sanitizeAnalyticsError(error, "PPTX export failed"),
+      });
       notify.error(
         "Export failed",
         "We are having trouble exporting your presentation. Please try again.",
@@ -317,6 +302,10 @@ const PresentationHeader = ({
     if (isStreaming) return;
 
     let exportToastId: string | number | undefined;
+    const startedAt = Date.now();
+    const exportRuntime = window.electron?.exportPresentation
+      ? "electron"
+      : "browser_api";
     try {
       trackEvent(MixpanelEvent.Presentation_Export_Started, {
         pathname,
@@ -362,8 +351,27 @@ const PresentationHeader = ({
         "Your PDF file has been downloaded.",
         { id: exportToastId }
       );
+      trackEvent(MixpanelEvent.Presentation_Export_Completed, {
+        pathname,
+        presentation_id,
+        format: "pdf",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(MixpanelEvent.Presentation_Export_Failed, {
+        pathname,
+        presentation_id,
+        format: "pdf",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+        error_message: sanitizeAnalyticsError(err, "PDF export failed"),
+      });
       notify.error(
         "Export failed",
         "We are having trouble exporting your presentation. Please try again.",
@@ -536,13 +544,6 @@ const PresentationHeader = ({
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
           )}
-          {shouldShowThemeSelector && (
-            <ThemeSelector
-              current_theme={presentationData?.theme || {}}
-              themes={themes}
-            />
-          )}
-
           <div className="flex items-center gap-2 bg-[#F6F6F9] px-3.5 h-[38px] border border-[#EDECEC] rounded-[80px]">
             <ToolTip content="Regenerate Presentation">
               <button
