@@ -127,6 +127,16 @@ class _ListSession:
         return _RowsResult(
             [
                 (
+                    "00000000-0000-0000-0000-000000000000",
+                    "Generating Template",
+                    "Still generating",
+                    {"layouts": []},
+                    {},
+                    False,
+                    now,
+                    now,
+                ),
+                (
                     "00000000-0000-0000-0000-000000000001",
                     "Quarterly Review",
                     "Board deck template",
@@ -396,6 +406,7 @@ def test_list_templates_v2_returns_paginated_summary():
     assert response.total == 1
     assert response.page == 1
     assert response.page_size == 20
+    assert len(response.items) == 1
     assert response.items[0].id == "00000000-0000-0000-0000-000000000001"
     assert response.items[0].name == "Quarterly Review"
     assert response.items[0].description == "Board deck template"

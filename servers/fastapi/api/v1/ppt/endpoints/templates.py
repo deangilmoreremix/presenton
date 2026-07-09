@@ -29,7 +29,6 @@ from pydantic import (
     ValidationError,
     model_validator,
 )
-from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -625,7 +624,6 @@ async def list_templates_v2(
     sql_session: AsyncSession = Depends(get_async_session),
 ):
     offset = (page - 1) * page_size
-    total = await sql_session.scalar(select(func.count()).select_from(TemplateV2))
     result = await sql_session.execute(
         select(
             TemplateV2.id,
@@ -638,35 +636,39 @@ async def list_templates_v2(
             TemplateV2.updated_at,
         )
         .order_by(TemplateV2.created_at.desc())
-        .offset(offset)
-        .limit(page_size)
     )
 
-    items = [
-        TemplateV2ListItem(
-            id=template_id,
-            name=name,
-            description=description,
-            layout_count=_count_layouts(layouts),
-            thumbnail=_get_template_thumbnail_from_assets(assets),
-            is_default=is_default,
-            created_at=created_at,
-            updated_at=updated_at,
+    items: list[TemplateV2ListItem] = []
+    for (
+        template_id,
+        name,
+        description,
+        layouts,
+        assets,
+        is_default,
+        created_at,
+        updated_at,
+    ) in result.all():
+        layout_count = _count_layouts(layouts)
+        if layout_count == 0:
+            continue
+
+        items.append(
+            TemplateV2ListItem(
+                id=template_id,
+                name=name,
+                description=description,
+                layout_count=layout_count,
+                thumbnail=_get_template_thumbnail_from_assets(assets),
+                is_default=is_default,
+                created_at=created_at,
+                updated_at=updated_at,
+            )
         )
-        for (
-            template_id,
-            name,
-            description,
-            layouts,
-            assets,
-            is_default,
-            created_at,
-            updated_at,
-        ) in result.all()
-    ]
+
     return TemplateV2ListResponse(
-        items=items,
-        total=total or 0,
+        items=items[offset : offset + page_size],
+        total=len(items),
         page=page,
         page_size=page_size,
     )
