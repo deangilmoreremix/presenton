@@ -57,6 +57,21 @@ const DEFAULT_SHAPE_SHADOW = {
   offset_y: 0.06,
 };
 
+type ShadowValue = {
+  color?: string | null;
+  blur?: number | null;
+  opacity?: number | null;
+  offset_x?: number | null;
+  offset_y?: number | null;
+};
+type ShadowFallback = {
+  color: string;
+  blur: number;
+  opacity: number;
+  offset_x: number;
+  offset_y: number;
+};
+
 export function ShapeToolbar({
   anchorBox,
   element,
@@ -105,6 +120,10 @@ export function ShapeToolbar({
 
   const togglePanel = (panel: Exclude<ShapePanel, null>) => {
     setOpenPanel((current) => (current === panel ? null : panel));
+  };
+  const toggleShadowPanel = () => {
+    if (!shadowEnabled) update({ shadow });
+    togglePanel("shadow");
   };
 
   return (
@@ -268,86 +287,16 @@ export function ShapeToolbar({
         <ToolbarButton
           title="Shape shadow"
           pressed={openPanel === "shadow" || shadowEnabled}
-          onClick={() => togglePanel("shadow")}
+          onClick={toggleShadowPanel}
         >
           <Cloud size={16} strokeWidth={1.7} aria-hidden="true" />
         </ToolbarButton>
         {openPanel === "shadow" ? (
-          <Panel className="left-auto right-0 w-[244px] translate-x-0 space-y-3 p-3">
-            <label className="flex items-center justify-between text-xs font-medium text-[#191919]">
-              <span>Drop shadow</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={shadowEnabled}
-                onClick={() =>
-                  update({ shadow: shadowEnabled ? undefined : shadow })
-                }
-                className={cn(
-                  "relative h-5 w-9 rounded-full transition-colors",
-                  shadowEnabled ? "bg-[#7C51F8]" : "bg-[#D1D5DB]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                    shadowEnabled ? "translate-x-[18px]" : "translate-x-0.5",
-                  )}
-                />
-              </button>
-            </label>
-            {shadowEnabled ? (
-              <>
-                <div className="h-px bg-[#EDEEEF]" />
-                <ColorField
-                  label="Shadow color"
-                  color={shadow.color ?? "#000000"}
-                  onCommit={(color) => update({ shadow: { ...shadow, color } })}
-                />
-                <NumberField
-                  label="Blur"
-                  value={shadow.blur ?? DEFAULT_SHAPE_SHADOW.blur}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onCommit={(blur) => update({ shadow: { ...shadow, blur } })}
-                />
-                <SliderField
-                  label="Shadow opacity"
-                  value={shadow.opacity ?? DEFAULT_SHAPE_SHADOW.opacity}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  formatValue={(value) => `${Math.round(value * 100)}%`}
-                  onCommit={(opacity) =>
-                    update({ shadow: { ...shadow, opacity } })
-                  }
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <NumberField
-                    label="Offset X"
-                    value={shadow.offset_x ?? DEFAULT_SHAPE_SHADOW.offset_x}
-                    min={-2}
-                    max={2}
-                    step={0.01}
-                    onCommit={(offset_x) =>
-                      update({ shadow: { ...shadow, offset_x } })
-                    }
-                  />
-                  <NumberField
-                    label="Offset Y"
-                    value={shadow.offset_y ?? DEFAULT_SHAPE_SHADOW.offset_y}
-                    min={-2}
-                    max={2}
-                    step={0.01}
-                    onCommit={(offset_y) =>
-                      update({ shadow: { ...shadow, offset_y } })
-                    }
-                  />
-                </div>
-              </>
-            ) : null}
-          </Panel>
+          <ShadowPanel
+            fallback={DEFAULT_SHAPE_SHADOW}
+            shadow={shadow}
+            onChange={(changes) => update({ shadow: { ...shadow, ...changes } })}
+          />
         ) : null}
       </div>
 
@@ -435,6 +384,73 @@ export function Panel({
 
 export function Divider() {
   return <span aria-hidden="true" className="h-[23px] w-px flex-none bg-[#EDEEEF]" />;
+}
+
+export function ShadowPanel({
+  fallback,
+  shadow,
+  onChange,
+}: {
+  fallback: ShadowFallback;
+  shadow: ShadowValue;
+  onChange: (changes: Partial<ShadowValue>) => void;
+}) {
+  return (
+    <Panel className="left-auto right-0 w-[282px] translate-x-0 space-y-4 p-4">
+      <div className="space-y-2">
+        <div className="text-[12px] font-medium text-[#4B5563]">Position</div>
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField
+            label="X"
+            value={shadow.offset_x ?? fallback.offset_x}
+            min={-2}
+            max={2}
+            step={0.01}
+            onCommit={(offset_x) => onChange({ offset_x })}
+          />
+          <NumberField
+            label="Y"
+            value={shadow.offset_y ?? fallback.offset_y}
+            min={-2}
+            max={2}
+            step={0.01}
+            onCommit={(offset_y) => onChange({ offset_y })}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-[12px] font-medium text-[#4B5563]">Blur</div>
+        <NumberField
+          label="Amount"
+          value={shadow.blur ?? fallback.blur}
+          min={0}
+          max={100}
+          step={1}
+          onCommit={(blur) => onChange({ blur })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-[12px] font-medium text-[#4B5563]">Color</div>
+        <ColorField
+          label="Color"
+          color={shadow.color ?? fallback.color}
+          onCommit={(color) => onChange({ color })}
+        />
+      </div>
+
+      <SliderField
+        label="Opacity"
+        value={shadow.opacity ?? fallback.opacity}
+        min={0}
+        max={1}
+        step={0.01}
+        formatValue={(value) => `${Math.round(value * 100)}%`}
+        onCommit={(opacity) => onChange({ opacity })}
+      />
+    </Panel>
+  );
 }
 
 export function ColorField({
