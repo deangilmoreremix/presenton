@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -87,6 +88,9 @@ def test_list_async_tasks_filters_and_orders_tasks():
         list_async_tasks(
             task_type="template.create",
             status="completed",
+            created_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            created_at_from=None,
+            created_at_to=datetime(2026, 6, 30, tzinfo=timezone.utc),
             order_by="updated_at",
             order="asc",
             limit=25,
@@ -104,5 +108,7 @@ def test_list_async_tasks_filters_and_orders_tasks():
     )
     assert "WHERE async_tasks.type = 'template.create'" in compiled
     assert "async_tasks.status = 'completed'" in compiled
+    assert "async_tasks.created_at >= '2026-06-01 00:00:00.000000'" in compiled
+    assert "async_tasks.created_at <= '2026-06-30 00:00:00.000000'" in compiled
     assert "ORDER BY async_tasks.updated_at ASC" in compiled
     assert "LIMIT 25 OFFSET 5" in compiled

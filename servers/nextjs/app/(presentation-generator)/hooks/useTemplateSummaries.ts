@@ -26,7 +26,12 @@ export function useTemplateSummaries() {
       try {
         const response = await TemplateService.getTemplateSummaries();
         if (!cancelled) {
-          setTemplates(response.items ?? []);
+          setTemplates(
+            (response.items ?? []).filter(
+              (template) =>
+                template.layout_count == null || template.layout_count > 0
+            )
+          );
         }
       } catch (error) {
         console.error("Failed to load templates", error);

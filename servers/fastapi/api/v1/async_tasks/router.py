@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
@@ -21,6 +22,21 @@ API_V1_ASYNC_TASKS_ROUTER = APIRouter(
 async def list_async_tasks(
     task_type: str | None = Query(default=None, alias="type"),
     status: str | None = Query(default=None),
+    created_at: datetime | None = Query(
+        default=None,
+        description=(
+            "Only include tasks created at or after this timestamp. "
+            "Alias for created_at_from."
+        ),
+    ),
+    created_at_from: datetime | None = Query(
+        default=None,
+        description="Only include tasks created at or after this timestamp",
+    ),
+    created_at_to: datetime | None = Query(
+        default=None,
+        description="Only include tasks created at or before this timestamp",
+    ),
     order_by: Literal["created_at", "updated_at"] = Query(default="created_at"),
     order: Literal["asc", "desc"] = Query(default="desc"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -32,6 +48,11 @@ async def list_async_tasks(
         statement = statement.where(AsyncTaskModel.type == task_type)
     if status is not None:
         statement = statement.where(AsyncTaskModel.status == status)
+    created_at_start = created_at_from or created_at
+    if created_at_start is not None:
+        statement = statement.where(AsyncTaskModel.created_at >= created_at_start)
+    if created_at_to is not None:
+        statement = statement.where(AsyncTaskModel.created_at <= created_at_to)
 
     order_column = getattr(AsyncTaskModel, order_by)
     statement = statement.order_by(
