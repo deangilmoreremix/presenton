@@ -31,6 +31,12 @@ jobs:
       - name: Run repository tests
         run: npm test
 
+      - name: Install presentation export runtime
+        run: npm run sync:presentation-export
+
+      - name: Verify presentation export runtime
+        run: npm run check:presentation-export
+
   test-fastapi:
     name: Test FastAPI
     runs-on: ubuntu-latest
@@ -38,9 +44,9 @@ jobs:
       run:
         working-directory: servers/fastapi
     env:
-      APP_DATA_DIRECTORY: ${{ runner.temp }}/presenton-app-data
-      TEMP_DIRECTORY: ${{ runner.temp }}/presenton-temp
-      DATABASE_URL: sqlite+aiosqlite:///${{ runner.temp }}/presenton-test.db
+      APP_DATA_DIRECTORY: /tmp/presenton-app-data
+      TEMP_DIRECTORY: /tmp/presenton-temp
+      DATABASE_URL: sqlite+aiosqlite:////tmp/presenton-test.db
       DISABLE_ANONYMOUS_TRACKING: "true"
       DISABLE_IMAGE_GENERATION: "true"
 
