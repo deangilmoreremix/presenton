@@ -320,6 +320,7 @@ type ChatProps = {
   conversationStorageScope?: string;
   resourceLabel?: string;
   variant?: "presentation" | "outline" | "template-v2";
+  inputDisabled?: boolean;
   currentSlide?: number;
   selectedTemplateV2Target?: TemplateV2SurfaceSelectedDetail["selection"];
   onClearChatSlideReference?: () => void;
@@ -845,6 +846,7 @@ const Chat = ({
   conversationStorageScope = "presentation",
   resourceLabel = "presentation",
   variant = "presentation",
+  inputDisabled = false,
   currentSlide,
   selectedTemplateV2Target,
   onClearChatSlideReference,
@@ -874,6 +876,7 @@ const Chat = ({
   const [chatLinks, setChatLinks] = useState<ChatLink[]>([]);
   const [isUploadingPastedImage, setIsUploadingPastedImage] = useState(false);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
+  const chatInputDisabled = inputDisabled || isSending || isHistoryLoading;
   const [expandedActivityByMessage, setExpandedActivityByMessage] = useState<
     Record<string, boolean>
   >({});
@@ -1430,7 +1433,7 @@ const Chat = ({
     files: File[],
     source: "file_input" | "paste" | "drop" = "file_input"
   ) => {
-    if (files.length === 0 || isSending || isHistoryLoading) {
+    if (files.length === 0 || chatInputDisabled) {
       return;
     }
     if (variant !== "template-v2") {
@@ -1568,8 +1571,7 @@ const Chat = ({
 
     if (
       (!trimmedMessage && !hasAttachedContext) ||
-      isSending ||
-      isHistoryLoading ||
+      chatInputDisabled ||
       isUploadingPastedImage
     ) {
       return;
@@ -1954,7 +1956,7 @@ const Chat = ({
 
   const handlePaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = Array.from(event.clipboardData.files);
-    if (isSending || isHistoryLoading) {
+    if (chatInputDisabled) {
       return;
     }
 
@@ -2034,6 +2036,7 @@ const Chat = ({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (chatInputDisabled) return;
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void submitMessage(input);
@@ -2047,6 +2050,7 @@ const Chat = ({
   };
 
   const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    if (chatInputDisabled) return;
     if (variant !== "template-v2") return;
     if (!hasDraggedFiles(event)) return;
     event.preventDefault();
@@ -2063,6 +2067,7 @@ const Chat = ({
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>) => {
+    if (chatInputDisabled) return;
     if (variant !== "template-v2") return;
     const files = Array.from(event.dataTransfer.files);
     const fileUri = getDroppedFileUri(event);
@@ -2374,6 +2379,7 @@ const Chat = ({
           ref={fileInputRef}
           type="file"
           multiple
+          disabled={chatInputDisabled}
           accept="image/*,.pdf,.txt,.doc,.docx,.docm,.odt,.rtf,.ppt,.pptx,.pptm,.odp,.xls,.xlsx,.xlsm,.ods,.csv,.tsv,.tif,.tiff"
           className="hidden"
           onChange={handleAttachmentInputChange}
@@ -2503,7 +2509,7 @@ const Chat = ({
           rows={3}
           wrap="soft"
           value={input}
-          disabled={isSending || isHistoryLoading}
+          disabled={chatInputDisabled}
           onChange={handleInputChange}
           onPaste={handlePaste}
           onDragEnterCapture={handleDragOver}
@@ -2524,7 +2530,7 @@ const Chat = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={!isTemplateV2Variant || isSending || isHistoryLoading}
+              disabled={!isTemplateV2Variant || chatInputDisabled}
               className="inline-flex h-[28px] items-center rounded-[64px] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Attach files"
               title={
@@ -2646,7 +2652,7 @@ const Chat = ({
                     pastedImages.length === 0 &&
                     attachedDocuments.length === 0 &&
                     chatLinks.length === 0) ||
-                  isHistoryLoading ||
+                  chatInputDisabled ||
                   isUploadingPastedImage
                 }
                 className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-sm font-medium text-[#191919] disabled:cursor-not-allowed disabled:opacity-60"

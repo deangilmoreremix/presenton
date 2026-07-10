@@ -693,6 +693,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
               onChatMutationStateChange={handleChatMutationStateChange}
               onFollowModeChange={setIsFollowModeEnabled}
               onAgentSlideFocus={handleAgentSlideFocus}
+              editingDisabled={isStreaming === true}
             />
           </div>
         </div>

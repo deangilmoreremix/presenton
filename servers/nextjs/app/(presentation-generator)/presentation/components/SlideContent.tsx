@@ -38,6 +38,7 @@ const SlideContent = ({
   fonts,
   isStreaming = false,
 }: SlideContentProps) => {
+  const canEditSlide = isStreaming !== true;
   const slideLayout = typeof slide?.layout === "string" ? slide.layout : "";
 
   const slideLayoutGroup =
@@ -99,6 +100,8 @@ const SlideContent = ({
           <SlideScale
             slide={slide}
             presentationId={presentationId}
+            isEditMode={canEditSlide}
+            isClickable={canEditSlide}
             theme={theme ?? null}
             fonts={fonts}
             renderIndex={index}

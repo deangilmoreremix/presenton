@@ -59,6 +59,7 @@ import { TemplateV2KonvaSlide } from "@/components/slide-editor/surface/Template
 import { TemplateV2HtmlSlidePreview } from "../../components/TemplateV2HtmlSlidePreview";
 
 type PresentationActionsProps = React.ComponentProps<typeof Chat> & {
+  editingDisabled?: boolean;
   presentationData?: unknown;
 };
 
@@ -262,18 +263,24 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 const PaletteCard = ({
+  disabled = false,
   label,
   icon: Icon,
   onClick,
 }: {
+  disabled?: boolean;
   label: string;
   icon: ActionItem["icon"];
   onClick?: () => void;
 }) => (
   <button
     type="button"
+    disabled={disabled}
     onClick={onClick}
-    className="flex h-[58px] min-w-0 flex-col items-center justify-center gap-2 rounded-[8px] border border-[#EDEEF0] bg-white px-2 text-center transition-colors hover:border-[#DCD8EA] hover:bg-[#FBFAFF]"
+    className={cn(
+      "flex h-[58px] min-w-0 flex-col items-center justify-center gap-2 rounded-[8px] border border-[#EDEEF0] bg-white px-2 text-center transition-colors hover:border-[#DCD8EA] hover:bg-[#FBFAFF]",
+      disabled && "cursor-not-allowed opacity-50 hover:border-[#EDEEF0] hover:bg-white",
+    )}
     title={label}
   >
     <Icon
@@ -288,9 +295,11 @@ const PaletteCard = ({
 );
 
 const PaletteGrid = ({
+  disabled = false,
   items,
   onSelect,
 }: {
+  disabled?: boolean;
   items: PaletteItem[];
   onSelect?: (item: PaletteItem) => void;
 }) => (
@@ -300,17 +309,20 @@ const PaletteGrid = ({
         key={item.label}
         label={item.label}
         icon={item.icon}
-        onClick={onSelect ? () => onSelect(item) : undefined}
+        disabled={disabled}
+        onClick={onSelect && !disabled ? () => onSelect(item) : undefined}
       />
     ))}
   </div>
 );
 
 const InsertPanel = ({
+  disabled = false,
   title,
   groups,
   onItemSelect,
 }: {
+  disabled?: boolean;
   title: string;
   groups: Array<{
     label: string;
@@ -326,7 +338,11 @@ const InsertPanel = ({
       {groups.map((group) => (
         <section key={group.label}>
           <SectionLabel>{group.label}</SectionLabel>
-          <PaletteGrid items={group.items} onSelect={onItemSelect} />
+          <PaletteGrid
+            disabled={disabled}
+            items={group.items}
+            onSelect={onItemSelect}
+          />
         </section>
       ))}
     </div>
@@ -702,17 +718,25 @@ function BlockThumbnail({ block }: { block: TemplateBlock }) {
 
 function BlockVariantButton({
   block,
+  disabled = false,
   onInsertBlock,
 }: {
   block: TemplateBlock;
+  disabled?: boolean;
   onInsertBlock: (block: TemplateBlock) => void;
 }) {
   return (
     <button
       type="button"
       data-block-variant
-      className="template-block-variant group relative w-full overflow-hidden rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] p-2 text-left transition hover:border-[#D6BBFB] hover:bg-[#FAF9FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A5AF8]/40"
-      onClick={() => onInsertBlock(block)}
+      disabled={disabled}
+      className={cn(
+        "template-block-variant group relative w-full overflow-hidden rounded-[12px] border border-[#E5E7EB] bg-[#F9FAFB] p-2 text-left transition hover:border-[#D6BBFB] hover:bg-[#FAF9FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A5AF8]/40",
+        disabled && "cursor-not-allowed opacity-50 hover:border-[#E5E7EB] hover:bg-[#F9FAFB]",
+      )}
+      onClick={() => {
+        if (!disabled) onInsertBlock(block);
+      }}
       aria-label={`Insert ${block.title}`}
     >
       <div className="relative">
@@ -726,9 +750,11 @@ function BlockVariantButton({
 }
 
 function BlockGroupCard({
+  disabled = false,
   group,
   onInsertBlock,
 }: {
+  disabled?: boolean;
   group: TemplateBlockGroup;
   onInsertBlock: (block: TemplateBlock) => void;
 }) {
@@ -752,6 +778,7 @@ function BlockGroupCard({
       {firstVariant ? (
         <BlockVariantButton
           block={firstVariant}
+          disabled={disabled}
           onInsertBlock={onInsertBlock}
         />
       ) : null}
@@ -771,6 +798,7 @@ function BlockGroupCard({
                 <BlockVariantButton
                   key={block.key}
                   block={block}
+                  disabled={disabled}
                   onInsertBlock={onInsertBlock}
                 />
               ))
@@ -804,10 +832,12 @@ function BlockGroupCard({
 }
 
 const BlocksPanel = ({
+  disabled = false,
   presentationId,
   presentationData,
   onInsertBlock,
 }: {
+  disabled?: boolean;
   presentationId: string;
   presentationData?: unknown;
   onInsertBlock: (block: TemplateBlock) => void;
@@ -912,7 +942,8 @@ const BlocksPanel = ({
         />
         <button
           type="button"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          disabled={disabled}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             background:
               "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 35%, #FDE4C2 100%)",
@@ -946,6 +977,7 @@ const BlocksPanel = ({
           visibleBlocks.map((group) => (
             <BlockGroupCard
               key={group.key}
+              disabled={disabled}
               group={group}
               onInsertBlock={onInsertBlock}
             />
@@ -1088,6 +1120,7 @@ function ActionsSidebar({
 function ActionsPanel({
   activeAction,
   chatProps,
+  editingDisabled = false,
   onBlockSelect,
   onChartItemSelect,
   onElementItemSelect,
@@ -1098,7 +1131,8 @@ function ActionsPanel({
   presentationId,
 }: {
   activeAction: ActionId;
-  chatProps: Omit<PresentationActionsProps, "presentationData">;
+  chatProps: Omit<PresentationActionsProps, "editingDisabled" | "presentationData">;
+  editingDisabled?: boolean;
   onBlockSelect: (block: TemplateBlock) => void;
   onChartItemSelect: (item: PaletteItem) => void;
   onElementItemSelect: (item: PaletteItem) => void;
@@ -1111,11 +1145,12 @@ function ActionsPanel({
   return (
     <div className="min-w-0 flex-1 bg-white">
       <div className={cn("h-full", activeAction === "ai" ? "block" : "hidden")}>
-        <Chat {...chatProps} />
+        <Chat {...chatProps} inputDisabled={editingDisabled} />
       </div>
 
       {activeAction === "blocks" && (
         <BlocksPanel
+          disabled={editingDisabled}
           presentationId={presentationId}
           presentationData={presentationData}
           onInsertBlock={onBlockSelect}
@@ -1123,6 +1158,7 @@ function ActionsPanel({
       )}
       {activeAction === "texts" && (
         <InsertPanel
+          disabled={editingDisabled}
           title="Texts"
           groups={[{ label: "Add", items: textItems }]}
           onItemSelect={onTextItemSelect}
@@ -1130,6 +1166,7 @@ function ActionsPanel({
       )}
       {activeAction === "charts" && (
         <InsertPanel
+          disabled={editingDisabled}
           title="Charts"
           groups={[{ label: "Chart Type", items: chartTypeItems }]}
           onItemSelect={onChartItemSelect}
@@ -1137,6 +1174,7 @@ function ActionsPanel({
       )}
       {activeAction === "tables" && (
         <InsertPanel
+          disabled={editingDisabled}
           title="Tables"
           groups={[{ label: "Table Type", items: tableTypeItems }]}
           onItemSelect={onTableItemSelect}
@@ -1144,6 +1182,7 @@ function ActionsPanel({
       )}
       {activeAction === "images" && (
         <InsertPanel
+          disabled={editingDisabled}
           title="Images"
           groups={[{ label: "Add", items: imageItems }]}
           onItemSelect={onImageItemSelect}
@@ -1151,6 +1190,7 @@ function ActionsPanel({
       )}
       {activeAction === "elements" && (
         <InsertPanel
+          disabled={editingDisabled}
           title="Elements"
           groups={[{ label: "Add", items: elementItems }]}
           onItemSelect={onElementItemSelect}
@@ -1181,7 +1221,7 @@ function templateV2TargetKey(
 }
 
 const PresentationActions = (props: PresentationActionsProps) => {
-  const { presentationData, ...chatProps } = props;
+  const { editingDisabled = false, presentationData, ...chatProps } = props;
   const [{ activeAction }, dispatchUiState] = useReducer(
     presentationActionsUiReducer,
     initialPresentationActionsUiState,
@@ -1247,6 +1287,7 @@ const PresentationActions = (props: PresentationActionsProps) => {
     content: EditorInsertContent,
     label: string,
   ): boolean => {
+    if (editingDisabled) return false;
     if (typeof window === "undefined") return false;
     if (typeof props.currentSlide !== "number") {
       notify.warning("Select a slide", "Choose a slide before adding content.");
@@ -1425,6 +1466,7 @@ const PresentationActions = (props: PresentationActionsProps) => {
             ? () => setHiddenTargetReferenceKey(targetReferenceKey)
             : undefined,
         }}
+        editingDisabled={editingDisabled}
         onBlockSelect={handleBlockSelect}
         onChartItemSelect={handleChartItemSelect}
         onElementItemSelect={handleElementItemSelect}
