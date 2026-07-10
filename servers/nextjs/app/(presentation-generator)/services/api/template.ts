@@ -14,6 +14,71 @@ export interface CloneLayoutPayload {
     layout_name?: string;
 }
 
+export interface CreateTemplatePayload {
+    pptx_url: string;
+    slide_image_urls: string[];
+    fonts: Record<string, unknown>;
+    name: string;
+    description?: string | null;
+}
+
+export interface TemplateListResponse {
+    items: TemplateListItem[];
+    total: number;
+    page: number;
+    page_size: number;
+}
+
+export interface TemplateListItem {
+    id: string;
+    name: string;
+    description?: string | null;
+    layout_count?: number;
+    thumbnail?: string | null;
+    is_default?: boolean;
+    status?: string | null;
+    generation_status?: string | null;
+    error?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface TemplateDetailsResponse extends TemplateListItem {
+    raw_layouts?: unknown;
+    components?: unknown;
+    merged_components?: unknown;
+    layouts?: unknown;
+    assets?: unknown;
+}
+
+export interface AsyncTaskResponse {
+    id: string;
+    type: string;
+    status: string;
+    message?: string | null;
+    error?: unknown;
+    data?: unknown;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TemplateCreateTaskData {
+    created_layouts?: number;
+    remaining_layouts?: number;
+    name?: string;
+    thumbnail?: string | null;
+}
+
+export interface TemplateCreateTaskResponse extends AsyncTaskResponse {
+    type: "template.create";
+    data?: TemplateCreateTaskData | null;
+}
+
+export interface UpdateTemplateMetadataPayload {
+    name: string;
+    description?: string | null;
+}
+
 class TemplateService {
 
     static async getCustomTemplateSummaries() {
@@ -32,6 +97,89 @@ class TemplateService {
             return await ApiResponseHandler.handleResponse(response, "Failed to get custom template details");
         } catch (error) {
             console.error("Failed to get custom template details", error);
+            throw error;
+        }
+    }
+
+    static async getTemplateSummaries(): Promise<TemplateListResponse> {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates?page_size=100`));
+            return await ApiResponseHandler.handleResponse(response, "Failed to get Templates summaries");
+        } catch (error) {
+            console.error("Failed to get Templates summaries", error);
+            throw error;
+        }
+    }
+
+    static async getTemplateDetails(templateId: string): Promise<TemplateDetailsResponse> {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`));
+            return await ApiResponseHandler.handleResponse(response, "Failed to get template details");
+        } catch (error) {
+            console.error("Failed to get Templates v1 details", error);
+            throw error;
+        }
+    }
+
+    static async createTemplate(payload: CreateTemplatePayload): Promise<AsyncTaskResponse> {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/async`), {
+                method: "POST",
+                headers: getHeader(),
+                body: JSON.stringify(payload),
+            });
+            return await ApiResponseHandler.handleResponse(response, "Failed to create template");
+        } catch (error) {
+            console.error("Failed to create template", error);
+            throw error;
+        }
+    }
+
+    static async getProcessingTemplateCreateTasks(createdAtFrom: Date): Promise<TemplateCreateTaskResponse[]> {
+        try {
+            const params = new URLSearchParams({
+                type: "template.create",
+                status: "processing",
+                order_by: "created_at",
+                order: "desc",
+                limit: "50",
+                offset: "0",
+                created_at: createdAtFrom.toISOString(),
+            });
+            const response = await fetch(getApiUrl(`/api/v1/async-tasks?${params.toString()}`));
+            return await ApiResponseHandler.handleResponse(response, "Failed to get processing template tasks");
+        } catch (error) {
+            console.error("Failed to get processing template tasks", error);
+            throw error;
+        }
+    }
+
+    static async deleteTemplate(templateId: string) {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`), {
+                method: "DELETE",
+                headers: getHeader(),
+            });
+            return await ApiResponseHandler.handleResponseWithResult(response, "Failed to delete template");
+        } catch (error) {
+            console.error("Failed to delete Templates template", error);
+            throw error;
+        }
+    }
+
+    static async updateTemplateMetadata(
+        templateId: string,
+        payload: UpdateTemplateMetadataPayload,
+    ) {
+        try {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`), {
+                method: "PATCH",
+                headers: getHeader(),
+                body: JSON.stringify(payload),
+            });
+            return await ApiResponseHandler.handleResponse(response, "Failed to update template metadata");
+        } catch (error) {
+            console.error("Failed to update template metadata", error);
             throw error;
         }
     }

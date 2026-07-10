@@ -23,6 +23,10 @@ class SessionAuthMiddleware(BaseHTTPMiddleware):
     _EXEMPT_PREFIXES = (
         "/api/v1/auth/",
     )
+    _PUBLIC_APP_DATA_PREFIXES = (
+        "/app_data/images/",
+        "/app_data/fonts/",
+    )
     _PROTECTED_NON_API_PATHS = {
         "/docs",
         "/openapi.json",
@@ -35,8 +39,8 @@ class SessionAuthMiddleware(BaseHTTPMiddleware):
     def _requires_auth(self, path: str) -> bool:
         if path.startswith("/api/"):
             return True
-        # PPTX export may re-fetch slide images without session/basic headers.
-        if path.startswith("/app_data/images/"):
+        # Browser rendering/export may re-fetch slide assets without session/basic headers.
+        if any(path.startswith(prefix) for prefix in self._PUBLIC_APP_DATA_PREFIXES):
             return False
         if path.startswith("/app_data/"):
             return True

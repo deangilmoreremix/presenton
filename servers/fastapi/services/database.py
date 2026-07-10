@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
+from models.sql.async_task import AsyncTaskModel
 from models.sql.async_presentation_generation_status import (
     AsyncPresentationGenerationTaskModel,
 )
 from models.sql.chat_history_message import ChatHistoryMessageModel
+from models.sql.font_upload import FontUpload
 from models.sql.image_asset import ImageAsset
 from models.sql.key_value import KeyValueSqlModel
 from models.sql.ollama_pull_status import OllamaPullStatus
@@ -18,6 +20,7 @@ from models.sql.presentation_layout_code import PresentationLayoutCodeModel
 from models.sql.presentation import PresentationModel
 from models.sql.template import TemplateModel
 from models.sql.template_create_info import TemplateCreateInfoModel
+from models.sql.template_v2 import TemplateV2
 from models.sql.slide import SlideModel
 from models.sql.webhook_subscription import WebhookSubscription
 from utils.get_env import get_migrate_database_on_startup_env
@@ -53,12 +56,15 @@ async def create_db_and_tables():
                         PresentationModel.__table__,
                         SlideModel.__table__,
                         KeyValueSqlModel.__table__,
+                        TemplateV2.__table__,
                         ChatHistoryMessageModel.__table__,
                         ImageAsset.__table__,
+                        FontUpload.__table__,
                         PresentationLayoutCodeModel.__table__,
                         TemplateCreateInfoModel.__table__,
                         TemplateModel.__table__,
                         WebhookSubscription.__table__,
+                        AsyncTaskModel.__table__,
                         AsyncPresentationGenerationTaskModel.__table__,
                         OllamaPullStatus.__table__,
                     ],

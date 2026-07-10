@@ -1,16 +1,11 @@
-import React from 'react'
-import CustomTemplatePage from './CustomTemplatePage'
+import CustomTemplatePage from "./CustomTemplatePage";
 
+export const dynamic = "force-dynamic";
 
-
-const page = () => {
-
+export default function Page() {
     return (
-        <>
-
-            <CustomTemplatePage />
-        </>
-    )
+        <CustomTemplatePage
+            useTemplateV2Generation
+        />
+    );
 }
-
-export default page

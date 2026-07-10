@@ -3,11 +3,11 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { v4 as uuidv4 } from "uuid";
 import { RootState } from "@/store/store";
 import "../../utils/prism-languages";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +16,7 @@ import PresentationMode from "./PresentationMode";
 import SidePanel from "./SidePanel";
 import SlideContent from "./SlideContent";
 import { Button } from "@/components/ui/button";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { AlertCircle } from "lucide-react";
 import {
@@ -28,8 +28,69 @@ import {
 import { PresentationPageProps } from "../types";
 import { applyPresentationThemeToElement } from "../utils/applyPresentationThemeDom";
 
+import { replaceSlidesWithBlankFallback } from "@/store/slices/presentationGeneration";
+import {
+  createBlankPresentationSlide,
+  getPresentationTemplateId,
+} from "../../_shared/blank-slide";
 import PresentationHeader from "./PresentationHeader";
-import Chat from "./Chat";
+import PresentationActions from "./PresentationActions";
+import {
+  TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
+  TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+  type TemplateV2ActivateSurfaceDetail,
+  type TemplateV2SurfaceSelectedDetail,
+} from "@/components/slide-editor/events/events";
+
+function hasTemplateV2Layouts(layout: unknown): boolean {
+  if (!layout || typeof layout !== "object") return false;
+  const layouts = (layout as any).layouts;
+  if (Array.isArray(layouts)) return true;
+  return Boolean(
+    layouts &&
+      typeof layouts === "object" &&
+      Array.isArray((layouts as any).layouts)
+  );
+}
+
+function hasTemplateV2Slides(slides: unknown): boolean {
+  return (
+    Array.isArray(slides) &&
+    slides.some(
+      (slide) =>
+        slide &&
+        typeof slide === "object" &&
+        typeof (slide as any).layout_group === "string" &&
+        (slide as any).layout_group.startsWith("template-v2")
+    )
+  );
+}
+
+function collectTemplateV2Ids(value: unknown): string[] {
+  const ids = new Set<string>();
+  const visit = (item: unknown, depth = 0) => {
+    if (depth > 4 || !item) return;
+    if (Array.isArray(item)) {
+      item.forEach((entry) => visit(entry, depth + 1));
+      return;
+    }
+    if (typeof item !== "object") return;
+    const record = item as Record<string, unknown>;
+    ["layout_group", "layout", "template_id", "templateV2Id", "template_v2_id", "id"].forEach(
+      (key) => {
+        const value = record[key];
+        if (typeof value === "string" && value.startsWith("template-v2")) {
+          ids.add(value);
+        }
+      }
+    );
+    visit(record.layout, depth + 1);
+    visit(record.layouts, depth + 1);
+    visit(record.slides, depth + 1);
+  };
+  visit(value);
+  return Array.from(ids);
+}
 
 interface LoadingState {
   isLoading: boolean;
@@ -38,6 +99,11 @@ interface LoadingState {
   duration: number;
   extra_info?: string;
 }
+
+type SlideAddedOptions = {
+  promptOverlaySlideId?: string;
+  promptOverlayKind?: "blank" | "layout";
+};
 
 const DEFAULT_LOADING_STATE: LoadingState = {
   isLoading: true,
@@ -67,6 +133,8 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   presentation_id,
 }) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const dispatch = useDispatch();
   // State management
   const [loading, setLoading] = useState(true);
   const [loadingState, setLoadingState] =
@@ -74,30 +142,46 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   const [selectedSlide, setSelectedSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isChatSending, setIsChatSending] = useState(false);
+  const [isChatMutating, setIsChatMutating] = useState(false);
   const [isFollowModeEnabled, setIsFollowModeEnabled] = useState(true);
-  const [agentFocusedSlide, setAgentFocusedSlide] = useState<number | null>(null);
-  const [agentFocusEventId, setAgentFocusEventId] = useState<string | null>(null);
-  const [glowingSlideIndex, setGlowingSlideIndex] = useState<number | null>(null);
+  const [agentFocusedSlide, setAgentFocusedSlide] = useState<number | null>(
+    null
+  );
+  const [agentFocusEventId, setAgentFocusEventId] = useState<string | null>(
+    null
+  );
+  const [glowingSlideIndex, setGlowingSlideIndex] = useState<number | null>(
+    null
+  );
   const [chatTargetedSlides, setChatTargetedSlides] = useState<number[]>([]);
+  const [blankPromptSlideIds, setBlankPromptSlideIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [templatePromptSlideIds, setTemplatePromptSlideIds] = useState<
+    Set<string>
+  >(() => new Set());
   const [error, setError] = useState(false);
   const slidesScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const templateV2EditorLoadedKeyRef = useRef<string | null>(null);
   const router = useRouter();
-
-
+  const shouldPreloadTemplateV2Presentation =
+    searchParams.get("editor") === "v2";
 
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
   );
   const slidesLength = presentationData?.slides?.length ?? 0;
-  const lastStreamingSlideIndex =
-    slidesLength > 0
-      ? presentationData?.slides?.[slidesLength - 1]?.index
-      : undefined;
+  const isTemplateV2Presentation =
+    hasTemplateV2Layouts(presentationData?.layout) ||
+    hasTemplateV2Slides(presentationData?.slides);
 
-  // Auto-save functionality
+  // Auto-save functionality.
+  // Pause while the chat assistant is mutating the deck: the assistant edits
+  // slide.ui directly in the database, so a debounced autosave firing with the
+  // pre-edit Redux state would overwrite (revert) the assistant's change.
   const { isSaving } = useAutoSave({
     debounceMs: 2000,
-    enabled: !!presentationData && !isStreaming,
+    enabled: !!presentationData && !isStreaming && !isChatSending,
   });
 
   // Custom hooks
@@ -111,6 +195,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     isPresentMode,
     stream,
     currentSlide: presentSlideFromUrl,
+    scrollToSlide,
     handleSlideClick,
     toggleFullscreen,
     handlePresentExit,
@@ -128,8 +213,41 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     stream,
     setLoading,
     setError,
-    fetchUserSlides
+    fetchUserSlides,
+    { preloadPresentationData: shouldPreloadTemplateV2Presentation }
   );
+
+  useEffect(() => {
+    if (
+      !presentationData ||
+      loading ||
+      error ||
+      stream ||
+      !isTemplateV2Presentation ||
+      slidesLength > 0
+    ) {
+      return;
+    }
+
+    const blankSlide = createBlankPresentationSlide({
+      id: uuidv4(),
+      index: 0,
+      presentationId: presentation_id,
+      templateId: getPresentationTemplateId(presentationData),
+      isTemplateV2: true,
+    });
+    dispatch(replaceSlidesWithBlankFallback({ slideData: blankSlide }));
+    setSelectedSlide(0);
+  }, [
+    dispatch,
+    error,
+    isTemplateV2Presentation,
+    loading,
+    presentationData,
+    presentation_id,
+    slidesLength,
+    stream,
+  ]);
 
   useEffect(() => {
     if (!loading) {
@@ -152,26 +270,11 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
         return;
       }
 
-      if (lastStreamingSlideIndex === undefined) return;
-
-      const slideElement = document.getElementById(
-        `slide-${lastStreamingSlideIndex}`
-      );
-      if (!slideElement) return;
-
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const slideRect = slideElement.getBoundingClientRect();
-      const slideTop =
-        slideRect.top - containerRect.top + scrollContainer.scrollTop;
-
-      scrollContainer.scrollTo({
-        top: Math.max(slideTop, 0),
-        behavior: "smooth",
-      });
+      scrollToSlide(slidesLength - 1, 2, "smooth");
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isStreaming, lastStreamingSlideIndex, slidesLength]);
+  }, [isStreaming, scrollToSlide, slidesLength]);
 
   useEffect(() => {
     trackEvent(MixpanelEvent.Presentation_Editor_Viewed, {
@@ -181,6 +284,30 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
       presentation_mode: isPresentMode ? "present" : "edit",
     });
   }, [pathname, presentation_id, stream, isPresentMode]);
+
+  useEffect(() => {
+    if (!presentationData || !isTemplateV2Presentation || loading || error) {
+      return;
+    }
+    if (templateV2EditorLoadedKeyRef.current === presentation_id) {
+      return;
+    }
+    templateV2EditorLoadedKeyRef.current = presentation_id;
+    trackEvent(MixpanelEvent.TemplateV2_Editor_Loaded, {
+      presentation_id,
+      slide_count: slidesLength,
+      stream_mode: !!stream,
+      template_id_candidates: collectTemplateV2Ids(presentationData),
+    });
+  }, [
+    error,
+    isTemplateV2Presentation,
+    loading,
+    presentationData,
+    presentation_id,
+    slidesLength,
+    stream,
+  ]);
 
   /** Editor tree unmounts in present mode; remount loses inline theme CSS — re-apply from Redux. */
   useLayoutEffect(() => {
@@ -195,6 +322,51 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     handleSlideChange(newSlide, presentationData);
   };
 
+  const handleEditorSlideNavigation = useCallback(
+    (index: number, options?: SlideAddedOptions) => {
+      handleSlideClick(index);
+      if (!options?.promptOverlayKind || !options.promptOverlaySlideId) {
+        return;
+      }
+      if (options.promptOverlayKind === "blank") {
+        setBlankPromptSlideIds((current) => {
+          const next = new Set(current);
+          next.add(options.promptOverlaySlideId!);
+          return next;
+        });
+        return;
+      }
+      if (options.promptOverlayKind === "layout") {
+        setTemplatePromptSlideIds((current) => {
+          const next = new Set(current);
+          next.add(options.promptOverlaySlideId!);
+          return next;
+        });
+      }
+    },
+    [handleSlideClick],
+  );
+
+  const dismissBlankPromptOverlay = useCallback((slideId: unknown) => {
+    if (typeof slideId !== "string" || !slideId) return;
+    setBlankPromptSlideIds((current) => {
+      if (!current.has(slideId)) return current;
+      const next = new Set(current);
+      next.delete(slideId);
+      return next;
+    });
+  }, []);
+
+  const dismissTemplatePromptOverlay = useCallback((slideId: unknown) => {
+    if (typeof slideId !== "string" || !slideId) return;
+    setTemplatePromptSlideIds((current) => {
+      if (!current.has(slideId)) return current;
+      const next = new Set(current);
+      next.delete(slideId);
+      return next;
+    });
+  }, []);
+
   const handlePresentationChanged = useCallback(() => {
     return fetchUserSlides({ clearHistory: false });
   }, [fetchUserSlides]);
@@ -202,11 +374,17 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   const handleChatSendingStateChange = useCallback((sending: boolean) => {
     setIsChatSending(sending);
     if (sending) {
-      setChatTargetedSlides((previous) => (previous.length === 0 ? previous : []));
+      setChatTargetedSlides((previous) =>
+        previous.length === 0 ? previous : []
+      );
       return;
     }
     setAgentFocusedSlide(null);
     setAgentFocusEventId(null);
+  }, []);
+
+  const handleChatMutationStateChange = useCallback((mutating: boolean) => {
+    setIsChatMutating(mutating);
   }, []);
 
   const handleAgentSlideFocus = useCallback(
@@ -224,11 +402,18 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   );
 
   const totalSlides = presentationData?.slides?.length ?? 0;
-  const highlightedSlideIndex = glowingSlideIndex;
-  const targetedSlidesSet = useMemo(
-    () => new Set(chatTargetedSlides),
-    [chatTargetedSlides]
-  );
+  // Mutation traces normally identify the exact slide. Fall back to the slide
+  // the user is viewing so an active edit never happens without feedback.
+  const updatingSlideIndex = isChatMutating
+    ? agentFocusedSlide ?? selectedSlide
+    : null;
+
+  useEffect(() => {
+    if (totalSlides <= 0 || selectedSlide <= totalSlides - 1) {
+      return;
+    }
+    setSelectedSlide(totalSlides - 1);
+  }, [selectedSlide, totalSlides]);
 
   useEffect(() => {
     if (!isFollowModeEnabled || !isChatSending || totalSlides <= 0) {
@@ -238,7 +423,10 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
       return;
     }
 
-    const clampedIndex = Math.min(Math.max(agentFocusedSlide, 0), totalSlides - 1);
+    const clampedIndex = Math.min(
+      Math.max(agentFocusedSlide, 0),
+      totalSlides - 1
+    );
     if (clampedIndex !== selectedSlide) {
       handleSlideClick(clampedIndex);
     }
@@ -279,7 +467,10 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
       return;
     }
 
-    const targetIndex = Math.min(Math.max(agentFocusedSlide, 0), totalSlides - 1);
+    const targetIndex = Math.min(
+      Math.max(agentFocusedSlide, 0),
+      totalSlides - 1
+    );
     setGlowingSlideIndex(targetIndex);
   }, [
     isChatSending,
@@ -291,6 +482,54 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     glowingSlideIndex,
   ]);
 
+  useEffect(() => {
+    const handleTemplateV2SurfaceSelected = (event: Event) => {
+      const detail = (event as CustomEvent<TemplateV2SurfaceSelectedDetail>)
+        .detail;
+      const slideIndex = detail?.slideIndex;
+      if (typeof slideIndex !== "number") return;
+      if (slideIndex < 0 || slideIndex >= totalSlides) return;
+      setSelectedSlide((current) =>
+        current === slideIndex ? current : slideIndex
+      );
+    };
+
+    window.addEventListener(
+      TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+      handleTemplateV2SurfaceSelected
+    );
+    return () => {
+      window.removeEventListener(
+        TEMPLATE_V2_SURFACE_SELECTED_EVENT,
+        handleTemplateV2SurfaceSelected
+      );
+    };
+  }, [totalSlides]);
+
+  useEffect(() => {
+    if (
+      isPresentMode ||
+      !isTemplateV2Presentation ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+    delete document.documentElement.dataset.templateV2KonvaActiveSurface;
+    delete document.documentElement.dataset.templateV2KonvaActiveSlideIndex;
+    const frame = window.requestAnimationFrame(() => {
+      window.dispatchEvent(
+        new CustomEvent<TemplateV2ActivateSurfaceDetail>(
+          TEMPLATE_V2_ACTIVATE_SURFACE_EVENT,
+          {
+            detail: {
+              slideIndex: selectedSlide,
+            },
+          }
+        )
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPresentMode, isTemplateV2Presentation, selectedSlide]);
 
   // Presentation Mode View
   if (isPresentMode) {
@@ -299,6 +538,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
         slides={presentationData?.slides!}
         currentSlide={presentSlideFromUrl}
         theme={presentationData?.theme ?? undefined}
+        fonts={presentationData?.fonts}
         isFullscreen={isFullscreen}
         onFullscreenToggle={toggleFullscreen}
         onExit={handlePresentExit}
@@ -320,9 +560,28 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
             We couldn't load your presentation. Please try again.
           </p>
           <div className="flex gap-2 justify-center items-center">
-
-            <Button onClick={() => { trackEvent(MixpanelEvent.PresentationPage_Refresh_Page_Button_Clicked, { pathname }); window.location.reload(); }}>Refresh Page</Button>
-            <Button onClick={() => { trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/upload" }); router.push("/upload"); }}>Go to Upload</Button>
+            <Button
+              onClick={() => {
+                trackEvent(
+                  MixpanelEvent.PresentationPage_Refresh_Page_Button_Clicked,
+                  { pathname }
+                );
+                window.location.reload();
+              }}
+            >
+              Refresh Page
+            </Button>
+            <Button
+              onClick={() => {
+                trackEvent(MixpanelEvent.Navigation, {
+                  from: pathname,
+                  to: "/upload",
+                });
+                router.push("/upload");
+              }}
+            >
+              Go to Upload
+            </Button>
           </div>
         </div>
       </div>
@@ -345,12 +604,16 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
         id="presentation-slides-wrapper"
         className="relative flex h-full flex-col overflow-hidden"
       >
-        <PresentationHeader presentation_id={presentation_id} isPresentationSaving={isSaving} currentSlide={selectedSlide} />
+        <PresentationHeader
+          presentation_id={presentation_id}
+          isPresentationSaving={isSaving}
+          currentSlide={selectedSlide}
+        />
         <div className="flex flex-1 min-h-0 gap-6 overflow-hidden">
           <div className="w-[120px] h-full shrink-0 self-start sticky top-0 pt-[18px]">
             <SidePanel
               selectedSlide={selectedSlide}
-              onSlideClick={handleSlideClick}
+              onSlideClick={handleEditorSlideNavigation}
               presentationId={presentation_id}
               loading={loading}
             />
@@ -358,13 +621,14 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
           <div className="w-full min-w-0 h-full flex-1 pt-[18px]">
             <div
               ref={slidesScrollContainerRef}
+              data-presentation-slides-scroll-container="true"
               className="font-inter h-full overflow-y-auto hide-scrollbar scroll-pt-[18px]"
             >
               <div className="w-full max-w-[1280px] min-h-full mx-auto flex flex-col items-center pb-8">
                 {!presentationData ||
-                  loading ||
-                  !presentationData?.slides ||
-                  presentationData?.slides.length === 0 ? (
+                loading ||
+                !presentationData?.slides ||
+                presentationData?.slides.length === 0 ? (
                   <div className="relative w-full h-[calc(100vh-120px)] mx-auto hide-scrollbar">
                     <div className="">
                       {Array.from({ length: 2 }).map((_, index) => (
@@ -380,34 +644,53 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
                     {presentationData &&
                       presentationData.slides &&
                       presentationData.slides.length > 0 &&
-                      presentationData.slides.map((slide: any, index: number) => (
-                        <SlideContent
-                          key={`${slide.type}-${index}-${slide.index}`}
-                          slide={slide}
-                          index={index}
-                          presentationId={presentation_id}
-                          isChatEditing={
-                            highlightedSlideIndex !== null &&
-                            index === highlightedSlideIndex
-                          }
-                          isChatTargeted={
-                            isChatSending &&
-                            highlightedSlideIndex !== index &&
-                            targetedSlidesSet.has(index)
-                          }
-                        />
-                      ))}
+                      presentationData.slides.map(
+                        (slide: any, index: number) => (
+                          <SlideContent
+                            key={`${slide.type}-${index}-${slide.index}`}
+                            slide={slide}
+                            index={index}
+                            presentationId={presentation_id}
+                            onSlideAdded={handleEditorSlideNavigation}
+                            theme={presentationData?.theme}
+                            fonts={presentationData?.fonts}
+                            isStreaming={isStreaming}
+                            showBlankPromptOverlay={
+                              typeof slide?.id === "string" &&
+                              blankPromptSlideIds.has(slide.id)
+                            }
+                            onBlankPromptOverlayDismiss={() =>
+                              dismissBlankPromptOverlay(slide?.id)
+                            }
+                            showTemplatePromptOverlay={
+                              typeof slide?.id === "string" &&
+                              templatePromptSlideIds.has(slide.id)
+                            }
+                            onTemplatePromptOverlayDismiss={() =>
+                              dismissTemplatePromptOverlay(slide?.id)
+                            }
+                            isChatEditing={
+                              updatingSlideIndex !== null &&
+                              index === updatingSlideIndex
+                            }
+                          />
+                          // <div></div>
+                        )
+                      )}
                   </>
                 )}
               </div>
             </div>
           </div>
           <div className="w-full max-w-[370px] h-full shrink-0 self-start sticky top-0">
-            <Chat
+            <PresentationActions
               presentationId={presentation_id}
+              variant={isTemplateV2Presentation ? "template-v2" : "presentation"}
               currentSlide={selectedSlide}
+              presentationData={presentationData}
               onPresentationChanged={handlePresentationChanged}
               onChatSendingStateChange={handleChatSendingStateChange}
+              onChatMutationStateChange={handleChatMutationStateChange}
               onFollowModeChange={setIsFollowModeEnabled}
               onAgentSlideFocus={handleAgentSlideFocus}
             />

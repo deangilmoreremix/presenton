@@ -3,16 +3,22 @@
 import {
   ChevronDown,
   ChevronRight,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
   Loader2,
-  LocateFixed,
   MessageCircleMore,
   Plus,
   RefreshCw,
   Send,
   Square,
+  X,
   UserRound,
 } from "lucide-react";
 import React, {
+  ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
   FormEvent,
   KeyboardEvent,
   ReactNode,
@@ -23,11 +29,32 @@ import React, {
 } from "react";
 import { notify } from "@/components/ui/sonner";
 import MarkdownRenderer from "@/components/MarkDownRender";
+import { ImagesApi } from "../../services/api/images";
+import { PresentationGenerationApi } from "../../services/api/presentation-generation";
 import { PresentationChatApi } from "../../services/api/chat";
-import type { ChatStreamTrace } from "../../services/api/chat";
-import { is } from "@babel/types";
+import {
+  PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+  type BlankSlidePromptEventDetail,
+} from "../../_shared/blank-slide-prompt-event";
+import type {
+  ChatAttachment,
+  ChatConversationSummary,
+  ChatHistoryMessage,
+  ChatMessageResponse,
+  ChatStreamHandlers,
+  ChatStreamTrace,
+} from "../../services/api/chat";
 import ToolTip from "@/components/ToolTip";
 import { cn } from "@/lib/utils";
+import type { TemplateV2SurfaceSelectedDetail } from "@/components/slide-editor/events/events";
+import type { TemplateV2Layout } from "@/components/slide-editor/importing/template-v2-import";
+import {
+  MAX_NUMBER_OF_SLIDES,
+  MAX_OUTLINE_CONTENT_WORDS,
+} from "@/utils/presentationLimits";
+import { bucketMessageLength, sanitizeAnalyticsError } from "@/utils/analytics";
+import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
+import { TemplateV2HtmlSlidePreview } from "../../components/TemplateV2HtmlSlidePreview";
 
 const suggestions: { id: string; icon: ReactNode; suggestion: string }[] = [
   {
@@ -230,18 +257,73 @@ const outlineQuickPrompts = [
   "Improve introduction",
 ];
 
+const presentationQuickPrompts = [
+  "Expand each section",
+  "Reorder for storytelling",
+  "Add missing sections",
+  "Convert to pitch flow",
+];
+
+const templateV2QuickPrompts = [
+  "Summarize this template",
+  "Find editable text",
+  "Change slide 2 title",
+  "Update an image URL",
+  "Remove a component",
+  "Inspect slide 1 layout",
+];
+
 type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "error";
   content: string;
   toolCalls?: string[];
   activity?: AssistantActivity[];
+  layoutPreview?: ChatLayoutPreview;
+};
+
+type ChatLayoutPreview = {
+  layout: TemplateV2Layout;
+  layoutId?: string | null;
+  slideIndex?: number | null;
+};
+
+type SubmitMessageOptions = {
+  backendContext?: string;
+  layoutPreview?: ChatLayoutPreview;
+};
+
+type PastedChatImage = {
+  id: string;
+  name: string;
+  url: string;
+  file?: File;
+  extractedText?: string;
+};
+
+type ChatLink = {
+  id: string;
+  url: string;
+};
+
+type ChatDocumentAttachment = {
+  id: string;
+  name: string;
+  filePath: string;
+  mimeType?: string;
 };
 
 type ChatProps = {
   presentationId: string;
-  variant?: "presentation" | "outline";
+  resourceId?: string;
+  chatAdapter?: ChatApiAdapter;
+  conversationStorageScope?: string;
+  resourceLabel?: string;
+  variant?: "presentation" | "outline" | "template-v2";
   currentSlide?: number;
+  selectedTemplateV2Target?: TemplateV2SurfaceSelectedDetail["selection"];
+  onClearChatSlideReference?: () => void;
+  onClearChatTargetReference?: () => void;
   onBeforeSend?: () => Promise<void> | void;
   onPresentationChanged?: () => Promise<void> | void;
   onChatMutationStateChange?: (isMutating: boolean) => void;
@@ -256,6 +338,48 @@ type ChatProps = {
   onFollowModeChange?: (isEnabled: boolean) => void;
 };
 
+export type ChatApiAdapter = {
+  listConversations: (resourceId: string) => Promise<ChatConversationSummary[]>;
+  getHistory: (
+    resourceId: string,
+    conversationId: string
+  ) => Promise<{ messages: ChatHistoryMessage[] }>;
+  deleteConversation: (
+    resourceId: string,
+    conversationId: string
+  ) => Promise<void>;
+  streamMessage: (
+    payload: {
+      resourceId: string;
+      message: string;
+      conversation_id?: string;
+      attachments?: ChatAttachment[];
+    },
+    handlers?: ChatStreamHandlers,
+    options?: { signal?: AbortSignal }
+  ) => Promise<ChatMessageResponse>;
+};
+
+const presentationChatAdapter: ChatApiAdapter = {
+  listConversations: (resourceId) =>
+    PresentationChatApi.listConversations(resourceId),
+  getHistory: (resourceId, conversationId) =>
+    PresentationChatApi.getHistory(resourceId, conversationId),
+  deleteConversation: (resourceId, conversationId) =>
+    PresentationChatApi.deleteConversation(resourceId, conversationId),
+  streamMessage: (payload, handlers, options) =>
+    PresentationChatApi.streamMessage(
+      {
+        presentation_id: payload.resourceId,
+        message: payload.message,
+        conversation_id: payload.conversation_id,
+        attachments: payload.attachments,
+      },
+      handlers,
+      options
+    ),
+};
+
 type AssistantActivity = {
   id: string;
   label: string;
@@ -263,6 +387,17 @@ type AssistantActivity = {
   round?: number;
   tool?: string;
   state: "running" | "success" | "error" | "info";
+};
+
+type AssistantPromptMetrics = {
+  startedAt: number;
+  attachmentImageCount: number;
+  attachmentDocumentCount: number;
+  linkCount: number;
+  mutatingToolCount: number;
+  readToolCount: number;
+  uniqueTools: Set<string>;
+  mutatedSlides: Set<number>;
 };
 
 const createMessageId = () => {
@@ -273,46 +408,172 @@ const createMessageId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-const conversationStorageKey = (presentationId: string) =>
-  `presenton:chat:conversationId:${presentationId}`;
+const createChatLayoutPreviewSlide = (preview: ChatLayoutPreview) => ({
+  id: `chat-layout-preview-${preview.slideIndex ?? "slide"}`,
+  content: {},
+  ui: preview.layout,
+  layout: preview.layoutId || "chat-layout-preview",
+  layout_group: "template-v2",
+});
+
+const URL_PATTERN =
+  /(https?:\/\/[^\s<>"']+\.[^\s<>"']+|www\.[^\s<>"']+\.[^\s<>"']+)/gi;
+const IMAGE_READ_INTENT_PATTERN =
+  /\b(read|extract|parse|analy[sz]e|summari[sz]e|ocr|text|table|chart|data|numbers?|metrics?)\b/i;
+const IMAGE_EXTENSION_PATTERN = /\.(jpe?g|png|gif|bmp|tiff?|webp)$/i;
+const ATTACHMENT_CONTENT_LIMIT = 2000;
+
+function pullLinksFromText(text: string) {
+  const links: ChatLink[] = [];
+  const cleanText = text
+    .replace(URL_PATTERN, (match) => {
+      const url = match.replace(/[.,;:!?)}\]]+$/g, "");
+      links.push({
+        id: createMessageId(),
+        url: url.startsWith("www.") ? `https://${url}` : url,
+      });
+      return match.slice(url.length);
+    });
+  return { cleanText, links };
+}
+
+function appendInputText(previous: string, next: string) {
+  if (!next) return previous;
+  if (!previous) return next.trimStart();
+  if (/\s$/.test(previous) || /^\s/.test(next)) return `${previous}${next}`;
+  return `${previous} ${next}`;
+}
+
+function isImageFile(file: File) {
+  return (
+    file.type.startsWith("image/") || IMAGE_EXTENSION_PATTERN.test(file.name)
+  );
+}
+
+function shouldReadAttachedImages(message: string) {
+  return IMAGE_READ_INTENT_PATTERN.test(message);
+}
+
+function trimAttachmentContent(content: string) {
+  if (content.length <= ATTACHMENT_CONTENT_LIMIT) return content;
+  return `${content.slice(0, ATTACHMENT_CONTENT_LIMIT)}\n[Attachment truncated]`;
+}
+
+function buildChatDocumentAttachments(
+  documents: ChatDocumentAttachment[]
+): ChatAttachment[] {
+  return documents.map((document) => ({
+    type: "document",
+    name: document.name,
+    file_path: document.filePath,
+    mime_type: document.mimeType || null,
+  }));
+}
+
+function hasDraggedFiles(event: DragEvent<HTMLElement>) {
+  return (
+    Array.from(event.dataTransfer.types ?? []).includes("Files") ||
+    event.dataTransfer.files.length > 0 ||
+    Array.from(event.dataTransfer.items ?? []).some(
+      (item) => item.kind === "file"
+    )
+  );
+}
+
+function getDroppedFileUri(event: DragEvent<HTMLElement>) {
+  if (!Array.from(event.dataTransfer.types ?? []).includes("text/uri-list")) {
+    return "";
+  }
+  return event.dataTransfer.getData("text/uri-list");
+}
+
+async function readDecomposedFile(filePath: string) {
+  if (typeof window !== "undefined" && window.electron?.readFile) {
+    const result = await window.electron.readFile(filePath);
+    return typeof result === "string" ? result : result?.content || "";
+  }
+
+  const response = await fetch("/api/read-file", {
+    method: "POST",
+    body: JSON.stringify({ filePath }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result?.error || "Failed to read document.");
+  }
+  return result?.content || "";
+}
+
+const conversationStorageKey = (scope: string, resourceId: string) =>
+  `presenton:chat:${scope}:conversationId:${resourceId}`;
 
 const AssistantMarker = () => (
-  <div className="mb-3 flex items-center gap-1.5 text-[#A4A7AE]">
+  <div className="mb-2 flex items-center gap-1.5 text-[#8A8F98]">
     <MessageCircleMore className="h-4 w-4" />
-    <ChevronRight className="h-3 w-3" />
+    <span className="text-[11px] font-medium leading-4">Assistant</span>
   </div>
 );
 
 const TOOL_LABELS: Record<string, string> = {
-  getPresentationOutline: "Outline reader",
-  getOutlineDraft: "Outline draft reader",
   addOutline: "Outline adder",
   updateOutline: "Outline editor",
   deleteOutline: "Outline remover",
-  moveOutline: "Outline reorderer",
-  searchSlides: "Slide search",
-  getSlideAtIndex: "Slide reader",
-  getPresentationThemeCatalog: "Theme catalog",
+  addNewSlide: "Blank slide adder",
+  addNewSlideLayout: "Layout slide adder",
   getAvailableLayouts: "Layout finder",
-  getContentSchemaFromLayoutId: "Schema checker",
-  generateAssets: "Asset generator",
+  getTemplateSummary: "Template reader",
+  readSourceDocuments: "Source document reader",
+  searchSlide: "Slide search",
+  getSlideAtIndex: "Slide reader",
   saveSlide: "Slide saver",
+  updateSlide: "Slide updater",
   deleteSlide: "Slide remover",
+  addElement: "Element adder",
+  updateElement: "Element updater",
+  deleteElement: "Element remover",
+  addComponent: "Component adder",
+  createComponent: "Component creator",
+  updateComponent: "Component updater",
+  deleteComponent: "Component remover",
+  getPresentationTheme: "Theme reader",
   setPresentationTheme: "Theme applier",
+  generateAssets: "Asset generator",
 };
 
 const MUTATING_TOOLS = new Set([
   "addOutline",
   "updateOutline",
   "deleteOutline",
-  "moveOutline",
+  "addNewSlide",
+  "addNewSlideLayout",
   "saveSlide",
+  "updateSlide",
   "deleteSlide",
+  "addElement",
+  "updateElement",
+  "deleteElement",
+  "addComponent",
+  "createComponent",
+  "updateComponent",
+  "deleteComponent",
   "setPresentationTheme",
 ]);
 // Only focus slides when the agent is actively mutating them.
 // Read/open traces (e.g. getSlideAtIndex) can happen ahead of edits and feel jumpy.
-const SLIDE_FOCUS_TOOLS = new Set(["saveSlide", "deleteSlide"]);
+const SLIDE_FOCUS_TOOLS = new Set([
+  "addNewSlide",
+  "addNewSlideLayout",
+  "saveSlide",
+  "updateSlide",
+  "deleteSlide",
+  "addElement",
+  "updateElement",
+  "deleteElement",
+  "addComponent",
+  "createComponent",
+  "updateComponent",
+  "deleteComponent",
+]);
 const SLIDE_FOCUS_STATUSES = new Set(["start"]);
 const MIN_SLIDE_FOCUS_DWELL_MS = 700;
 
@@ -378,6 +639,30 @@ const humanizeTraceMessage = (message: string, tool?: string) => {
   if (lower === "applying presentation theme") {
     return "Applying the selected theme.";
   }
+  if (lower === "reading template structure") {
+    return "Reading the template structure.";
+  }
+  if (lower === "reading source documents") {
+    return "Reading the source documents.";
+  }
+  if (lower === "opening the requested template slide") {
+    return "Opening the selected template slide.";
+  }
+  if (lower === "searching template content") {
+    return "Searching template content.";
+  }
+  if (lower === "finding editable elements") {
+    return "Finding editable elements.";
+  }
+  if (lower === "updating template content") {
+    return "Updating template content.";
+  }
+  if (lower === "deleting the template component") {
+    return "Deleting the selected component.";
+  }
+  if (lower === "swapping component variant") {
+    return "Swapping the component variant.";
+  }
   if (lower.startsWith("using tools:")) {
     const toolNames = trimmed
       .slice("using tools:".length)
@@ -385,17 +670,13 @@ const humanizeTraceMessage = (message: string, tool?: string) => {
       .map((entry) => entry.trim())
       .filter(Boolean)
       .map((entry) => getToolLabel(entry));
-    if (toolNames.length === 0) {
-      return "Planning tool steps.";
-    }
-    return `Planning tools: ${toolNames.join(", ")}.`;
+    return toolNames.length === 0
+      ? "Planning the next step."
+      : "Choosing the best way to help.";
   }
   if (lower.includes("found requested data")) {
     if (tool === "getSlideAtIndex") {
       return "Found the requested slide details.";
-    }
-    if (tool === "getPresentationOutline") {
-      return "Found the requested outline details.";
     }
     return "Found the requested information.";
   }
@@ -470,7 +751,7 @@ const formatTraceActivity = (
 
   if (trace.tool && trace.status === "start") {
     return {
-      label: `Running ${getToolLabel(trace.tool)}...`,
+      label: humanActivityForTool(trace.tool, "start"),
       kind: trace.kind,
       round: trace.round,
       tool: trace.tool,
@@ -480,7 +761,7 @@ const formatTraceActivity = (
 
   if (trace.tool && trace.status === "success") {
     return {
-      label: `${getToolLabel(trace.tool)} completed.`,
+      label: humanActivityForTool(trace.tool, "success"),
       kind: trace.kind,
       round: trace.round,
       tool: trace.tool,
@@ -490,7 +771,7 @@ const formatTraceActivity = (
 
   if (trace.tool && trace.status === "error") {
     return {
-      label: `${getToolLabel(trace.tool)} failed.`,
+      label: "I could not finish that step.",
       kind: trace.kind,
       round: trace.round,
       tool: trace.tool,
@@ -504,9 +785,7 @@ const formatTraceActivity = (
     trace.tools.length
   ) {
     return {
-      label: `Planning tools: ${trace.tools
-        .map((tool) => getToolLabel(tool))
-        .join(", ")}.`,
+      label: "Planning the next step.",
       kind: trace.kind,
       round: trace.round,
       state: "info",
@@ -514,6 +793,39 @@ const formatTraceActivity = (
   }
 
   return null;
+};
+
+const humanActivityForTool = (
+  tool: string | undefined,
+  state: "start" | "success"
+) => {
+  const isDone = state === "success";
+  switch (tool) {
+    case "searchSlide":
+      return isDone ? "Found the relevant content." : "Looking through the content.";
+    case "getSlideAtIndex":
+      return isDone ? "Checked the slide." : "Checking the slide.";
+    case "addNewSlide":
+    case "addNewSlideLayout":
+    case "updateElement":
+    case "updateComponent":
+    case "addElement":
+    case "addComponent":
+    case "createComponent":
+    case "updateSlide":
+    case "saveSlide":
+      return isDone ? "Applied the change." : "Applying the change.";
+    case "deleteComponent":
+    case "deleteElement":
+    case "deleteSlide":
+      return isDone ? "Removed the selected item." : "Removing the selected item.";
+    case "generateAssets":
+      return isDone ? "Prepared the visual assets." : "Preparing visual assets.";
+    case "setPresentationTheme":
+      return isDone ? "Updated the theme." : "Updating the theme.";
+    default:
+      return isDone ? "Finished that step." : "Working on it.";
+  }
 };
 
 const readTraceSlideIndex = (trace: ChatStreamTrace) => {
@@ -528,8 +840,15 @@ const readTraceSlideIndex = (trace: ChatStreamTrace) => {
 
 const Chat = ({
   presentationId,
+  resourceId,
+  chatAdapter = presentationChatAdapter,
+  conversationStorageScope = "presentation",
+  resourceLabel = "presentation",
   variant = "presentation",
   currentSlide,
+  selectedTemplateV2Target,
+  onClearChatSlideReference,
+  onClearChatTargetReference,
   onBeforeSend,
   onPresentationChanged,
   onChatMutationStateChange,
@@ -548,13 +867,29 @@ const Chat = ({
     string | null
   >(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pastedImages, setPastedImages] = useState<PastedChatImage[]>([]);
+  const [attachedDocuments, setAttachedDocuments] = useState<
+    ChatDocumentAttachment[]
+  >([]);
+  const [chatLinks, setChatLinks] = useState<ChatLink[]>([]);
+  const [isUploadingPastedImage, setIsUploadingPastedImage] = useState(false);
+  const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
   const [expandedActivityByMessage, setExpandedActivityByMessage] = useState<
     Record<string, boolean>
   >({});
+  const [hiddenOverlaySlideReference, setHiddenOverlaySlideReference] = useState<
+    number | null
+  >(null);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const submitMessageRef = useRef<
+    (message: string, options?: SubmitMessageOptions) => Promise<void>
+  >(
+    async () => undefined,
+  );
   const lastFollowedTraceRef = useRef<string | null>(null);
   const focusEventSequenceRef = useRef(0);
   const activeFocusedSlideRef = useRef<number | null>(null);
@@ -564,6 +899,27 @@ const Chat = ({
   const refreshInFlightRef = useRef(false);
   const refreshQueuedRef = useRef(false);
   const didIncrementalRefreshRef = useRef(false);
+  const openedAnalyticsKeyRef = useRef<string | null>(null);
+  const promptMetricsRef = useRef<AssistantPromptMetrics | null>(null);
+  const activeResourceId = resourceId ?? presentationId;
+
+  const baseAnalyticsProps = useCallback(
+    () => ({
+      variant,
+      presentation_id: presentationId,
+      resource_id: activeResourceId,
+      conversation_scope: conversationStorageScope,
+    }),
+    [activeResourceId, conversationStorageScope, presentationId, variant]
+  );
+
+  useEffect(() => {
+    if (!activeResourceId) return;
+    const key = `${variant}:${activeResourceId}`;
+    if (openedAnalyticsKeyRef.current === key) return;
+    openedAnalyticsKeyRef.current = key;
+    trackEvent(MixpanelEvent.AI_Assistant_Opened, baseAnalyticsProps());
+  }, [activeResourceId, baseAnalyticsProps, variant]);
 
   useEffect(() => {
     let cancelled = false;
@@ -576,9 +932,16 @@ const Chat = ({
     setActiveMutationToolCount(0);
     setActiveAssistantMessageId(null);
     setErrorMessage(null);
+    setPastedImages([]);
+    setAttachedDocuments([]);
+    setChatLinks([]);
+    setIsUploadingPastedImage(false);
+    setIsDraggingAttachment(false);
     setExpandedActivityByMessage({});
+    setHiddenOverlaySlideReference(null);
+    promptMetricsRef.current = null;
 
-    if (!presentationId) {
+    if (!activeResourceId) {
       return;
     }
 
@@ -588,12 +951,13 @@ const Chat = ({
         if (typeof sessionStorage === "undefined") {
           return;
         }
-        const sKey = conversationStorageKey(presentationId);
+        const sKey = conversationStorageKey(
+          conversationStorageScope,
+          activeResourceId
+        );
         let activeId = sessionStorage.getItem(sKey) ?? null;
         if (!activeId) {
-          const list = await PresentationChatApi.listConversations(
-            presentationId
-          );
+          const list = await chatAdapter.listConversations(activeResourceId);
           if (Array.isArray(list) && list.length > 0) {
             activeId = list[0]!.conversation_id;
             sessionStorage.setItem(sKey, activeId);
@@ -602,10 +966,7 @@ const Chat = ({
         if (!activeId) {
           return;
         }
-        const data = await PresentationChatApi.getHistory(
-          presentationId,
-          activeId
-        );
+        const data = await chatAdapter.getHistory(activeResourceId, activeId);
         if (cancelled) {
           return;
         }
@@ -643,11 +1004,15 @@ const Chat = ({
     return () => {
       cancelled = true;
     };
-  }, [presentationId]);
+  }, [activeResourceId, chatAdapter, conversationStorageScope]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    setHiddenOverlaySlideReference(null);
+  }, [currentSlide]);
 
   useEffect(() => {
     onChatMutationStateChange?.(activeMutationToolCount > 0);
@@ -782,12 +1147,21 @@ const Chat = ({
     [emitAgentSlideFocus, schedulePendingSlideFocus]
   );
 
-  const buildBackendMessage = (message: string) => {
+  const buildBackendMessage = (
+    message: string,
+    images = pastedImages,
+    additionalContext?: string,
+  ) => {
     const contextLines: string[] = [];
 
     if (variant === "outline") {
       contextLines.push(
-        "UI context: the user is editing the outline draft before template/layout selection. Use outline draft tools for outline add/edit/delete/reorder requests; do not use layout or finished-slide tools for outline-only edits."
+        `UI context: the user is editing the outline draft. Use addOutline, updateOutline, and deleteOutline for outline edits. Keep at most ${MAX_NUMBER_OF_SLIDES} outline slides, and keep each outline content within ${MAX_OUTLINE_CONTENT_WORDS} words.`
+      );
+    }
+    if (variant === "template-v2") {
+      contextLines.push(
+        "UI context: the user is editing a rendered TemplateV2 presentation with the v2 assistant. Use getTemplateSummary, getAvailableLayouts, getAvailableBlocks, searchSlide, getSlideAtIndex, getContentSchemaFromLayoutId, addNewSlide, addNewSlideLayout, saveSlide, updateSlide, deleteSlide, addElement, updateElement, deleteElement, addComponent, createComponent, updateComponent, deleteComponent, getPresentationTheme, setPresentationTheme, readSourceDocuments, and generateAssets. For visible edits inside an existing slide, inspect with getSlideAtIndex and use the returned componentId/elementPath exactly. Use updateElement for element toolbar-style properties and updateComponent for component move, resize, duplicate, layer order, group, and ungroup actions. When adding or creating rendered elements/components, prefer reusable template blocks over primitives: for custom new slides, search getAvailableBlocks for a title/header text block first, then requested chart/table/content blocks, adapt their component JSON, and include the final requested content instead of placeholder blocks. Keep new rendered elements/components strictly inside the 1280x720 visible slide window."
       );
     }
 
@@ -799,6 +1173,82 @@ const Chat = ({
       );
     }
 
+    const trimmedAdditionalContext = additionalContext?.trim();
+    if (trimmedAdditionalContext) {
+      contextLines.push(
+        trimmedAdditionalContext.startsWith("UI context:")
+          ? trimmedAdditionalContext
+          : `UI context: ${trimmedAdditionalContext}`,
+      );
+    }
+
+    if (selectedTemplateV2Target?.kind === "multi-component") {
+      const target = selectedTemplateV2Target;
+      const componentIds = target.componentIds?.filter(Boolean) ?? [];
+      const labels =
+        target.componentLabels?.filter(Boolean) ??
+        target.components.map((component) => component.componentLabel).filter(Boolean);
+      contextLines.push(
+        `UI context: the user has selected ${target.components.length} TemplateV2 components${
+          labels.length ? ` (${labels.join(", ")})` : ""
+        }${
+          componentIds.length ? ` with componentIds=${componentIds.join(",")}` : ""
+        }. These selected components are the primary target for short edits like "these", "group these", "remove these", "move them", or "resize them"; do not apply those requests to the whole slide unless the user explicitly says slide. For grouping selected components, inspect the selected slide with getSlideAtIndex, then call updateComponent with action=group, componentId set to one selected component id, and componentIds set to all selected component ids exactly.`
+      );
+    } else if (selectedTemplateV2Target) {
+      const target = selectedTemplateV2Target;
+      const targetParts = [
+        `kind=${target.kind}`,
+        typeof target.slideIndex === "number"
+          ? `slideIndex=${target.slideIndex}`
+          : "",
+        typeof target.componentIndex === "number"
+          ? `componentIndex=${target.componentIndex}`
+          : "",
+        target.componentId ? `componentId=${target.componentId}` : "",
+        target.componentLabel ? `componentLabel=${target.componentLabel}` : "",
+        target.elementPath ? `elementPath=${target.elementPath}` : "",
+        target.elementType ? `elementType=${target.elementType}` : "",
+        target.elementName ? `elementName=${target.elementName}` : "",
+        target.targetLabel ? `targetLabel=${target.targetLabel}` : "",
+      ].filter(Boolean);
+      contextLines.push(
+        `UI context: the user has selected this TemplateV2 ${target.kind}: ${targetParts.join(
+          ", "
+        )}. This selected ${target.kind} is the primary target for short edits like "this", "it", "make it smaller", "rewrite it", or "remove it"; do not apply those requests to the whole slide unless the user explicitly says slide. For visible slide edits, inspect the selected slide with getSlideAtIndex and use matching componentId/elementPath exactly. If the selected element is content_editable:false, use position/size for that element or target a content_editable descendant for text/content changes.`
+      );
+    }
+
+    if (images.length > 0) {
+      contextLines.push(
+        [
+          "UI context: the user attached image(s) to chat for this request. If they ask to add or replace an image, use addElement/updateElement with the exact image URL. If extracted text is provided, use it only for requests that ask to read or analyze the image.",
+          ...images.map(
+            (image, index) =>
+              [
+                `Image ${index + 1} (${image.name}): ${image.url}`,
+                image.extractedText
+                  ? `Extracted image text ${index + 1}:\n${trimAttachmentContent(
+                      image.extractedText
+                    )}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n")
+          ),
+        ].join("\n")
+      );
+    }
+
+    if (chatLinks.length > 0) {
+      contextLines.push(
+        [
+          "UI context: the user added link(s) to chat for this request. Use the exact URL when the user refers to the link.",
+          ...chatLinks.map((link, index) => `Link ${index + 1}: ${link.url}`),
+        ].join("\n")
+      );
+    }
+
     if (contextLines.length === 0) {
       return message;
     }
@@ -806,18 +1256,42 @@ const Chat = ({
     return [...contextLines, `User message: ${message}`].join("\n");
   };
 
-  const resetChat = () => {
+  const resetChat = async () => {
+    const conversationIdToDelete = conversationId;
+    trackEvent(MixpanelEvent.AI_Assistant_Chat_Reset, baseAnalyticsProps());
     setMessages([]);
     setInput("");
+    setPastedImages([]);
+    setAttachedDocuments([]);
+    setChatLinks([]);
     setConversationId(null);
     setActiveMutationToolCount(0);
     setErrorMessage(null);
     setExpandedActivityByMessage({});
-    if (presentationId && typeof sessionStorage !== "undefined") {
-      sessionStorage.removeItem(conversationStorageKey(presentationId));
+    setHiddenOverlaySlideReference(null);
+    if (activeResourceId && typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(
+        conversationStorageKey(conversationStorageScope, activeResourceId)
+      );
     }
 
     inputRef.current?.focus();
+
+    if (activeResourceId && conversationIdToDelete) {
+      try {
+        await chatAdapter.deleteConversation(
+          activeResourceId,
+          conversationIdToDelete
+        );
+      } catch (error) {
+        console.error("Failed to delete chat conversation:", error);
+        const detail =
+          error instanceof Error
+            ? error.message
+            : "Could not delete the saved chat conversation";
+        notify.error("Could not delete chat", detail);
+      }
+    }
   };
 
   const refreshPresentationIncrementally = useCallback(async () => {
@@ -952,25 +1426,192 @@ const Chat = ({
     abortControllerRef.current?.abort();
   };
 
-  const submitMessage = async (rawMessage: string) => {
-    const trimmedMessage = rawMessage.trim();
-
-    if (!trimmedMessage || isSending || isHistoryLoading) {
+  const processTemplateV2Files = async (
+    files: File[],
+    source: "file_input" | "paste" | "drop" = "file_input"
+  ) => {
+    if (files.length === 0 || isSending || isHistoryLoading) {
+      return;
+    }
+    if (variant !== "template-v2") {
+      notify.info("Attachments are available in Template V2 chat.");
       return;
     }
 
-    if (!presentationId) {
+    const imageFiles = files.filter(isImageFile);
+    const documentFiles = files.filter((file) => !isImageFile(file));
+
+    setIsUploadingPastedImage(true);
+    try {
+      if (imageFiles.length > 0) {
+        const uploads = await Promise.all(
+          imageFiles.map((file) => ImagesApi.uploadImage(file))
+        );
+        const nextImages = uploads.flatMap((upload, index) => {
+          const file = imageFiles[index];
+          const url = upload.file_url || upload.path;
+          if (!file || !url) return [];
+          return [
+            {
+              id: upload.id || createMessageId(),
+              name: file.name || `Image ${index + 1}`,
+              url,
+              file,
+            },
+          ];
+        });
+        if (nextImages.length === 0) {
+          throw new Error("Image upload did not return a URL.");
+        }
+        setPastedImages((previous) => [...previous, ...nextImages]);
+      }
+
+      if (documentFiles.length > 0) {
+        const paths = (await PresentationGenerationApi.uploadDoc(
+          documentFiles
+        )) as string[];
+        const documents = paths.flatMap((filePath, index) => {
+          const file = documentFiles[index];
+          if (!file || !filePath) return [];
+          return [
+            {
+              id: createMessageId(),
+              name: file.name || `Document ${index + 1}`,
+              filePath,
+              mimeType: file.type || undefined,
+            },
+          ];
+        });
+        if (documents.length === 0) {
+          throw new Error("Document upload did not return a file path.");
+        }
+        setAttachedDocuments((previous) => [...previous, ...documents]);
+      }
+
+      notify.success(
+        "Attachment ready",
+        `${files.length} file${files.length === 1 ? "" : "s"} attached.`
+      );
+      trackEvent(MixpanelEvent.AI_Assistant_Attachment_Added, {
+        ...baseAnalyticsProps(),
+        source,
+        image_count: imageFiles.length,
+        document_count: documentFiles.length,
+        total_count: files.length,
+      });
+    } catch (error) {
+      trackEvent(MixpanelEvent.AI_Assistant_Attachment_Failed, {
+        ...baseAnalyticsProps(),
+        source,
+        file_count: files.length,
+        error_message: sanitizeAnalyticsError(error, "Attachment upload failed"),
+      });
       notify.error(
-        "Presentation not ready",
-        "The presentation is not ready yet."
+        "Could not attach file",
+        error instanceof Error ? error.message : "Upload failed."
+      );
+    } finally {
+      setIsUploadingPastedImage(false);
+    }
+  };
+
+  const extractImageTextContext = async (images: PastedChatImage[]) => {
+    const imagesToRead = images.filter(
+      (image) => image.file && !image.extractedText
+    );
+    if (imagesToRead.length === 0) {
+      return images;
+    }
+
+    setIsUploadingPastedImage(true);
+    try {
+      const paths = (await PresentationGenerationApi.uploadDoc(
+        imagesToRead.map((image) => image.file!)
+      )) as string[];
+      const decomposed = (await PresentationGenerationApi.decomposeDocuments(
+        paths,
+        null
+      )) as { name: string; file_path: string }[];
+      const extracted = await Promise.all(
+        decomposed.map((item) => readDecomposedFile(item.file_path))
+      );
+      const extractedById = new Map(
+        imagesToRead.map((image, index) => [image.id, extracted[index] || ""])
+      );
+      const nextImages = images.map((image) => ({
+        ...image,
+        extractedText: extractedById.get(image.id) || image.extractedText,
+      }));
+      setPastedImages(nextImages);
+      return nextImages;
+    } finally {
+      setIsUploadingPastedImage(false);
+    }
+  };
+
+  const submitMessage = async (
+    rawMessage: string,
+    options: SubmitMessageOptions = {},
+  ) => {
+    const trimmedMessage = rawMessage.trim();
+    const hasAttachedContext =
+      pastedImages.length > 0 ||
+      attachedDocuments.length > 0 ||
+      chatLinks.length > 0;
+    const outboundMessage =
+      trimmedMessage ||
+      (attachedDocuments.length > 0
+        ? "Use the attached document."
+        : chatLinks.length > 0
+        ? "Use the provided link."
+        : "Use the pasted image.");
+
+    if (
+      (!trimmedMessage && !hasAttachedContext) ||
+      isSending ||
+      isHistoryLoading ||
+      isUploadingPastedImage
+    ) {
+      return;
+    }
+
+    if (!activeResourceId) {
+      notify.error(
+        `${resourceLabel.charAt(0).toUpperCase()}${resourceLabel.slice(1)} not ready`,
+        `The ${resourceLabel} is not ready yet.`
       );
       return;
+    }
+
+    let imagesForMessage = pastedImages;
+    if (
+      variant === "template-v2" &&
+      pastedImages.length > 0 &&
+      shouldReadAttachedImages(outboundMessage)
+    ) {
+      // ponytail: keyword heuristic, replace with explicit user-controlled "read image" mode if it misclassifies.
+      try {
+        imagesForMessage = await extractImageTextContext(pastedImages);
+      } catch (error) {
+        trackEvent(MixpanelEvent.AI_Assistant_Attachment_Failed, {
+          ...baseAnalyticsProps(),
+          source: "image_ocr",
+          file_count: pastedImages.length,
+          error_message: sanitizeAnalyticsError(error, "Image processing failed"),
+        });
+        notify.error(
+          "Could not read image",
+          error instanceof Error ? error.message : "Image processing failed."
+        );
+        return;
+      }
     }
 
     const userMessage: ChatMessage = {
       id: createMessageId(),
       role: "user",
-      content: trimmedMessage,
+      content: outboundMessage,
+      layoutPreview: options.layoutPreview,
     };
 
     const assistantMessageId = createMessageId();
@@ -996,16 +1637,41 @@ const Chat = ({
     didIncrementalRefreshRef.current = false;
     refreshQueuedRef.current = false;
     refreshInFlightRef.current = false;
+    promptMetricsRef.current = {
+      startedAt: Date.now(),
+      attachmentImageCount: imagesForMessage.length,
+      attachmentDocumentCount: attachedDocuments.length,
+      linkCount: chatLinks.length,
+      mutatingToolCount: 0,
+      readToolCount: 0,
+      uniqueTools: new Set<string>(),
+      mutatedSlides: new Set<number>(),
+    };
+    trackEvent(MixpanelEvent.AI_Assistant_Prompt_Submitted, {
+      ...baseAnalyticsProps(),
+      has_text: trimmedMessage.length > 0,
+      message_length_bucket: bucketMessageLength(outboundMessage.length),
+      attachment_image_count: imagesForMessage.length,
+      attachment_document_count: attachedDocuments.length,
+      link_count: chatLinks.length,
+      has_selected_slide: typeof currentSlide === "number",
+      has_selected_template_target: Boolean(selectedTemplateV2Target),
+    });
     const streamAbortController = new AbortController();
     abortControllerRef.current = streamAbortController;
 
     try {
       await onBeforeSend?.();
-      const response = await PresentationChatApi.streamMessage(
+      const response = await chatAdapter.streamMessage(
         {
-          presentation_id: presentationId,
-          message: buildBackendMessage(trimmedMessage),
+          resourceId: activeResourceId,
+          message: buildBackendMessage(
+            outboundMessage,
+            imagesForMessage,
+            options.backendContext,
+          ),
           conversation_id: conversationId ?? undefined,
+          attachments: buildChatDocumentAttachments(attachedDocuments),
         },
         {
           onChunk: (chunk) => {
@@ -1027,6 +1693,19 @@ const Chat = ({
             });
           },
           onTrace: (trace) => {
+            const metrics = promptMetricsRef.current;
+            if (metrics && trace.tool && trace.status === "start") {
+              metrics.uniqueTools.add(trace.tool);
+              if (MUTATING_TOOLS.has(trace.tool)) {
+                metrics.mutatingToolCount += 1;
+                const slideIndex = readTraceSlideIndex(trace);
+                if (slideIndex !== null) {
+                  metrics.mutatedSlides.add(slideIndex);
+                }
+              } else {
+                metrics.readToolCount += 1;
+              }
+            }
             maybeFollowAgentSlide(trace);
             if (
               trace.status === "success" &&
@@ -1072,8 +1751,11 @@ const Chat = ({
           typeof response.conversation_id === "string"
             ? response.conversation_id
             : previous;
-        if (next && presentationId && typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(conversationStorageKey(presentationId), next);
+        if (next && activeResourceId && typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(
+            conversationStorageKey(conversationStorageScope, activeResourceId),
+            next
+          );
         }
         return next;
       });
@@ -1081,8 +1763,40 @@ const Chat = ({
       await refreshPresentationIfNeeded(
         Array.isArray(response.tool_calls) ? response.tool_calls : []
       );
+      const metrics = promptMetricsRef.current;
+      const responseToolCalls = Array.isArray(response.tool_calls)
+        ? response.tool_calls
+        : [];
+      responseToolCalls.forEach((tool) => metrics?.uniqueTools.add(tool));
+      trackEvent(MixpanelEvent.AI_Assistant_Prompt_Completed, {
+        ...baseAnalyticsProps(),
+        conversation_id_present: Boolean(response.conversation_id ?? conversationId),
+        duration_ms: metrics ? Date.now() - metrics.startedAt : null,
+        mutating_tool_count:
+          metrics?.mutatingToolCount ??
+          responseToolCalls.filter((tool) => MUTATING_TOOLS.has(tool)).length,
+        read_tool_count:
+          metrics?.readToolCount ??
+          responseToolCalls.filter((tool) => !MUTATING_TOOLS.has(tool)).length,
+        unique_tools: metrics
+          ? Array.from(metrics.uniqueTools)
+          : Array.from(new Set(responseToolCalls)),
+        mutated_slide_count: metrics?.mutatedSlides.size ?? 0,
+        attachment_image_count: metrics?.attachmentImageCount ?? imagesForMessage.length,
+        attachment_document_count:
+          metrics?.attachmentDocumentCount ?? attachedDocuments.length,
+        link_count: metrics?.linkCount ?? chatLinks.length,
+      });
+      setPastedImages([]);
+      setAttachedDocuments([]);
+      setChatLinks([]);
     } catch (error) {
       if (isAbortError(error)) {
+        const metrics = promptMetricsRef.current;
+        trackEvent(MixpanelEvent.AI_Assistant_Prompt_Stopped, {
+          ...baseAnalyticsProps(),
+          duration_ms: metrics ? Date.now() - metrics.startedAt : null,
+        });
         setMessages((previous) =>
           previous.map((message) =>
             message.id === assistantMessageId
@@ -1104,6 +1818,14 @@ const Chat = ({
 
       const message =
         error instanceof Error ? error.message : "Failed to send chat message";
+      const metrics = promptMetricsRef.current;
+      trackEvent(MixpanelEvent.AI_Assistant_Prompt_Failed, {
+        ...baseAnalyticsProps(),
+        duration_ms: metrics ? Date.now() - metrics.startedAt : null,
+        error_message: sanitizeAnalyticsError(message, "Failed to send chat message"),
+        mutating_tool_count: metrics?.mutatingToolCount ?? 0,
+        unique_tools: metrics ? Array.from(metrics.uniqueTools) : [],
+      });
 
       setMessages((previous) =>
         previous.map((entry) =>
@@ -1140,12 +1862,175 @@ const Chat = ({
         current === assistantMessageId ? null : current
       );
       setIsSending(false);
+      promptMetricsRef.current = null;
     }
   };
+
+  useEffect(() => {
+    submitMessageRef.current = submitMessage;
+  });
+
+  useEffect(() => {
+    if (variant !== "template-v2" || typeof window === "undefined") return;
+
+    const handleBlankSlidePrompt = (event: Event) => {
+      const detail = (event as CustomEvent<BlankSlidePromptEventDetail>).detail;
+      const prompt = typeof detail?.prompt === "string" ? detail.prompt.trim() : "";
+      if (!prompt) return;
+
+      const target =
+        typeof detail.slideIndex === "number"
+          ? `slide ${detail.slideIndex + 1}`
+          : "the current blank slide";
+      const layoutReference =
+        typeof detail.layoutId === "string" && detail.layoutId.trim()
+          ? ` (layout id: ${detail.layoutId.trim()})`
+          : "";
+      const instruction =
+        detail.promptKind === "layout"
+          ? `Fill the existing selected ${target} using its selected layout${layoutReference} as the layout reference. Preserve the layout structure and update this slide; do not add another slide.`
+          : `Create content on the existing selected ${target}. Update this slide; do not add another slide.`;
+      if (typeof detail.slideIndex === "number") {
+        setHiddenOverlaySlideReference(detail.slideIndex);
+      }
+      void submitMessageRef.current(prompt, {
+        backendContext: instruction,
+        layoutPreview:
+          detail.promptKind === "layout" && detail.layout
+            ? {
+                layout: detail.layout,
+                layoutId: detail.layoutId,
+                slideIndex: detail.slideIndex,
+              }
+            : undefined,
+      });
+    };
+
+    window.addEventListener(
+      PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+      handleBlankSlidePrompt,
+    );
+    return () => {
+      window.removeEventListener(
+        PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+        handleBlankSlidePrompt,
+      );
+    };
+  }, [variant]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void submitMessage(input);
+  };
+
+  const addChatLinks = (links: ChatLink[]) => {
+    if (links.length === 0) return;
+    setChatLinks((previous) => {
+      const seen = new Set(previous.map((link) => link.url));
+      return [
+        ...previous,
+        ...links.filter((link) => {
+          if (seen.has(link.url)) return false;
+          seen.add(link.url);
+          return true;
+        }),
+      ];
+    });
+  };
+
+  const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const { cleanText, links } = pullLinksFromText(event.target.value);
+    setInput(cleanText);
+    addChatLinks(links);
+  };
+
+  const handleAttachmentInputChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    void processTemplateV2Files(files, "file_input");
+  };
+
+  const handlePaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData.files);
+    if (isSending || isHistoryLoading) {
+      return;
+    }
+
+    const pastedText = event.clipboardData.getData("text");
+    const { cleanText, links } = pullLinksFromText(pastedText);
+
+    if (variant === "template-v2" && files.length > 0) {
+      event.preventDefault();
+      addChatLinks(links);
+      if (cleanText) {
+        setInput((previous) => appendInputText(previous, cleanText));
+      }
+      void processTemplateV2Files(files, "paste");
+      return;
+    }
+
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length === 0 && links.length > 0) {
+      event.preventDefault();
+      setInput((previous) => appendInputText(previous, cleanText));
+      addChatLinks(links);
+      return;
+    }
+
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    addChatLinks(links);
+    if (cleanText) {
+      setInput((previous) => appendInputText(previous, cleanText));
+    }
+    setIsUploadingPastedImage(true);
+    try {
+      const uploads = await Promise.all(
+        imageFiles.map((file) => ImagesApi.uploadImage(file))
+      );
+      const nextImages = uploads
+        .map((upload, index) => ({
+          id: upload.id || createMessageId(),
+          name: imageFiles[index]?.name || `Pasted image ${index + 1}`,
+          url: upload.file_url || upload.path,
+          file: imageFiles[index],
+        }))
+        .filter((image) => image.url);
+      if (nextImages.length === 0) {
+        throw new Error("Image upload did not return a URL.");
+      }
+      setPastedImages((previous) => [...previous, ...nextImages]);
+      trackEvent(MixpanelEvent.AI_Assistant_Attachment_Added, {
+        ...baseAnalyticsProps(),
+        source: "paste",
+        image_count: nextImages.length,
+        document_count: 0,
+        total_count: nextImages.length,
+      });
+      notify.success(
+        "Image pasted",
+        `${nextImages.length} image${nextImages.length === 1 ? "" : "s"} ready to use.`
+      );
+    } catch (error) {
+      trackEvent(MixpanelEvent.AI_Assistant_Attachment_Failed, {
+        ...baseAnalyticsProps(),
+        source: "paste",
+        file_count: imageFiles.length,
+        error_message: sanitizeAnalyticsError(error, "Image upload failed"),
+      });
+      notify.error(
+        "Could not paste image",
+        error instanceof Error ? error.message : "Image upload failed."
+      );
+    } finally {
+      setIsUploadingPastedImage(false);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1161,7 +2046,57 @@ const Chat = ({
     inputRef.current?.focus();
   };
 
+  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    if (variant !== "template-v2") return;
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setIsDraggingAttachment(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
+    if (variant !== "template-v2") return;
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsDraggingAttachment(false);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    if (variant !== "template-v2") return;
+    const files = Array.from(event.dataTransfer.files);
+    const fileUri = getDroppedFileUri(event);
+    if (files.length === 0 && !hasDraggedFiles(event) && !fileUri.startsWith("file:")) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingAttachment(false);
+    if (files.length === 0) {
+      notify.warning("Drop unavailable", "Use the attach button for this file.");
+      return;
+    }
+    void processTemplateV2Files(files, "drop");
+  };
+
   const isOutlineVariant = variant === "outline";
+  const isTemplateV2Variant = variant === "template-v2";
+  const chatSlideReference =
+    typeof currentSlide === "number" &&
+    hiddenOverlaySlideReference !== currentSlide
+      ? `Slide ${currentSlide + 1}`
+      : "";
+  const chatTargetReference = selectedTemplateV2Target
+    ? selectedTemplateV2Target.kind === "multi-component"
+      ? selectedTemplateV2Target.targetLabel ||
+        `${selectedTemplateV2Target.components.length} components selected`
+      : selectedTemplateV2Target.targetLabel ||
+        selectedTemplateV2Target.componentLabel ||
+        selectedTemplateV2Target.elementName ||
+        selectedTemplateV2Target.elementType ||
+        selectedTemplateV2Target.componentId ||
+        selectedTemplateV2Target.kind
+    : "";
 
   return (
     <div className={cn("flex h-full w-full flex-col bg-white", "")}>
@@ -1194,10 +2129,10 @@ const Chat = ({
             </span>
           )}
         </div>
-        {!isOutlineVariant && (
+        {!isOutlineVariant && messages.length > 0 && (
           <button
             type="button"
-            onClick={resetChat}
+            onClick={() => void resetChat()}
             disabled={isSending || isHistoryLoading}
             className="rounded-full p-1 text-[#8C8C8C] transition-colors hover:bg-[#F7F7F7] hover:text-[#191919] disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Reset chat"
@@ -1208,7 +2143,7 @@ const Chat = ({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-9 [scrollbar-color:#C7CBD6_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#C7CBD6] [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-9 [scrollbar-color:#C7CBD6_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#C7CBD6] [&::-webkit-scrollbar-track]:bg-transparent">
         {isHistoryLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center py-8 text-sm text-[#99A1AF]">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1236,59 +2171,127 @@ const Chat = ({
                   ))}
                 </div>
               </div>
-            ) : (
+            ) : isTemplateV2Variant ? (
               <div>
                 <h4 className="mb-2 text-[10px] font-normal leading-[15px] tracking-[0.367px] text-[#99A1AF]">
-                  SUGGESTIONS
+                  QUICK PROMPTS
                 </h4>
-                <div className="flex flex-col gap-1.5">
-                  {suggestions.map((suggestion) => (
+                <div className="flex flex-wrap gap-2">
+                  {templateV2QuickPrompts.map((prompt) => (
                     <button
-                      key={suggestion.id}
+                      key={prompt}
                       type="button"
-                      onClick={() => applyPrompt(suggestion.suggestion)}
-                      className="flex cursor-pointer items-center gap-3 rounded-[10px] border border-[#F4F4F4] px-3 py-2 text-left transition-colors hover:bg-[#FAFAFA]"
+                      onClick={() => applyPrompt(prompt)}
+                      className="cursor-pointer rounded-[10px] border border-[#F4F4F4] px-2.5 py-1 text-left transition-colors hover:bg-[#FAFAFA]"
                     >
-                      {suggestion.icon}
-                      <span className="text-xs font-normal leading-[15px] tracking-[0.367px] text-[#364153]">
-                        {suggestion.suggestion}
+                      <span className="text-[11px] font-normal leading-[15px] tracking-[0.367px] text-[#364153]">
+                        {prompt}
                       </span>
                     </button>
                   ))}
                 </div>
               </div>
+            ) : (
+              <>
+                <div>
+                  <h4 className="mb-2 text-[10px] font-normal leading-[15px] tracking-[0.367px] text-[#99A1AF]">
+                    SUGGESTIONS
+                  </h4>
+                  <div className="flex flex-col gap-1.5">
+                    {suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        onClick={() => applyPrompt(suggestion.suggestion)}
+                        className="group flex min-h-[34px] cursor-pointer items-center justify-between gap-3 rounded-[10px] border border-[#F4F4F4] px-3 py-2 text-left transition-colors hover:bg-[#FAFAFA]"
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className="shrink-0">{suggestion.icon}</span>
+                          <span className="text-xs font-normal leading-[15px] tracking-[0.367px] text-[#364153]">
+                            {suggestion.suggestion}
+                          </span>
+                        </span>
+                        <ChevronRight className="h-3 w-3 shrink-0 text-[#D6D9E0] transition-colors group-hover:text-[#99A1AF]" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-10">
+                  <h4 className="mb-2 text-[10px] font-normal leading-[15px] tracking-[0.367px] text-[#99A1AF]">
+                    QUICK PROMPTS
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {presentationQuickPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => applyPrompt(prompt)}
+                        className="cursor-pointer rounded-[10px] border border-[#F4F4F4] px-2.5 py-1 transition-colors hover:bg-[#FAFAFA]"
+                      >
+                        <span className="text-xs font-normal leading-[15px] tracking-[0.367px] text-[#364153]">
+                          {prompt}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </>
         ) : (
-          <div className="flex flex-col gap-9">
+          <div className="flex flex-col gap-7">
             {messages.map((message) =>
               message.role === "user" ? (
                 <div
                   key={message.id}
-                  className="flex items-start justify-end gap-2"
+                  className="flex items-start justify-end gap-2.5"
                 >
-                  <div className="max-w-[78%] rounded-[20px] bg-[#A100FF] px-4 py-3 text-sm font-medium leading-5 text-white">
-                    <p className="whitespace-pre-wrap">
-                      {stripBackendContextFromUserMessage(message.content)}
-                    </p>
+                  <div
+                    className={cn(
+                      "flex min-w-0 max-w-[80%] flex-col items-end gap-2",
+                      message.layoutPreview && "w-[220px]",
+                    )}
+                  >
+                    {message.layoutPreview && (
+                      <div className="w-full overflow-hidden rounded-[12px] border border-[#EDE7FF] bg-white p-1.5 shadow-sm">
+                        <TemplateV2HtmlSlidePreview
+                          slide={createChatLayoutPreviewSlide(
+                            message.layoutPreview,
+                          )}
+                          className="rounded-[8px]"
+                        />
+                        <p className="px-1 pb-0.5 pt-1.5 text-[10px] font-medium text-[#667085]">
+                          Selected layout
+                        </p>
+                      </div>
+                    )}
+                    <div className="w-fit max-w-full rounded-[18px] bg-[#7C3AED] px-4 py-3 text-[13px] font-medium leading-5 text-white shadow-sm [overflow-wrap:anywhere] [word-break:break-word]">
+                      <p className="whitespace-pre-wrap">
+                        {stripBackendContextFromUserMessage(message.content)}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF8617] text-white">
                     <UserRound className="h-4 w-4" aria-hidden="true" />
                   </div>
                 </div>
               ) : (
-                <div key={message.id} className="max-w-[92%]">
+                <div
+                  key={message.id}
+                  className="min-w-0 max-w-[92%] [overflow-wrap:anywhere] [word-break:break-word]"
+                >
                   <AssistantMarker />
                   {message.content ? (
                     message.role === "error" ? (
-                      <div className="whitespace-pre-wrap text-sm font-normal leading-5 text-red-600">
+                      <div className="whitespace-pre-wrap rounded-[12px] bg-red-50 px-3 py-2 text-[13px] font-normal leading-5 text-red-700 [overflow-wrap:anywhere] [word-break:break-word]">
                         {message.content}
                       </div>
                     ) : (
-                      <div className="chat-markdown mb-0 text-sm font-normal leading-5 text-[#535862]">
+                      <div className="chat-markdown mb-0 text-[13px] font-normal leading-6 text-[#3F4652]">
                         <MarkdownRenderer
                           content={message.content}
-                          className="chat-markdown mb-0 text-sm font-normal leading-5 text-[#535862]"
+                          className="chat-markdown mb-0 text-[13px] font-normal leading-6 text-[#3F4652]"
                         />
                         {isSending &&
                           message.id === activeAssistantMessageId && (
@@ -1300,7 +2303,7 @@ const Chat = ({
                       </div>
                     )
                   ) : (
-                    <div className="text-sm font-normal leading-5 text-[#535862]">
+                    <div className="text-[13px] font-normal leading-6 text-[#667085]">
                       {isSending && message.role === "assistant"
                         ? message.activity?.[message.activity.length - 1]
                             ?.label || "Working on it..."
@@ -1308,11 +2311,11 @@ const Chat = ({
                     </div>
                   )}
                   {message.activity && message.activity.length > 0 && (
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <button
                         type="button"
                         onClick={() => toggleActivityExpanded(message.id)}
-                        className="inline-flex items-center gap-1 text-left text-xs font-medium text-[#667085] hover:text-[#475467]"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#F8FAFC] px-2.5 py-1 text-left text-[11px] font-medium text-[#667085] transition-colors hover:bg-[#F1F5F9] hover:text-[#475467]"
                       >
                         {expandedActivityByMessage[message.id] ? (
                           <ChevronDown className="h-3 w-3" />
@@ -1328,26 +2331,16 @@ const Chat = ({
                       </button>
 
                       {expandedActivityByMessage[message.id] && (
-                        <div className="mt-2 space-y-1.5 pl-4">
+                        <div className="mt-2 space-y-1 rounded-[12px] bg-[#F8FAFC] px-3 py-2">
                           {message.activity.map((activityItem) => (
                             <div
                               key={activityItem.id}
-                              className="text-xs leading-4 text-[#667085]"
+                              className="flex items-start gap-2 text-[12px] leading-5 text-[#667085]"
                             >
-                              {activityItem.tool && (
-                                <span className="mr-1 text-[#475467]">
-                                  {getToolLabel(activityItem.tool)}:
-                                </span>
-                              )}
+                              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#CBD5E1]" />
                               <span>{activityItem.label}</span>
                             </div>
                           ))}
-                          {message.toolCalls &&
-                            message.toolCalls.length > 0 && (
-                              <div className="pt-0.5 text-[11px] text-[#98A2B3]">
-                                Tools called: {message.toolCalls.join(", ")}
-                              </div>
-                            )}
                         </div>
                       )}
                     </div>
@@ -1363,25 +2356,166 @@ const Chat = ({
 
       <form
         onSubmit={handleSubmit}
-        className="mx-4 mb-4 rounded-[8px] border border-[#F4F4F4] bg-white px-2.5 py-3"
+        onDragEnterCapture={handleDragOver}
+        onDragOverCapture={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDropCapture={handleDrop}
+        className={cn(
+          "mx-4 mb-4 overflow-x-hidden rounded-[8px] border bg-white px-2.5 py-3 transition-colors",
+          isDraggingAttachment
+            ? "border-[#7A5AF8] bg-[#F7F5FF]"
+            : "border-[#F4F4F4]"
+        )}
         style={{
           boxShadow: "0 4px 14px 0 rgba(0, 0, 0, 0.04)",
         }}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.txt,.doc,.docx,.docm,.odt,.rtf,.ppt,.pptx,.pptm,.odp,.xls,.xlsx,.xlsm,.ods,.csv,.tsv,.tif,.tiff"
+          className="hidden"
+          onChange={handleAttachmentInputChange}
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+        {(chatSlideReference || chatTargetReference) && (
+          <div className="mb-2 flex max-w-full items-center gap-1.5">
+            {chatSlideReference && (
+              <span className="inline-flex shrink-0 items-center rounded-[8px] border border-[#EDE7FF] bg-[#F6F3FF] px-2 py-1 text-xs font-medium text-[#5B21B6]">
+                <span>{chatSlideReference}</span>
+                {onClearChatSlideReference && (
+                  <button
+                    type="button"
+                    onClick={onClearChatSlideReference}
+                    className="ml-1 rounded-full p-0.5 text-[#7C3AED] transition-colors hover:bg-[#E9D5FF]"
+                    aria-label="Remove slide reference"
+                    title="Remove slide reference"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            )}
+            {chatTargetReference && (
+              <span className="inline-flex min-w-0 items-center rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-xs font-medium text-[#1D4ED8]">
+                <span className="truncate">{chatTargetReference}</span>
+                {onClearChatTargetReference && (
+                  <button
+                    type="button"
+                    onClick={onClearChatTargetReference}
+                    className="ml-1 rounded-full p-0.5 text-[#2563EB] transition-colors hover:bg-[#DBEAFE]"
+                    aria-label="Remove selected element reference"
+                    title="Remove selected element reference"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+        {(pastedImages.length > 0 ||
+          attachedDocuments.length > 0 ||
+          chatLinks.length > 0 ||
+          isUploadingPastedImage) && (
+          <div className="mb-2 flex max-w-full flex-wrap items-center gap-1.5">
+            {chatLinks.map((link) => (
+              <span
+                key={link.id}
+                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-xs font-medium text-[#1D4ED8]"
+              >
+                <LinkIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{link.url}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setChatLinks((previous) =>
+                      previous.filter((item) => item.id !== link.id)
+                    )
+                  }
+                  className="rounded-full p-0.5 text-[#2563EB] transition-colors hover:bg-[#DBEAFE]"
+                  aria-label="Remove link"
+                  title="Remove link"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {pastedImages.map((image) => (
+              <span
+                key={image.id}
+                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
+              >
+                <ImageIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{image.name}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPastedImages((previous) =>
+                      previous.filter((item) => item.id !== image.id)
+                    )
+                  }
+                  className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
+                  aria-label="Remove pasted image"
+                  title="Remove pasted image"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {attachedDocuments.map((document) => (
+              <span
+                key={document.id}
+                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
+              >
+                <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{document.name}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAttachedDocuments((previous) =>
+                      previous.filter((item) => item.id !== document.id)
+                    )
+                  }
+                  className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
+                  aria-label="Remove attached document"
+                  title="Remove attached document"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {isUploadingPastedImage && (
+              <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#667085]">
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                Processing attachment
+              </span>
+            )}
+          </div>
+        )}
         <textarea
           ref={inputRef}
           name="chat-input"
           id="chat-input"
-          className="min-h-[92px] w-full resize-none bg-transparent text-sm text-[#101828] placeholder:text-[#99A1AF] focus:outline-none focus:ring-0"
+          className="min-h-[92px] w-full resize-none overflow-x-hidden bg-transparent text-sm text-[#101828] placeholder:text-[#99A1AF] focus:outline-none focus:ring-0 [overflow-wrap:anywhere] [word-break:break-word]"
           rows={3}
+          wrap="soft"
           value={input}
           disabled={isSending || isHistoryLoading}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={handleInputChange}
+          onPaste={handlePaste}
+          onDragEnterCapture={handleDragOver}
+          onDragOverCapture={handleDragOver}
+          onDropCapture={handleDrop}
           onKeyDown={handleKeyDown}
           placeholder={
             isOutlineVariant
               ? "Regenerate this outline"
-              : "Improve your slides..."
+              : isTemplateV2Variant
+              ? "Change slide 2 title"
+              : "Improve slide design"
           }
           aria-invalid={Boolean(errorMessage)}
         />
@@ -1389,10 +2523,15 @@ const Chat = ({
           <div className="flex items-center gap-2 border border-[#EDEEEF] bg-white px-3 py-1 rounded-[64px]">
             <button
               type="button"
-              disabled
-              className="inline-flex h-[28px] items-center rounded-[64px] disabled:opacity-50"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!isTemplateV2Variant || isSending || isHistoryLoading}
+              className="inline-flex h-[28px] items-center rounded-[64px] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Attach files"
-              title="Attachments are not supported yet"
+              title={
+                isTemplateV2Variant
+                  ? "Attach files"
+                  : "Attachments are available in Template V2 chat"
+              }
             >
               <Plus className="h-3 w-3 text-black" />
             </button>
@@ -1502,7 +2641,14 @@ const Chat = ({
             ) : (
               <button
                 type="submit"
-                disabled={!input.trim() || isHistoryLoading}
+                disabled={
+                  (!input.trim() &&
+                    pastedImages.length === 0 &&
+                    attachedDocuments.length === 0 &&
+                    chatLinks.length === 0) ||
+                  isHistoryLoading ||
+                  isUploadingPastedImage
+                }
                 className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-sm font-medium text-[#191919] disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   background:

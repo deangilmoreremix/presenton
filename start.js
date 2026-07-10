@@ -2,7 +2,7 @@
 
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { randomUUID } from "crypto";
 import { request } from "http";
 import {
@@ -33,7 +33,10 @@ const __dirname = dirname(__filename);
 const fastapiDir = join(__dirname, "servers/fastapi");
 const nextjsDir = join(__dirname, "servers/nextjs");
 const nextjsStandaloneServer = join(nextjsDir, "server.js");
+const nextjsCli = join(nextjsDir, "node_modules/next/dist/bin/next");
 const exportSyncScript = join(__dirname, "scripts/sync-presentation-export.cjs");
+const nginxSourceConfigPath = join(__dirname, "nginx.conf");
+const nginxRuntimeConfigPath = "/etc/nginx/nginx.conf";
 
 const args = process.argv.slice(2);
 const hasDevArg = args.includes("--dev") || args.includes("-d");
@@ -58,7 +61,9 @@ const appDataStaticDirectories = [
   "images",
   "uploads",
   "fonts",
+  "templates",
   "pptx-to-html",
+  "pptx-to-json",
 ].map((name) => join(appDataDirectory, name));
 
 const ensureReadableDirectory = (dirPath) => {
@@ -205,14 +210,37 @@ const runNodeScript = (scriptPath, scriptArgs) => {
   });
 };
 
-const shouldSuppressStartupLogLine = (line) =>
-  [
-    /\bUvicorn running on\b/i,
-    /https?:\/\/(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(3000|8000)\b/i,
-    /started server on .*:(3000|8000)\b/i,
-  ].some((pattern) => pattern.test(line));
+const canLoadSharp = () => {
+  const result = spawnSync(process.execPath, ["-e", "require('sharp')"], {
+    cwd: __dirname,
+    env: process.env,
+    encoding: "utf8",
+  });
+  return result.status === 0;
+};
 
-const forwardProcessOutput = (stream, target, { suppressStartupUrls = false } = {}) => {
+const ensurePresentationExportNodeDependencies = async () => {
+  if (canLoadSharp()) {
+    return;
+  }
+
+  console.warn(
+    "Sharp native dependency is missing for this container platform. Repairing root node_modules..."
+  );
+  await runCommand(
+    "npm",
+    ["install", "--include=optional", "--omit=dev", "--no-fund", "--no-audit"],
+    { cwd: __dirname }
+  );
+
+  if (!canLoadSharp()) {
+    throw new Error(
+      "Sharp still cannot be loaded after npm install. Recreate Docker volumes with `docker compose down -v` and rebuild the development service."
+    );
+  }
+};
+
+const forwardProcessOutput = (stream, target, onChunk) => {
   if (!stream) {
     return;
   }
@@ -440,6 +468,19 @@ const ensurePresentationExportRuntime = async () => {
   }
 };
 
+const syncNginxConfigForDev = () => {
+  if (!isDev || !existsSync(nginxSourceConfigPath)) {
+    return;
+  }
+
+  try {
+    copyFileSync(nginxSourceConfigPath, nginxRuntimeConfigPath);
+    console.log("Synced nginx config from development bind mount");
+  } catch (error) {
+    console.warn("Failed to sync development nginx config:", error);
+  }
+};
+
 process.env.USER_CONFIG_PATH = userConfigPath;
 // Let Next.js middleware reach FastAPI over the loopback interface inside the
 // container without having to bounce through nginx (the host-facing port is
@@ -459,27 +500,113 @@ const setupUserConfigFromEnv = () => {
 };
 
 const startServers = async (nginxReadyPromise) => {
-  const fastApiProcess = spawn(
-    "python",
-    [
-      "server.py",
-      "--port",
-      fastapiPort.toString(),
-      "--reload",
-      isDev ? "true" : "false",
-      "--log-level",
-      isDev ? "info" : "warning",
-    ],
-    {
-      cwd: fastapiDir,
-      stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
-    }
-  );
+  const managedProcesses = new Set();
+  let isShuttingDown = false;
 
-  fastApiProcess.on("error", (err) => {
-    console.error("FastAPI process failed to start:", err);
-  });
+  const shutdown = (exitCode) => {
+    if (isShuttingDown) {
+      return;
+    }
+    isShuttingDown = true;
+
+    for (const childProcess of managedProcesses) {
+      if (!childProcess.killed) {
+        childProcess.kill();
+      }
+    }
+
+    process.exit(exitCode);
+  };
+
+  process.once("SIGINT", () => shutdown(0));
+  process.once("SIGTERM", () => shutdown(0));
+
+  const spawnFastApiProcess = (stdio = ["ignore", "pipe", "pipe"]) =>
+    spawn(
+      "python",
+      [
+        "server.py",
+        "--port",
+        fastapiPort.toString(),
+        "--reload",
+        isDev ? "true" : "false",
+      ],
+      {
+        cwd: fastapiDir,
+        stdio,
+        env: process.env,
+      }
+    );
+
+  const spawnNextjsProcess = (stdio = ["ignore", "pipe", "pipe"]) => {
+    const useStandaloneNextjs = !isDev && existsSync(nextjsStandaloneServer);
+    return spawn(
+      process.execPath,
+      useStandaloneNextjs
+        ? [nextjsStandaloneServer]
+        : [
+            nextjsCli,
+            isDev ? "dev" : "start",
+            ...(isDev ? ["--webpack"] : []),
+            "-H",
+            "127.0.0.1",
+            "-p",
+            nextjsPort.toString(),
+          ],
+      {
+        cwd: nextjsDir,
+        stdio,
+        env:
+          useStandaloneNextjs
+            ? {
+                ...process.env,
+                HOSTNAME: "127.0.0.1",
+                PORT: nextjsPort.toString(),
+              }
+            : process.env,
+      }
+    );
+  };
+
+  const watchManagedProcess = (name, childProcess, restart) => {
+    managedProcesses.add(childProcess);
+
+    childProcess.on("error", (err) => {
+      console.error(`${name} process failed to start:`, err);
+    });
+
+    childProcess.on("exit", (code, signal) => {
+      managedProcesses.delete(childProcess);
+      if (isShuttingDown) {
+        return;
+      }
+
+      const exitCode = typeof code === "number" ? code : signal ? 1 : 0;
+      if (isDev && exitCode === 0 && restart) {
+        console.warn(`${name} exited cleanly; restarting it for development.`);
+        setTimeout(() => {
+          if (!isShuttingDown) {
+            restart();
+          }
+        }, 1000);
+        return;
+      }
+
+      console.error(
+        `${name} process exited. Exit code: ${exitCode}${
+          signal ? `, signal: ${signal}` : ""
+        }`
+      );
+      shutdown(exitCode);
+    });
+  };
+
+  let fastApiProcess = spawnFastApiProcess();
+  const restartFastApi = () => {
+    fastApiProcess = spawnFastApiProcess(["ignore", "inherit", "inherit"]);
+    watchManagedProcess("FastAPI", fastApiProcess, restartFastApi);
+  };
+  watchManagedProcess("FastAPI", fastApiProcess, restartFastApi);
 
   const appmcpProcess = spawn(
     "python",
@@ -495,38 +622,12 @@ const startServers = async (nginxReadyPromise) => {
     console.error("App MCP process failed to start:", err);
   });
 
-  const useStandaloneNextjs = !isDev && existsSync(nextjsStandaloneServer);
-
-  const nextjsProcess = spawn(
-    useStandaloneNextjs ? process.execPath : "npm",
-    useStandaloneNextjs
-      ? [nextjsStandaloneServer]
-      : [
-          "run",
-          isDev ? "dev" : "start",
-          "--",
-          "-H",
-          "127.0.0.1",
-          "-p",
-          nextjsPort.toString(),
-        ],
-    {
-      cwd: nextjsDir,
-      stdio: ["ignore", "pipe", "pipe"],
-      env:
-        useStandaloneNextjs
-          ? {
-              ...process.env,
-              HOSTNAME: "127.0.0.1",
-              PORT: nextjsPort.toString(),
-            }
-          : process.env,
-    }
-  );
-
-  nextjsProcess.on("error", (err) => {
-    console.error("Next.js process failed to start:", err);
-  });
+  let nextjsProcess = spawnNextjsProcess();
+  const restartNextjs = () => {
+    nextjsProcess = spawnNextjsProcess(["ignore", "inherit", "inherit"]);
+    watchManagedProcess("Next.js", nextjsProcess, restartNextjs);
+  };
+  watchManagedProcess("Next.js", nextjsProcess, restartNextjs);
 
   const nextjsReadyPromise = waitForProcessOutputLine("Next.js", nextjsProcess, [
     /Ready in\s+\d+/i,
@@ -560,11 +661,6 @@ const startServers = async (nginxReadyPromise) => {
   const shouldStartOllamaRuntime = shouldStartOllama();
   const ollamaInstalled = isOllamaInstalled();
 
-  const exitPromises = [
-    new Promise((resolve) => fastApiProcess.on("exit", resolve)),
-    new Promise((resolve) => nextjsProcess.on("exit", resolve)),
-  ];
-
   if (shouldStartOllamaRuntime && ollamaInstalled) {
     const ollamaProcess = spawn("ollama", ["serve"], {
       cwd: "/",
@@ -574,7 +670,7 @@ const startServers = async (nginxReadyPromise) => {
     ollamaProcess.on("error", (err) => {
       console.error("Ollama process failed to start:", err);
     });
-    exitPromises.push(new Promise((resolve) => ollamaProcess.on("exit", resolve)));
+    watchManagedProcess("Ollama", ollamaProcess);
   } else if (shouldStartOllamaRuntime) {
     console.log(
       "Ollama requested, but the binary is not installed. Set START_OLLAMA=true to install it at startup, or set OLLAMA_URL to a remote daemon."
@@ -596,11 +692,7 @@ const startServers = async (nginxReadyPromise) => {
     console.warn(`Skipping startup banner: ${err.message}`);
   }
 
-  // Keep the Node process alive until one of the servers exits
-  const exitCode = await Promise.race(exitPromises);
-
-  console.log(`One of the processes exited. Exit code: ${exitCode}`);
-  process.exit(exitCode);
+  await new Promise(() => {});
 };
 
 // Start nginx service (reverse proxy: see nginx.conf listen + upstream ports)
@@ -634,11 +726,14 @@ const main = async () => {
 
   if (isDev) {
     await setupNodeModules();
+    await ensurePresentationExportNodeDependencies();
   }
 
   if (canChangeKeys) {
     setupUserConfigFromEnv();
   }
+
+  syncNginxConfigForDev();
 
   const nginxReadyPromise = startNginx();
   startServers(nginxReadyPromise);

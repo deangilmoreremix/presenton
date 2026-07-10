@@ -2,6 +2,10 @@ import { getHeader, getHeaderForFormData } from "./header";
 import { IconSearch, ImageGenerate, ImageSearch, PreviousGeneratedImagesResponse } from "./params";
 import { ApiResponseHandler } from "./api-error-handler";
 import { getApiUrl, resolveBackendAssetUrl } from "@/utils/api";
+import {
+  limitOutlines,
+  MAX_NUMBER_OF_SLIDES,
+} from "@/utils/presentationLimits";
 
 export class PresentationGenerationApi {
   static async uploadDoc(documents: File[]) {
@@ -46,16 +50,17 @@ export class PresentationGenerationApi {
           cache: "no-cache",
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to decompose documents");
     } catch (error) {
       console.error("Error in Decompose Files", error);
       throw error;
     }
   }
- 
-   static async createPresentation({
+
+  static async createPresentation({
     content,
+    version = "v1-standard",
     n_slides,
     file_paths,
     language,
@@ -65,9 +70,10 @@ export class PresentationGenerationApi {
     include_table_of_contents,
     include_title_slide,
     web_search,
-    
+
   }: {
     content: string;
+    version?: "v1-standard" | "v1-standard";
     n_slides: number | null;
     file_paths?: string[];
     language: string | null;
@@ -79,6 +85,10 @@ export class PresentationGenerationApi {
     web_search?: boolean;
   }) {
     try {
+      const limitedSlideCount =
+        typeof n_slides === "number"
+          ? Math.min(Math.max(n_slides, 1), MAX_NUMBER_OF_SLIDES)
+          : null;
       const response = await fetch(
         getApiUrl(`/api/v1/ppt/presentation/create`),
         {
@@ -86,7 +96,8 @@ export class PresentationGenerationApi {
           headers: getHeader(),
           body: JSON.stringify({
             content,
-            n_slides,
+            version,
+            n_slides: limitedSlideCount,
             file_paths,
             language,
             tone,
@@ -99,7 +110,7 @@ export class PresentationGenerationApi {
           cache: "no-cache",
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to create presentation");
     } catch (error) {
       console.error("error in presentation creation", error);
@@ -143,7 +154,7 @@ export class PresentationGenerationApi {
           cache: "no-cache",
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to update presentation content");
     } catch (error) {
       console.error("error in presentation content update", error);
@@ -153,16 +164,23 @@ export class PresentationGenerationApi {
 
   static async presentationPrepare(presentationData: any) {
     try {
+      const body =
+        Array.isArray(presentationData?.outlines)
+          ? {
+            ...presentationData,
+            outlines: limitOutlines(presentationData.outlines),
+          }
+          : presentationData;
       const response = await fetch(
         getApiUrl(`/api/v1/ppt/presentation/prepare`),
         {
           method: "POST",
           headers: getHeader(),
-          body: JSON.stringify(presentationData),
+          body: JSON.stringify(body),
           cache: "no-cache",
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to prepare presentation");
     } catch (error) {
       console.error("error in data generation", error);
@@ -198,7 +216,7 @@ export class PresentationGenerationApi {
         {
           method: "PUT",
           headers: getHeader(),
-          body: JSON.stringify({ slides: outlines }),
+          body: JSON.stringify({ slides: limitOutlines(outlines) }),
           cache: "no-cache",
         }
       );
@@ -209,10 +227,10 @@ export class PresentationGenerationApi {
       throw error;
     }
   }
-  
+
   // IMAGE AND ICON SEARCH
-  
-  
+
+
   static async generateImage(imageGenerate: ImageGenerate) {
     try {
       const response = await fetch(
@@ -223,7 +241,7 @@ export class PresentationGenerationApi {
           cache: "no-cache",
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to generate image");
     } catch (error) {
       console.error("error in image generation", error);
@@ -240,14 +258,14 @@ export class PresentationGenerationApi {
           headers: getHeader(),
         }
       );
-      
+
       return await ApiResponseHandler.handleResponse(response, "Failed to get previous generated images");
     } catch (error) {
       console.error("error in getting previous generated images", error);
       throw error;
     }
   }
-  
+
   static async searchIcons(iconSearch: IconSearch) {
     try {
       const params = new URLSearchParams({
@@ -265,12 +283,12 @@ export class PresentationGenerationApi {
           cache: "no-cache",
         }
       );
-      
+
       const icons = await ApiResponseHandler.handleResponse(response, "Failed to search icons");
       return Array.isArray(icons)
         ? icons.map((icon) =>
-            typeof icon === "string" ? resolveBackendAssetUrl(icon) : icon
-          )
+          typeof icon === "string" ? resolveBackendAssetUrl(icon) : icon
+        )
         : icons;
     } catch (error) {
       console.error("error in icon search", error);

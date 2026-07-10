@@ -15,7 +15,6 @@ import { useOutlineStreaming } from "../hooks/useOutlineStreaming";
 import { useOutlineManagement } from "../hooks/useOutlineManagement";
 import { usePresentationGeneration } from "../hooks/usePresentationGeneration";
 import TemplateSelection from "./TemplateSelection";
-import { TemplateLayoutsWithSettings } from "@/app/presentation-templates/utils";
 import { Separator } from "@/components/ui/separator";
 import OutlinePromptBar from "./OutlinePromptBar";
 import Chat from "../../presentation/components/Chat";
@@ -25,6 +24,13 @@ import { setPptGenUploadState } from "@/store/slices/presentationGenUpload";
 import { LanguageType, PresentationConfig, ToneType, VerbosityType } from "../../upload/type";
 import { PresentationGenerationApi } from "../../services/api/presentation-generation";
 import { toast } from "sonner";
+import {
+  clampSlideCountValue,
+  limitOutlines,
+  parseLimitedSlideCount,
+} from "@/utils/presentationLimits";
+import { sanitizeAnalyticsError } from "@/utils/analytics";
+import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
 
 const DEFAULT_OUTLINE_CONFIG: PresentationConfig = {
   slides: null,
@@ -37,6 +43,13 @@ const DEFAULT_OUTLINE_CONFIG: PresentationConfig = {
   includeTitleSlide: false,
   webSearch: false,
 };
+
+const normalizeOutlineConfig = (
+  config: PresentationConfig
+): PresentationConfig => ({
+  ...config,
+  slides: config.slides ? clampSlideCountValue(config.slides) || null : null,
+});
 
 const getDocumentPaths = (files: unknown): string[] => {
   if (!Array.isArray(files)) {
@@ -59,7 +72,7 @@ const getOutlinesFromResponse = (outline: any): { content: string }[] => {
     return [];
   }
 
-  return slides.map((slide) => {
+  return limitOutlines(slides.map((slide) => {
     const content = slide?.content;
     if (typeof content === "string") {
       return { content };
@@ -68,7 +81,7 @@ const getOutlinesFromResponse = (outline: any): { content: string }[] => {
       return { content: "" };
     }
     return { content: String(content) };
-  });
+  }));
 };
 
 const OutlinePage: React.FC = () => {
@@ -81,9 +94,9 @@ const OutlinePage: React.FC = () => {
   );
 
   const [activeTab, setActiveTab] = useState<string>(TABS.LAYOUTS);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateLayoutsWithSettings | string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [draftConfig, setDraftConfig] = useState<PresentationConfig>(
-    savedConfig ?? DEFAULT_OUTLINE_CONFIG
+    savedConfig ? normalizeOutlineConfig(savedConfig) : DEFAULT_OUTLINE_CONFIG
   );
   const [isRegeneratingOutline, setIsRegeneratingOutline] = useState(false);
   const [hasOutlineStreamFinished, setHasOutlineStreamFinished] =
@@ -98,14 +111,14 @@ const OutlinePage: React.FC = () => {
   const { loadingState, handleSubmit } = usePresentationGeneration(
     presentation_id,
     outlines,
-    selectedTemplate,
+    selectedTemplateId,
     setActiveTab
   );
 
   const documentPaths = useMemo(() => getDocumentPaths(files), [files]);
   const outlineControlsBusy =
     isRegeneratingOutline || streamState.isLoading || streamState.isStreaming;
-  const hasSelectedTemplate = selectedTemplate !== null;
+  const hasSelectedTemplate = selectedTemplateId !== null;
   const isOutlineReady =
     hasSelectedTemplate && hasOutlineStreamFinished && !outlineControlsBusy;
   const isOutlineAssistantVisible =
@@ -119,7 +132,7 @@ const OutlinePage: React.FC = () => {
 
   useEffect(() => {
     if (savedConfig) {
-      setDraftConfig(savedConfig);
+      setDraftConfig(normalizeOutlineConfig(savedConfig));
     }
   }, [savedConfig]);
 
@@ -158,15 +171,19 @@ const OutlinePage: React.FC = () => {
   };
 
   const handleConfigChange = (key: keyof PresentationConfig, value: unknown) => {
+    const nextValue =
+      key === "slides" && typeof value === "string"
+        ? clampSlideCountValue(value)
+        : value;
     setDraftConfig((previous) => ({
       ...previous,
-      [key]: value,
+      [key]: nextValue,
     }));
   };
 
-  const handleTemplateSelect = useCallback(
-    (template: TemplateLayoutsWithSettings | string) => {
-      setSelectedTemplate(template);
+  const handleTemplateSelectId = useCallback(
+    (templateId: string) => {
+      setSelectedTemplateId(templateId);
       setActiveTab(TABS.OUTLINE);
     },
     []
@@ -203,10 +220,23 @@ const OutlinePage: React.FC = () => {
 
     setIsRegeneratingOutline(true);
     setHasOutlineStreamFinished(false);
+    trackEvent(MixpanelEvent.TemplateV2_Outline_Regeneration_Started, {
+      presentation_id,
+      template_id: selectedTemplateId,
+      prompt_present: draftConfig.prompt.trim().length > 0,
+      document_count: documentPaths.length,
+      slide_count: parseLimitedSlideCount(draftConfig.slides),
+      language: draftConfig.language,
+      tone: draftConfig.tone,
+      verbosity: draftConfig.verbosity,
+      web_search: !!draftConfig.webSearch,
+      include_title_slide: !!draftConfig.includeTitleSlide,
+      include_table_of_contents: !!draftConfig.includeTableOfContents,
+    });
     try {
       const createResponse = await PresentationGenerationApi.createPresentation({
         content: draftConfig.prompt ?? "",
-        n_slides: draftConfig.slides ? parseInt(draftConfig.slides, 10) : null,
+        n_slides: parseLimitedSlideCount(draftConfig.slides),
         file_paths: documentPaths,
         language: draftConfig.language ?? "",
         tone: draftConfig.tone,
@@ -220,9 +250,22 @@ const OutlinePage: React.FC = () => {
       dispatch(setPptGenUploadState({ config: draftConfig, files }));
       dispatch(clearOutlines());
       dispatch(setPresentationId(createResponse.id));
+      trackEvent(MixpanelEvent.TemplateV2_Outline_Regeneration_Completed, {
+        old_presentation_id: presentation_id,
+        new_presentation_id: createResponse.id,
+        template_id: selectedTemplateId,
+      });
       setActiveTab(TABS.OUTLINE);
     } catch (error: any) {
       console.error("Error regenerating outline", error);
+      trackEvent(MixpanelEvent.TemplateV2_Outline_Regeneration_Failed, {
+        presentation_id,
+        template_id: selectedTemplateId,
+        error_message: sanitizeAnalyticsError(
+          error,
+          "Failed to regenerate outline"
+        ),
+      });
       toast.error("Outline Error", {
         description: error.message || "Failed to regenerate outline.",
       });
@@ -238,6 +281,8 @@ const OutlinePage: React.FC = () => {
     hasSelectedTemplate,
     isOutlineReady,
     outlineControlsBusy,
+    presentation_id,
+    selectedTemplateId,
   ]);
 
   const handleOutlineChanged = useCallback(async () => {
@@ -332,8 +377,9 @@ const OutlinePage: React.FC = () => {
 
                 <TabsContent value={TABS.LAYOUTS} className="mt-0">
                   <TemplateSelection
-                    selectedTemplate={selectedTemplate}
-                    onSelectTemplate={handleTemplateSelect}
+                    presentationId={presentation_id}
+                    selectedTemplateId={selectedTemplateId}
+                    onSelectTemplateId={handleTemplateSelectId}
                   />
                 </TabsContent>
               </div>
@@ -363,7 +409,7 @@ const OutlinePage: React.FC = () => {
             <GenerateButton
               loadingState={loadingState}
               streamState={streamState}
-              selectedTemplate={selectedTemplate}
+              selectedTemplateId={selectedTemplateId}
               onSubmit={handleSubmit}
             />
           </div>

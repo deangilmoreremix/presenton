@@ -48,8 +48,9 @@ const undoRedoSlice = createSlice({
         return;
       }
 
-      // Deep copy the slides to avoid reference issues
-      const newSlides = deepCopy(action.payload.slides);
+      // Redux presentation snapshots are immutable. Preserve their structurally
+      // shared references instead of cloning/stringifying the complete deck.
+      const newSlides = action.payload.slides;
 
       // Only add to history if the slides have actually changed
       if (!state.present) {
@@ -58,11 +59,6 @@ const undoRedoSlice = createSlice({
           timestamp: Date.now(),
           actionType: action.payload.actionType
         };
-        return;
-      }
-
-      // Skip if slides are identical
-      if (JSON.stringify(state.present.slides) === JSON.stringify(newSlides)) {
         return;
       }
 
@@ -139,4 +135,4 @@ const undoRedoSlice = createSlice({
 });
 
 export const { addToHistory, undo, redo, finishUndoRedo, clearHistory } = undoRedoSlice.actions;
-export default undoRedoSlice.reducer; 
+export default undoRedoSlice.reducer;

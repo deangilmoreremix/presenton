@@ -1,16 +1,28 @@
+"use client";
+
 import { Plus, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation';
-import React from 'react'
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 
 const CreateCustomTemplate = () => {
     const router = useRouter();
+
+    const handleOpenTemplateBuilder = () => {
+        trackEvent(MixpanelEvent.Templates_Build_Template_Clicked);
+        router.push('/custom-template');
+    };
+
     return (
         <div
-            onClick={() => {
-                trackEvent(MixpanelEvent.Templates_Build_Template_Clicked);
-                router.push('/custom-template')
+            onClick={handleOpenTemplateBuilder}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleOpenTemplateBuilder();
+                }
             }}
+            role="button"
+            tabIndex={0}
             className='w-full rounded-[22px] border border-[#EDEEEF] cursor-pointer font-syne'>
             <div className='relative h-[215px] flex justify-center items-center '>
                 <img src="/card_bg.svg" alt="" className="absolute top-0 z-[1] left-0 w-full h-full object-cover" />

@@ -26,6 +26,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { notify } from "@/components/ui/sonner";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { sanitizeAnalyticsError } from "@/utils/analytics";
 import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
 import ToolTip from "@/components/ToolTip";
 import {
@@ -42,14 +43,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ThemeSelector from "./ThemeSelector";
-import { DEFAULT_THEMES } from "../../(dashboard)/theme/components/ThemePanel/constants";
-import ThemeApi from "../../services/api/theme";
-import { Theme } from "../../services/api/types";
 import MarkdownRenderer from "@/components/MarkDownRender";
 import { cn } from "@/lib/utils";
 
 const MAX_EXPORT_TITLE_LENGTH = 40;
+
+function hasTemplateV2Slides(slides: unknown): boolean {
+  return (
+    Array.isArray(slides) &&
+    slides.some(
+      (slide) =>
+        slide &&
+        typeof slide === "object" &&
+        typeof (slide as any).layout_group === "string" &&
+        (slide as any).layout_group.startsWith("template-v2")
+    )
+  );
+}
+
+function hasTemplateV2Layouts(layout: unknown): boolean {
+  if (!layout || typeof layout !== "object") return false;
+  const layouts = (layout as any).layouts;
+  if (Array.isArray(layouts)) return true;
+  return Boolean(
+    layouts &&
+    typeof layouts === "object" &&
+    Array.isArray((layouts as any).layouts)
+  );
+}
 
 const buildSafeExportFileName = (
   rawTitle: string | null | undefined,
@@ -97,7 +118,6 @@ const PresentationHeader = ({
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
-  const [themes, setThemes] = useState<Theme[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isRegenerateConfirmOpen, setIsRegenerateConfirmOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
@@ -111,20 +131,9 @@ const PresentationHeader = ({
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
   );
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [customThemes] = await Promise.all([ThemeApi.getThemes()]);
-        setThemes([...customThemes, ...DEFAULT_THEMES]);
-      } catch (e: any) {
-        notify.error("Could not load themes", e?.message || "Failed to load themes.");
-      }
-    };
-    if (themes.length === 0) {
-      load();
-    }
-  }, []);
+  const isTemplateV2Presentation =
+    hasTemplateV2Slides(presentationData?.slides) ||
+    hasTemplateV2Layouts(presentationData?.layout);
 
   const { onUndo, onRedo, canUndo, canRedo } = usePresentationUndoRedo();
 
@@ -205,6 +214,10 @@ const PresentationHeader = ({
     if (isStreaming) return;
 
     let exportToastId: string | number | undefined;
+    const startedAt = Date.now();
+    const exportRuntime = window.electron?.exportPresentation
+      ? "electron"
+      : "browser_api";
     try {
       trackEvent(MixpanelEvent.Presentation_Export_Started, {
         pathname,
@@ -218,9 +231,9 @@ const PresentationHeader = ({
       );
       setIsExporting(true);
       // Save the presentation data before exporting
-      await PresentationGenerationApi.updatePresentationContent(
-        presentationData
-      );
+      // await PresentationGenerationApi.updatePresentationContent(
+      //   presentationData
+      // );
       const safePptxFileName = buildSafeExportFileName(
         presentationData?.title,
         "pptx"
@@ -254,8 +267,27 @@ const PresentationHeader = ({
         "Your PPTX file has been downloaded.",
         { id: exportToastId }
       );
+      trackEvent(MixpanelEvent.Presentation_Export_Completed, {
+        pathname,
+        presentation_id,
+        format: "pptx",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+      });
     } catch (error) {
       console.error("Export failed:", error);
+      trackEvent(MixpanelEvent.Presentation_Export_Failed, {
+        pathname,
+        presentation_id,
+        format: "pptx",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+        error_message: sanitizeAnalyticsError(error, "PPTX export failed"),
+      });
       notify.error(
         "Export failed",
         "We are having trouble exporting your presentation. Please try again.",
@@ -270,6 +302,10 @@ const PresentationHeader = ({
     if (isStreaming) return;
 
     let exportToastId: string | number | undefined;
+    const startedAt = Date.now();
+    const exportRuntime = window.electron?.exportPresentation
+      ? "electron"
+      : "browser_api";
     try {
       trackEvent(MixpanelEvent.Presentation_Export_Started, {
         pathname,
@@ -283,9 +319,9 @@ const PresentationHeader = ({
       );
       setIsExporting(true);
       // Save the presentation data before exporting
-      await PresentationGenerationApi.updatePresentationContent(
-        presentationData
-      );
+      // await PresentationGenerationApi.updatePresentationContent(
+      //   presentationData
+      // );
       const safePdfFileName = buildSafeExportFileName(
         presentationData?.title,
         "pdf"
@@ -315,8 +351,27 @@ const PresentationHeader = ({
         "Your PDF file has been downloaded.",
         { id: exportToastId }
       );
+      trackEvent(MixpanelEvent.Presentation_Export_Completed, {
+        pathname,
+        presentation_id,
+        format: "pdf",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+      });
     } catch (err) {
       console.error(err);
+      trackEvent(MixpanelEvent.Presentation_Export_Failed, {
+        pathname,
+        presentation_id,
+        format: "pdf",
+        slide_count: presentationData?.slides?.length || 0,
+        duration_ms: Date.now() - startedAt,
+        export_runtime: exportRuntime,
+        is_template_v2: isTemplateV2Presentation,
+        error_message: sanitizeAnalyticsError(err, "PDF export failed"),
+      });
       notify.error(
         "Export failed",
         "We are having trouble exporting your presentation. Please try again.",
@@ -360,9 +415,8 @@ const PresentationHeader = ({
             setOpen(false);
           }}
           variant="ghost"
-          className={`  rounded-none px-0 w-full text-xs flex justify-start text-black hover:bg-transparent ${
-            mobile ? "bg-white py-6 border-none rounded-lg" : ""
-          }`}
+          className={`  rounded-none px-0 w-full text-xs flex justify-start text-black hover:bg-transparent ${mobile ? "bg-white py-6 border-none rounded-lg" : ""
+            }`}
         >
           PDF
           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -373,9 +427,8 @@ const PresentationHeader = ({
             setOpen(false);
           }}
           variant="ghost"
-          className={`w-full flex px-0 justify-start text-xs text-black hover:bg-transparent  ${
-            mobile ? "bg-white py-6" : ""
-          }`}
+          className={`w-full flex px-0 justify-start text-xs text-black hover:bg-transparent  ${mobile ? "bg-white py-6" : ""
+            }`}
         >
           PPTX
           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -491,15 +544,6 @@ const PresentationHeader = ({
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             </div>
           )}
-          {presentationData &&
-            presentationData.slides?.[0]?.layout &&
-            !presentationData.slides[0].layout.includes("custom") && (
-              <ThemeSelector
-                current_theme={presentationData?.theme || {}}
-                themes={themes}
-              />
-            )}
-
           <div className="flex items-center gap-2 bg-[#F6F6F9] px-3.5 h-[38px] border border-[#EDECEC] rounded-[80px]">
             <ToolTip content="Regenerate Presentation">
               <button
@@ -538,9 +582,8 @@ const PresentationHeader = ({
             <ToolTip content="Present">
               <button
                 onClick={() => {
-                  const to = `?id=${presentation_id}&mode=present&slide=${
-                    currentSlide || 0
-                  }`;
+                  const to = `?id=${presentation_id}&mode=present&slide=${currentSlide || 0
+                    }`;
                   trackEvent(MixpanelEvent.Presentation_Mode_Entered, {
                     pathname,
                     presentation_id,

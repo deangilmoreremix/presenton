@@ -8,6 +8,7 @@ interface PresentationGridProps {
   isLoading?: boolean;
   error?: string | null;
   onPresentationDeleted?: (presentationId: string) => void;
+  onPresentationDuplicated?: (presentation: PresentationResponse) => void;
 }
 
 export const PresentationGrid = ({
@@ -15,6 +16,7 @@ export const PresentationGrid = ({
   isLoading = false,
   error = null,
   onPresentationDeleted,
+  onPresentationDuplicated,
 }: PresentationGridProps) => {
   const ShimmerCard = () => (
     <div className="flex min-h-[216px] flex-col overflow-hidden rounded-[12px] border border-[#EDEEEF] bg-[#F8FBFB] shadow-none animate-pulse">
@@ -71,12 +73,14 @@ export const PresentationGrid = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {presentations.map((presentation) => (
+
         <PresentationCard
           key={presentation.id}
           id={presentation.id}
           title={presentation.title}
           presentation={presentation}
           onDeleted={onPresentationDeleted}
+          onDuplicated={onPresentationDuplicated}
         />
       ))}
     </div>

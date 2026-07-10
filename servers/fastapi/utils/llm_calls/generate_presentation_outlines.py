@@ -14,6 +14,7 @@ from llmai.shared import (
 )
 
 from models.presentation_outline_model import PresentationOutlineModel
+from constants.presentation import MAX_NUMBER_OF_SLIDES, MAX_OUTLINE_CONTENT_WORDS
 from utils.get_dynamic_models import get_presentation_outline_model_with_n_slides
 from utils.llm_calls.generate_web_search_query import generate_web_search_query
 from utils.llm_client_error_handler import handle_llm_client_exceptions
@@ -100,6 +101,8 @@ def get_system_prompt(
         "Generate flow based on user **content** and use **context** just for reference.\n"
         "Presentation title should be plain text, not markdown. It should be a concise title for the presentation.\n"
         "Each slide content should contain the content for that slide.\n"
+        f"Never generate more than {MAX_NUMBER_OF_SLIDES} slide outlines, even if the user asks for more. "
+        f"Each slide outline must be {MAX_OUTLINE_CONTENT_WORDS} words or fewer.\n"
         f"{verbosity_instruction}\n"
         "Follow user instructions strictly and literally when they do not conflict with "
         "the authoritative generation settings.\n"
@@ -147,7 +150,7 @@ def _resolve_prompt_language(language: Optional[str]) -> str:
 
 def _resolve_prompt_n_slides(n_slides: Optional[int]) -> str:
     if n_slides is None:
-        return "auto-detect"
+        return f"auto-detect, maximum {MAX_NUMBER_OF_SLIDES}"
     return str(n_slides)
 
 
@@ -167,6 +170,8 @@ def get_user_prompt(
     return (
         "Generation Settings (authoritative):\n"
         f"Number of Slides: {display_slides}\n"
+        f"Maximum Slide Outlines: {MAX_NUMBER_OF_SLIDES}\n"
+        f"Maximum Words Per Outline: {MAX_OUTLINE_CONTENT_WORDS}\n"
         f"Language: {display_language}\n"
         f"Tone: {tone or ''}\n"
         f"Include Title Slide: {include_title_slide}\n"
@@ -323,12 +328,12 @@ async def generate_ppt_outline(
             )
         outline_schema = prepare_schema_for_validation(
             response_model.model_json_schema(),
-            strict=True,
+            strict=False,
         )
         response_format = JSONSchemaResponse(
             name="response",
             json_schema=outline_schema,
-            strict=True,
+            strict=False,
         )
         emitted_content = False
         async for event in stream_generate_events(

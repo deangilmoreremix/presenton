@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from migrations import migrate_database_on_startup
 from services.database import create_db_and_tables, dispose_engines
+from templates.default_templates import import_default_templates_on_startup
 from utils.get_env import get_app_data_directory_env, get_can_change_keys_env
 from utils.model_availability import (
     check_llm_and_image_provider_api_or_model_availability,
@@ -25,7 +26,25 @@ def _configure_application_logging() -> None:
     """Honor LOG_LEVEL (default INFO) so template/export diagnostics are visible."""
     raw = (os.getenv("LOG_LEVEL") or "INFO").strip().upper()
     level = getattr(logging, raw, logging.INFO)
-    logging.getLogger().setLevel(level)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+
+    if root_logger.handlers:
+        return
+
+    logger_cursor: logging.Logger | None = logging.getLogger("uvicorn.error")
+    visible_handlers: list[logging.Handler] = []
+    while logger_cursor is not None:
+        visible_handlers.extend(logger_cursor.handlers)
+        if not logger_cursor.propagate:
+            break
+        logger_cursor = logger_cursor.parent
+
+    for handler in visible_handlers:
+        root_logger.addHandler(handler)
+
+    if not root_logger.handlers:
+        logging.basicConfig(level=level)
 
 
 def _is_truthy(value: str | None) -> bool:
@@ -94,6 +113,7 @@ async def app_lifespan(_: FastAPI):
     os.makedirs(get_app_data_directory_env(), exist_ok=True)
     await migrate_database_on_startup()
     await create_db_and_tables()
+    await import_default_templates_on_startup()
     _bootstrap_auth_from_env()
     if get_can_change_keys_env() != "false":
         update_env_with_user_config()
