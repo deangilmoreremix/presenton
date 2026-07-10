@@ -696,6 +696,12 @@ function TemplateV2KonvaSlideComponent({
   );
 
   useEffect(() => {
+    if (isEditMode) return;
+    clearEditorUiState({ clearActiveSurface: true });
+    pendingImageUploadRef.current = null;
+  }, [clearEditorUiState, isEditMode]);
+
+  useEffect(() => {
     if (
       !isEditMode ||
       !hasDismissibleEditorUi ||
@@ -768,6 +774,7 @@ function TemplateV2KonvaSlideComponent({
 
   const commitUi = useCallback(
     (nextUi: RawUi, pushHistory = true) => {
+      if (!isEditMode) return;
       if (nextUi === currentUiRef.current) return;
       if (pushHistory) {
         undoStackRef.current.push(currentUiRef.current);
@@ -789,7 +796,7 @@ function TemplateV2KonvaSlideComponent({
         canRedo: redoStackRef.current.length > 0,
       });
     },
-    [dispatch, slideIndex, surfaceSlideIndex],
+    [dispatch, isEditMode, slideIndex, surfaceSlideIndex],
   );
 
   const undo = useCallback(() => {
@@ -2001,7 +2008,7 @@ function TemplateV2KonvaSlideComponent({
           onClose={clearTableCellEditing}
         />
       ) : null}
-      {inlineEdit && inlineEditBox ? (
+      {isEditMode && inlineEdit && inlineEditBox ? (
         <TemplateV2InlineEditor
           key={keyForSelection(inlineEdit.selection)}
           draft={inlineEdit.draft}

@@ -21,6 +21,7 @@ interface SlideContentProps {
   onTemplatePromptOverlayDismiss?: () => void;
   theme?: unknown;
   fonts?: unknown;
+  editingDisabled?: boolean;
   isStreaming?: boolean | null;
 }
 
@@ -36,8 +37,10 @@ const SlideContent = ({
   onTemplatePromptOverlayDismiss,
   theme,
   fonts,
+  editingDisabled = false,
   isStreaming = false,
 }: SlideContentProps) => {
+  const canEditSlide = !editingDisabled && isStreaming !== true;
   const slideLayout = typeof slide?.layout === "string" ? slide.layout : "";
 
   const slideLayoutGroup =
@@ -74,9 +77,8 @@ const SlideContent = ({
       <div
         data-layout={slide?.layout}
         data-group={slide?.layout_group}
-        className={`group w-full font-syne ${
-          isTemplateV2Slide ? "relative" : ""
-        }`}
+        className={`group w-full font-syne ${isTemplateV2Slide ? "relative" : ""
+          }`}
       >
         {isChatEditing && (
           <div
@@ -95,10 +97,12 @@ const SlideContent = ({
             </span>
           </div>
         )}
-        <div className="relative">
+        <div className="relative max-xl:mb-6">
           <SlideScale
             slide={slide}
             presentationId={presentationId}
+            isEditMode={canEditSlide}
+            isClickable={canEditSlide}
             theme={theme ?? null}
             fonts={fonts}
             renderIndex={index}
@@ -108,7 +112,7 @@ const SlideContent = ({
             onTemplatePromptOverlayDismiss={onTemplatePromptOverlayDismiss}
           />
         </div>
-        <div className="my-4 hidden w-full md:block">
+        <div className="my-4 hidden w-full xl:block">
           <SlideActionBar
             slide={slide}
             selectedSlide={index}
@@ -134,5 +138,6 @@ export default memo(
     previous.showTemplatePromptOverlay === next.showTemplatePromptOverlay &&
     previous.theme === next.theme &&
     previous.fonts === next.fonts &&
+    previous.editingDisabled === next.editingDisabled &&
     previous.isStreaming === next.isStreaming,
 );
