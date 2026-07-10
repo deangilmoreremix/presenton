@@ -665,6 +665,7 @@ const config = {
   },
   dmg: {
     sign: false,
+    size: "2300m",
   },
   appx: {
     identityName: "PresentonAI.Presenton",

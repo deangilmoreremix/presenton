@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { PresentationGenerationApi } from '../../services/api/presentation-generation';
@@ -21,7 +21,8 @@ export const useAutoSave = ({
     );
 
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const lastSavedDataRef = useRef<string>('');
+    const lastSavedDataRef = useRef<any>(null);
+    const isSavingRef = useRef(false);
     const [isSaving, setIsSaving] = useState<boolean>(false);
  
 
@@ -33,25 +34,32 @@ export const useAutoSave = ({
         }
 
         // Set new timeout
-        saveTimeoutRef.current = setTimeout(async () => {
-            if (!data || isSaving) return;
-
-            const currentDataString = JSON.stringify(data);
+        const saveWhenIdle = async () => {
+            if (!data) return;
+            if (isSavingRef.current) {
+                saveTimeoutRef.current = setTimeout(saveWhenIdle, debounceMs);
+                return;
+            }
 
             // Skip if data hasn't changed since last save
-            if (currentDataString === lastSavedDataRef.current) {
+            if (data === lastSavedDataRef.current) {
                 return;
             }
 
             try {
+                isSavingRef.current = true;
                 setIsSaving(true);
+                dispatch(addToHistory({
+                    slides: data.slides,
+                    actionType: "AUTO_SAVE"
+                }));
                 console.log('🔄 Auto-saving presentation data...');
 
                 // Call the API to update presentation content
                 await PresentationGenerationApi.updatePresentationContent(data);
 
                 // Update last saved data reference
-                lastSavedDataRef.current = currentDataString;
+                lastSavedDataRef.current = data;
 
                 console.log('✅ Auto-save successful');
 
@@ -59,19 +67,17 @@ export const useAutoSave = ({
                 console.error('❌ Auto-save failed:', error);
 
             } finally {
+                isSavingRef.current = false;
                 setIsSaving(false);
             }
-        }, debounceMs);
-    }, [debounceMs, isSaving]);
+        };
+        saveTimeoutRef.current = setTimeout(saveWhenIdle, debounceMs);
+    }, [debounceMs, dispatch]);
 
     // Effect to trigger auto-save when presentation data changes
     useEffect(() => {
         if (!enabled || !presentationData || isStreaming || isLoading || isLayoutLoading ) return;
         
-        dispatch(addToHistory({
-            slides: presentationData.slides,
-            actionType: "AUTO_SAVE"
-        }));
         // Trigger debounced save
         debouncedSave(presentationData);
        
@@ -86,4 +92,4 @@ export const useAutoSave = ({
     return {
         isSaving,
     };
-}; 
+};

@@ -1,11 +1,14 @@
 import asyncio
+import base64
 import json
 import logging
+import mimetypes
 import os
 import shutil
 import subprocess
 import tempfile
-from typing import Literal, Mapping
+from typing import Any, Literal, Mapping
+from urllib.parse import unquote, urlparse
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError, model_validator
@@ -25,6 +28,59 @@ EXPORT_DIRECTORY_MODE = 0o755
 EXPORT_FILE_MODE = 0o644
 
 
+def _localize_json_image_assets(
+    value: Any,
+    data_uri_cache: dict[str, str] | None = None,
+) -> Any:
+    """Return a copy with local image sources embedded for headless rendering."""
+    cache = data_uri_cache if data_uri_cache is not None else {}
+
+    if isinstance(value, list):
+        return [_localize_json_image_assets(item, cache) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    localized = {
+        key: _localize_json_image_assets(item, cache) for key, item in value.items()
+    }
+    if localized.get("type") != "image":
+        return localized
+
+    source = localized.get("data")
+    if not isinstance(source, str) or not source:
+        return localized
+
+    parsed = urlparse(source)
+    if parsed.scheme in ("http", "https"):
+        candidate = unquote(parsed.path)
+    elif not parsed.scheme and source.startswith(("/app_data/", "/static/")):
+        candidate = source
+    else:
+        return localized
+
+    if not candidate.startswith(("/app_data/", "/static/")):
+        return localized
+
+    resolved = resolve_app_path_to_filesystem(candidate)
+    if not resolved:
+        return localized
+
+    data_uri = cache.get(resolved)
+    if data_uri is None:
+        try:
+            with open(resolved, "rb") as asset_file:
+                asset_data = asset_file.read()
+        except OSError:
+            return localized
+        mime_type = mimetypes.guess_type(resolved)[0] or "application/octet-stream"
+        encoded = base64.b64encode(asset_data).decode("ascii")
+        data_uri = f"data:{mime_type};base64,{encoded}"
+        cache[resolved] = data_uri
+
+    localized["data"] = data_uri
+    return localized
+
+
 def _windows_hidden_subprocess_kwargs() -> dict[str, object]:
     if os.name != "nt":
         return {}
@@ -40,6 +96,10 @@ class PptxToHtmlDocument(BaseModel):
     fonts_dir: str
 
 
+class PptxToJsonDocument(BaseModel):
+    layouts: list[dict[str, Any]]
+
+
 class PresentationExportTaskResult(BaseModel):
     path: str
 
@@ -50,6 +110,10 @@ class HtmlToImageTaskResult(BaseModel):
 
 class HtmlToImagesTaskResult(BaseModel):
     paths: list[str]
+
+
+class JsonToImageTaskResult(BaseModel):
+    path: str
 
 
 class ExtractSchemaSlide(BaseModel):
@@ -135,16 +199,29 @@ class ExportTaskService:
         extension = ".exe" if os.name == "nt" else ""
         platform_name = sys_platform()
         arch_name = sys_arch()
-        candidates = [
-            os.path.join(py_dir, f"convert-{platform_name}-{arch_name}{extension}"),
-            os.path.join(py_dir, f"convert-{platform_name}{extension}"),
-            os.path.join(py_dir, f"convert{extension}"),
-            os.path.join(py_dir, "convert"),
-        ]
+
+        candidates: list[str] = []
+        configured = (os.getenv("BUILT_PYTHON_MODULE_PATH") or "").strip()
+        if configured:
+            candidates.append(configured)
+
+        candidates.append(
+            os.path.join(py_dir, f"convert-{platform_name}-{arch_name}{extension}")
+        )
+        if platform_name == "linux" and arch_name == "x64":
+            # Older Linux export bundles used amd64 while Node reports x64.
+            candidates.append(os.path.join(py_dir, f"convert-linux-amd64{extension}"))
+        candidates.extend(
+            [
+                os.path.join(py_dir, f"convert-{platform_name}{extension}"),
+                os.path.join(py_dir, f"convert{extension}"),
+                os.path.join(py_dir, "convert"),
+            ]
+        )
         for candidate in candidates:
             if candidate and os.path.isfile(candidate):
                 return candidate
-        return candidates[1]
+        return candidates[0]
 
     def _build_node_env(self) -> Mapping[str, str]:
         env = os.environ.copy()
@@ -181,7 +258,7 @@ class ExportTaskService:
                 status_code=500,
                 detail="NEXT_PUBLIC_FAST_API must be set for PPTX-to-HTML export",
             )
-        env["ASSETS_BASE_URL"] = f"{fastapi_base.rstrip('/')}/app_data"
+        env["ASSETS_BASE_URL"] = "/app_data"
         env["BUILT_PYTHON_MODULE_PATH"] = self.converter_path
 
         return env
@@ -454,6 +531,38 @@ class ExportTaskService:
 
         return HtmlToImageTaskResult(path=output_path)
 
+    async def render_json_to_image(
+        self,
+        data: list[dict[str, Any]],
+        width: int,
+        height: int,
+        fonts: Mapping[str, str] | None = None,
+    ) -> JsonToImageTaskResult:
+        if width <= 0 or height <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="JSON-to-image dimensions must be positive",
+            )
+
+        task_payload: dict[str, Any] = {
+            "type": "json-to-image",
+            "data": _localize_json_image_assets(data),
+            "width": width,
+            "height": height,
+        }
+        if fonts:
+            task_payload["fonts"] = dict(fonts)
+
+        response_data = await self._run_task(
+            task_payload,
+            "JSON-to-image export task did not produce a response file",
+        )
+
+        output_path = self._resolve_output_path(response_data)
+        self._ensure_output_readable(output_path)
+
+        return JsonToImageTaskResult(path=output_path)
+
     async def render_htmls_to_images(
         self,
         htmls: list[str],
@@ -482,12 +591,19 @@ class ExportTaskService:
                 "HTML-to-images export task did not produce a response file",
             )
         except HTTPException as exc:
-            if "Invalid task type" not in str(exc.detail):
+            if "Invalid task type" in str(exc.detail):
+                LOGGER.warning(
+                    "[export_runtime] html-to-images is unavailable; "
+                    "falling back to one task per HTML document"
+                )
+            elif exc.status_code == 500:
+                LOGGER.warning(
+                    "[export_runtime] html-to-images failed; "
+                    "falling back to one task per HTML document. detail=%s",
+                    exc.detail,
+                )
+            else:
                 raise
-            LOGGER.warning(
-                "[export_runtime] html-to-images is unavailable; "
-                "falling back to one task per HTML document"
-            )
             results = [
                 await self.render_html_to_image(html, width, height) for html in htmls
             ]
@@ -507,6 +623,44 @@ class ExportTaskService:
             self._ensure_output_readable(output_path)
 
         return HtmlToImagesTaskResult(paths=output_paths)
+
+    async def convert_pptx_to_json(
+        self,
+        pptx_path: str,
+        *,
+        slide_concurrency: int | None = None,
+    ) -> PptxToJsonDocument:
+        if not os.path.isfile(pptx_path):
+            raise HTTPException(status_code=400, detail=f"PPTX not found: {pptx_path}")
+
+        task_payload: dict[str, Any] = {
+            "type": "pptx-to-json",
+            "pptx_path": pptx_path,
+        }
+        if slide_concurrency is not None:
+            task_payload["slide_concurrency"] = slide_concurrency
+
+        try:
+            response_data = await self._run_task(
+                task_payload,
+                "PPTX-to-JSON export task did not produce a response file",
+            )
+
+            output_path = self._resolve_output_path(response_data)
+            with open(output_path, "r", encoding="utf-8") as output_file:
+                output_data = json.load(output_file)
+
+            return PptxToJsonDocument(**output_data)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="PPTX-to-JSON export produced invalid JSON output",
+            ) from exc
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="PPTX-to-JSON export produced invalid output",
+            ) from exc
 
     async def extract_schema(self, url: str) -> ExtractSchemaDocument:
         LOGGER.info(

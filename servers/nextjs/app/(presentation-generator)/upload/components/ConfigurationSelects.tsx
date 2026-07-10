@@ -17,6 +17,10 @@ import {
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import AdvanceSettings from "./AdvanceSettings";
+import {
+  clampSlideCountValue,
+  MAX_NUMBER_OF_SLIDES,
+} from "@/utils/presentationLimits";
 
 // Types
 interface ConfigurationSelectsProps {
@@ -87,10 +91,7 @@ const SlideCountSelect: React.FC<{
   }, [open]);
 
   const sanitizeToPositiveInteger = (raw: string): string => {
-    const digitsOnly = raw.replace(/\D+/g, "");
-    if (!digitsOnly) return "";
-    const noLeadingZeros = digitsOnly.replace(/^0+/, "");
-    return noLeadingZeros;
+    return clampSlideCountValue(raw);
   };
 
   const applyCustomValue = () => {
@@ -150,6 +151,7 @@ const SlideCountSelect: React.FC<{
             <Input
               inputMode="numeric"
               pattern="[0-9]*"
+              max={MAX_NUMBER_OF_SLIDES}
               value={customInput}
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
@@ -230,15 +232,15 @@ const LanguageSelect: React.FC<{
         name="language"
         data-testid="language-select"
         aria-expanded={open}
-        className="w-[125px] flex items-center bg-white gap-2 overflow-hidden h-[34px]  font-syne font-semibold  text-[#191919]  rounded-full px-3.5 ring-1 ring-inset ring-slate-200 shadow-sm"
+        className="max-w-[160px] flex items-center bg-white gap-2 overflow-hidden h-[34px]  font-syne font-semibold  text-[#191919]  rounded-full px-3.5 ring-1 ring-inset ring-slate-200 shadow-sm"
       >
-        <Languages className="w-3.5 h-3.5" />
-        <span className="w-[40px] text-left">
-          <span className="text-xs font-medium truncate block">
-            {value || "Select language"}
-          </span>
+        <Languages className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="text-xs  font-medium truncate   flex-1">
+          {value || "Select language"}
         </span>
-        <ChevronUp className="ml-2 h-4 w-4 shrink-0" />
+        {/* <span className="w-[50%] text-left">
+        </span> */}
+        <ChevronUp className="ml-2 w-4 h-4 flex-shrink-0" />
       </button>
     </PopoverTrigger>
     <PopoverContent className="w-[300px] p-0" align="end">

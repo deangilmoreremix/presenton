@@ -15,7 +15,7 @@ from models.api_error_model import APIErrorModel
 from models.image_prompt import ImagePrompt
 from models.presentation_outline_model import PresentationOutlineModel, SlideOutlineModel
 from models.presentation_structure_model import PresentationStructureModel
-from models.sql.presentation import PresentationModel
+from models.sql.presentation import PresentationModel, PresentationVersion
 from models.sql.slide import SlideModel
 from models.sse_response import (
     SSECompleteResponse,
@@ -148,11 +148,15 @@ def test_slide_model_get_new_slide_branches():
         layout="l",
         index=2,
         content={"a": 1},
+        html_content="<div>slide</div>",
         speaker_note="n",
         properties={"x": True},
+        ui={"id": "layout-1", "components": []},
     )
     assert base.get_new_slide(pid, None).content == {"a": 1}
     assert base.get_new_slide(pid, {"b": 2}).content == {"b": 2}
+    assert base.get_new_slide(pid).ui == {"id": "layout-1", "components": []}
+    assert base.get_new_slide(pid).html_content == "<div>slide</div>"
 
 
 def test_sse_response_frame_format():
@@ -210,6 +214,7 @@ def test_presentation_model_get_new_and_typed_getters(theme):
     outline, layout_payload, structure_payload = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",
@@ -218,8 +223,16 @@ def test_presentation_model_get_new_and_typed_getters(theme):
         layout=layout_payload,
         structure=structure_payload,
         theme=theme,
+        fonts={"heading": "Inter"},
+        web_search=True,
     )
-    assert p.get_new_presentation().content == "c"
+    new_presentation = p.get_new_presentation()
+    assert p.version == PresentationVersion.V1_STANDARD
+    assert new_presentation.version == PresentationVersion.V1_STANDARD
+    assert new_presentation.content == "c"
+    assert new_presentation.theme == theme
+    assert new_presentation.fonts == {"heading": "Inter"}
+    assert new_presentation.web_search is True
     assert isinstance(p.get_presentation_outline(), PresentationOutlineModel)
     assert isinstance(p.get_layout(), PresentationLayoutModel)
     assert isinstance(p.get_structure(), PresentationStructureModel)
@@ -229,6 +242,7 @@ def test_presentation_model_set_layout_updates_stored_dict():
     _, layout_payload, _ = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",
@@ -249,6 +263,7 @@ def test_presentation_model_set_layout_updates_stored_dict():
 def test_presentation_model_missing_outline_and_structure_returns_none():
     ghost = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=0,
         language="English",
@@ -264,6 +279,7 @@ def test_presentation_model_set_structure_updates_slides():
     _, _, structure_payload = _outline_layout_structure_payloads()
     p = PresentationModel(
         id=uuid.uuid4(),
+        version=PresentationVersion.V1_STANDARD,
         content="c",
         n_slides=1,
         language="English",
@@ -385,9 +401,22 @@ def test_handle_llm_client_exceptions(monkeypatch):
 
     from google.genai.errors import APIError as GoogleAPIError
     from llmai.shared.errors import BaseError as LLMAIBaseError
+    from utils.provider_error_messages import INVALID_API_KEY_MESSAGE
 
     llmai_err = LLMAIBaseError(status_code=429, message="busy")
     assert handle_llm_client_exceptions(llmai_err).detail == "busy"
+
+    wrapped_auth_err = LLMAIBaseError(
+        status_code=401,
+        message=(
+            "Error code: 401 - {'error': {'message': "
+            "'Incorrect API key provided: sk-proj-secret', "
+            "'code': 'invalid_api_key'}}"
+        ),
+    )
+    wrapped_auth_response = handle_llm_client_exceptions(wrapped_auth_err)
+    assert wrapped_auth_response.detail == INVALID_API_KEY_MESSAGE
+    assert "sk-proj" not in wrapped_auth_response.detail
 
     assert "OpenAI API request failed" in handle_llm_client_exceptions(
         OpenAIAPIError(
@@ -400,6 +429,20 @@ def test_handle_llm_client_exceptions(monkeypatch):
     assert "Google API error" in handle_llm_client_exceptions(
         GoogleAPIError(503, {})
     ).detail
+
+    from enums.llm_provider import LLMProvider
+
+    monkeypatch.setitem(
+        handle_llm_client_exceptions.__globals__,
+        "get_llm_provider",
+        lambda: LLMProvider.CODEX,
+    )
+    codex_auth = handle_llm_client_exceptions(
+        HTTPException(status_code=401, detail="expired")
+    )
+    assert codex_auth.status_code == 401
+    assert "CHATGPT_AUTH_REQUIRED:" in codex_auth.detail
+    assert codex_auth.headers == {"X-Presenton-Auth-Action": "codex-reauth"}
 
     generic = handle_llm_client_exceptions(ValueError("oops"))
     assert generic.detail.startswith("LLM API error")

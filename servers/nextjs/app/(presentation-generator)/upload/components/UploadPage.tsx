@@ -30,6 +30,10 @@ import { RootState } from "@/store/store";
 import { ImagesApi } from "../../services/api/images";
 import CurrentConfig from "./CurrentConfig";
 import { LLMConfig } from "@/types/llm_config";
+import {
+  clampSlideCountValue,
+  parseLimitedSlideCount,
+} from "@/utils/presentationLimits";
 
 const STOCK_IMAGE_PROVIDERS = new Set(["pexels", "pixabay"]);
 const FILE_TYPE_WORD = new Set([".doc", ".docx", ".docm", ".odt", ".rtf"]);
@@ -113,6 +117,21 @@ const getSelectedImageQuality = (config?: LLMConfig): string => {
   return "";
 };
 
+const getDocumentPaths = (files: unknown): string[] => {
+  if (!Array.isArray(files)) {
+    return [];
+  }
+
+  return files
+    .flat()
+    .map((file) =>
+      file && typeof file === "object" && "file_path" in file
+        ? (file as { file_path?: unknown }).file_path
+        : null
+    )
+    .filter((filePath): filePath is string => typeof filePath === "string");
+};
+
 const UploadPage = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -154,8 +173,7 @@ const UploadPage = () => {
     const trimmedInstructions = (config.instructions || "").trim();
     const attachmentCategories = Array.from(new Set(files.map(getFileCategory))).sort();
     const imageGenerationEnabled = !llmConfig?.DISABLE_IMAGE_GENERATION;
-    const parsedSlides =
-      config.slides && /^\d+$/.test(config.slides) ? Number(config.slides) : null;
+    const parsedSlides = parseLimitedSlideCount(config.slides);
 
     return {
       pathname,
@@ -192,7 +210,11 @@ const UploadPage = () => {
   };
 
   const handleConfigChange = (key: keyof PresentationConfig, value: unknown) => {
-    setConfig((prev) => ({ ...prev, [key]: value } as PresentationConfig));
+    const nextValue =
+      key === "slides" && typeof value === "string"
+        ? clampSlideCountValue(value)
+        : value;
+    setConfig((prev) => ({ ...prev, [key]: nextValue } as PresentationConfig));
   };
 
   const ensureStockImageProviderReady = async (): Promise<boolean> => {
@@ -310,19 +332,52 @@ const UploadPage = () => {
       );
     }
     const responses = await Promise.all(promises);
+    const documentPaths = getDocumentPaths(responses);
+
+    setLoadingState({
+      isLoading: true,
+      message: "Generating presentation outline...",
+      showProgress: true,
+      duration: 40,
+      extra_info: "",
+    });
+
+    const createResponse = await PresentationGenerationApi.createPresentation({
+      content: config?.prompt ?? "",
+      version: "v1-standard",
+      n_slides: parseLimitedSlideCount(config?.slides),
+      file_paths: documentPaths,
+      language: selectedLanguage,
+      tone: config?.tone,
+      verbosity: config?.verbosity,
+      instructions: config?.instructions || null,
+      include_table_of_contents: !!config?.includeTableOfContents,
+      include_title_slide: !!config?.includeTitleSlide,
+      web_search: !!config?.webSearch,
+    });
+
     dispatch(setPptGenUploadState({
       config,
       files: responses,
     }));
-    dispatch(clearOutlines())
+    dispatch(clearOutlines());
+    dispatch(setPresentationId(createResponse.id));
     trackEvent(MixpanelEvent.Upload_Documents_Processed, {
       ...getUploadSnapshotProps(),
       uploaded_documents_count: documents.length,
       decompose_job_count: responses.length,
-      destination: "/documents-preview",
+      extracted_document_count: documentPaths.length,
+      destination: "/outline",
     });
-    trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/documents-preview" });
-    router.push("/documents-preview");
+    trackEvent(MixpanelEvent.Upload_Outline_Generation_Requested, {
+      ...getUploadSnapshotProps(),
+      presentation_id: createResponse.id,
+      uploaded_documents_count: documents.length,
+      extracted_document_count: documentPaths.length,
+      destination: "/outline",
+    });
+    trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/outline" });
+    router.push("/outline");
   };
 
   /**
@@ -341,7 +396,8 @@ const UploadPage = () => {
     // Start the outline job; template selection happens on the outline page.
     const createResponse = await PresentationGenerationApi.createPresentation({
       content: config?.prompt ?? "",
-      n_slides: config?.slides ? parseInt(config.slides, 10) : null,
+
+      n_slides: parseLimitedSlideCount(config?.slides),
       file_paths: [],
       language: selectedLanguage,
       tone: config?.tone,

@@ -28,7 +28,13 @@ import { SlideThumbnailCard } from "./SlideThumbnailCard";
 
 interface SidePanelProps {
   selectedSlide: number;
-  onSlideClick: (index: number) => void;
+  onSlideClick: (
+    index: number,
+    options?: {
+      promptOverlaySlideId?: string;
+      promptOverlayKind?: "blank" | "layout";
+    },
+  ) => void;
   presentationId: string;
 
   loading: boolean;
@@ -53,9 +59,14 @@ const SidePanel = ({
   const lastSlideIndex = presentationData?.slides?.length
     ? presentationData.slides.length - 1
     : 0;
-  const lastSlideTemplateId = presentationData?.slides?.[lastSlideIndex]?.layout
-    ? presentationData.slides[lastSlideIndex].layout.split(":")[0]
-    : "";
+  const lastSlide = presentationData?.slides?.[lastSlideIndex];
+  const lastSlideLayoutGroup =
+    typeof lastSlide?.layout_group === "string" ? lastSlide.layout_group : "";
+  const lastSlideLayoutTemplateId =
+    typeof lastSlide?.layout === "string" ? lastSlide.layout.split(":")[0] : "";
+  const lastSlideTemplateId = lastSlideLayoutGroup.startsWith("template-v2")
+    ? lastSlideLayoutGroup
+    : lastSlideLayoutGroup || lastSlideLayoutTemplateId;
 
   const handleAddSlideClick = () => {
     if (!presentationData?.slides?.length || isStreaming) return;
@@ -145,6 +156,7 @@ const SidePanel = ({
                 templateID={lastSlideTemplateId}
                 setShowNewSlideSelection={setShowNewSlideSelection}
                 presentationId={presentationId}
+                onSlideAdded={onSlideClick}
               />
             </div>
           </div>
@@ -176,7 +188,9 @@ const SidePanel = ({
                     slide={slide}
                     index={index}
                     selected={selectedSlide === index}
-                    onClick={() => onSlideClick(slide.index ?? index)}
+                    fonts={presentationData.fonts}
+                    presentationVersion={presentationData.version}
+                    onClick={() => onSlideClick(index)}
                   />
                 ))
               ) : (
@@ -196,6 +210,8 @@ const SidePanel = ({
                           slide={slide}
                           index={index}
                           selectedSlide={selectedSlide}
+                          fonts={presentationData.fonts}
+                          presentationVersion={presentationData.version}
                           onSlideClick={onSlideClick}
                         />
                       )

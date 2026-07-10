@@ -1,0 +1,109 @@
+export const BLANK_SLIDE_LAYOUT_ID = "__blank_slide__";
+
+export const BLANK_TEMPLATE_V2_LAYOUT = {
+  id: BLANK_SLIDE_LAYOUT_ID,
+  description: "Empty slide.",
+  background: "#FFFFFF",
+  components: [],
+  elements: [
+    {
+      type: "rectangle",
+      position: { x: 0, y: 0 },
+      size: { width: 1280, height: 720 },
+      fill: { color: "#FFFFFF" },
+      decorative: true,
+    },
+  ],
+};
+
+type BlankPresentationSlideOptions = {
+  id: string;
+  index?: number;
+  presentationId?: string | null;
+  templateId?: string | null;
+  isTemplateV2?: boolean;
+};
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+export function cloneBlankTemplateV2Layout() {
+  return cloneJson(BLANK_TEMPLATE_V2_LAYOUT);
+}
+
+export function getSlideTemplateId(slide: any): string {
+  const layoutGroup =
+    typeof slide?.layout_group === "string" ? slide.layout_group.trim() : "";
+  const layout = typeof slide?.layout === "string" ? slide.layout.trim() : "";
+  const layoutTemplateId = layout.split(":")[0] || "";
+
+  if (layoutGroup.startsWith("template-v2")) {
+    return layoutGroup;
+  }
+  return layoutGroup || layoutTemplateId;
+}
+
+export function getPresentationTemplateId(presentation: {
+  layout?: unknown;
+} | null | undefined): string {
+  const layout = presentation?.layout;
+  if (layout && typeof layout === "object" && !Array.isArray(layout)) {
+    const record = layout as Record<string, unknown>;
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    if (name) return name;
+
+    const layouts = record.layouts;
+    if (Array.isArray(layouts)) return "template-v2";
+    if (
+      layouts &&
+      typeof layouts === "object" &&
+      Array.isArray((layouts as Record<string, unknown>).layouts)
+    ) {
+      return "template-v2";
+    }
+  }
+
+  return "general";
+}
+
+export function createBlankPresentationSlide({
+  id,
+  index = 0,
+  presentationId,
+  templateId,
+  isTemplateV2 = false,
+}: BlankPresentationSlideOptions) {
+  const resolvedTemplateId =
+    typeof templateId === "string" && templateId.trim()
+      ? templateId.trim()
+      : isTemplateV2
+        ? "template-v2"
+        : "general";
+  const shouldUseTemplateV2 =
+    isTemplateV2 || resolvedTemplateId.startsWith("template-v2");
+  const isCustomTemplate = resolvedTemplateId.startsWith("custom-");
+
+  return {
+    id,
+    index,
+    content: {},
+    ...(shouldUseTemplateV2 ? { ui: cloneBlankTemplateV2Layout() } : {}),
+    layout_group: resolvedTemplateId,
+    layout: isCustomTemplate
+      ? `${resolvedTemplateId}:${BLANK_SLIDE_LAYOUT_ID}`
+      : BLANK_SLIDE_LAYOUT_ID,
+    ...(presentationId ? { presentation: presentationId } : {}),
+  };
+}
+
+export function isBlankPresentationSlide(slide: {
+  layout?: unknown;
+} | null | undefined) {
+  if (!slide || typeof slide.layout !== "string") return false;
+
+  return (
+    slide.layout === BLANK_SLIDE_LAYOUT_ID ||
+    slide.layout.endsWith(`:${BLANK_SLIDE_LAYOUT_ID}`)
+  );
+}

@@ -1,13 +1,30 @@
-const presentonHttpHostPort =
-  process.env.PRESENTON_HTTP_HOST_PORT ||
-  process.env.PRESENTON_HOST_HTTP_PORT ||
-  process.env.PRESENTON_PUBLIC_PORT ||
-  "5001";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const nextjsRoot = path.dirname(fileURLToPath(import.meta.url));
+
+const fastApiRewriteOrigin =
+  process.env.FAST_API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_FAST_API ||
+  "http://localhost:5000";
+
+const backendAssetRewrite = (path) => ({
+  source: `/app_data/${path}/:path*`,
+  destination: `${fastApiRewriteOrigin}/app_data/${path}/:path*`,
+});
+
+const fastApiRewrite = (version) => ({
+  source: `/api/${version}/:path*`,
+  destination: `${fastApiRewriteOrigin}/api/${version}/:path*`,
+});
 
 const nextConfig = {
   reactStrictMode: false,
   distDir: ".next-build",
   output: "standalone",
+  turbopack: {
+    root: nextjsRoot,
+  },
   ...(process.env.NODE_ENV !== "production"
     ? {
         allowedDevOrigins: [
@@ -19,13 +36,17 @@ const nextConfig = {
       }
     : {}),
 
-  // Rewrites for development - proxy font requests to FastAPI backend
+  // Rewrites for development - proxy FastAPI APIs and backend-served assets.
   async rewrites() {
     return [
-      {
-        source: '/app_data/fonts/:path*',
-        destination: `http://localhost:${presentonHttpHostPort}/app_data/fonts/:path*`,
-      },
+      fastApiRewrite("v1"),
+      fastApiRewrite("v2"),
+      backendAssetRewrite("fonts"),
+      backendAssetRewrite("uploads"),
+      backendAssetRewrite("images"),
+      backendAssetRewrite("exports"),
+      backendAssetRewrite("pptx-to-html"),
+      backendAssetRewrite("pptx-to-json"),
     ];
   },
 

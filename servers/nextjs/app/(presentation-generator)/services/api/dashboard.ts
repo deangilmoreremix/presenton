@@ -6,6 +6,7 @@ import { getApiUrl } from "@/utils/api";
 
 export interface PresentationResponse {
   id: string;
+  version?: "v1-standard" | "v1-standard";
   title: string;
   created_at: string;
   updated_at: string;
@@ -20,6 +21,10 @@ export interface PresentationResponse {
   vector_store: any;
 
   thumbnail: string;
+  layout?: any;
+  structure?: any;
+  components?: any;
+  fonts?: any;
   slides: any[];
 }
 
@@ -81,6 +86,23 @@ export class DashboardApi {
         success: false,
         message: error instanceof Error ? error.message : "Failed to delete presentation",
       };
+    }
+  }
+
+  static async duplicatePresentation(presentation_id: string) {
+    try {
+      const response = await fetch(
+        getApiUrl(`/api/v1/ppt/presentation/${presentation_id}/duplicate`),
+        {
+          method: "POST",
+          headers: getHeader(),
+        }
+      );
+
+      return await ApiResponseHandler.handleResponse(response, "Failed to duplicate presentation");
+    } catch (error) {
+      console.error("Error duplicating presentation:", error);
+      throw error;
     }
   }
 }

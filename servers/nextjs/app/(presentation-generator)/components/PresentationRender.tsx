@@ -7,21 +7,37 @@ const BASE_HEIGHT = 720;
 
 const SlideScale = ({
   slide,
+  presentationId,
   theme,
+  fonts,
   isEditMode = true,
 
   /** Fill viewport; scale may exceed 1 so slides appear larger in present mode */
   presentMode = false,
   isClickable = true,
   fixedSize = false,
+  presentationLayout,
+  renderIndex,
+  showBlankPromptOverlay = false,
+  onBlankPromptOverlayDismiss,
+  showTemplatePromptOverlay = false,
+  onTemplatePromptOverlayDismiss,
 }: {
   slide: any;
+  presentationId?: string;
   theme?: any;
+  fonts?: unknown;
   isEditMode?: boolean;
 
   presentMode?: boolean;
   isClickable?: boolean;
   fixedSize?: boolean;
+  presentationLayout?: unknown;
+  renderIndex?: number;
+  showBlankPromptOverlay?: boolean;
+  onBlankPromptOverlayDismiss?: () => void;
+  showTemplatePromptOverlay?: boolean;
+  onTemplatePromptOverlayDismiss?: () => void;
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -29,10 +45,9 @@ const SlideScale = ({
   const scale = useMemo(() => {
     if (fixedSize) return 1;
     if (presentMode) {
-      const { w, h } = box;
-      if (w < 1 || h < 1) return 1;
-      const sx = w / BASE_WIDTH;
-      const sy = h / BASE_HEIGHT;
+      if (box.w < 1 || box.h < 1) return 1;
+      const sx = box.w / BASE_WIDTH;
+      const sy = box.h / BASE_HEIGHT;
       return Math.min(sx, sy);
     }
     const safeWidth = Math.max(0, box.w + 20);
@@ -107,8 +122,16 @@ const SlideScale = ({
             )}
             <V1ContentRender
               slide={slide}
+              presentationId={presentationId}
               isEditMode={isEditMode}
               theme={theme}
+              fonts={fonts}
+              presentationLayout={presentationLayout}
+              renderIndex={renderIndex}
+              showBlankPromptOverlay={showBlankPromptOverlay}
+              onBlankPromptOverlayDismiss={onBlankPromptOverlayDismiss}
+              showTemplatePromptOverlay={showTemplatePromptOverlay}
+              onTemplatePromptOverlayDismiss={onTemplatePromptOverlayDismiss}
             />
           </div>
         </div>
