@@ -80,24 +80,24 @@ const SlideContent = ({
         className={`group w-full font-syne ${isTemplateV2Slide ? "relative" : ""
           }`}
       >
-        {isChatEditing && (
-          <div
-            className="pointer-events-none absolute bottom-24 left-1/2 z-30 -translate-x-1/2 overflow-hidden rounded-[50px] p-[1.5px] font-syne"
-            aria-live="polite"
-          >
-            <span className="relative z-20 flex items-center overflow-hidden rounded-[50px] bg-white px-3 py-2 text-sm font-medium text-[#666666]">
-              <span
-                aria-hidden="true"
-                className="generating-slides-background absolute"
-              />
-              <span className="relative z-10 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#9034EA]" />
-                Updating slides...
-              </span>
-            </span>
-          </div>
-        )}
         <div className="relative max-xl:mb-6">
+          {isChatEditing && (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center font-syne"
+              aria-live="polite"
+            >
+              <span className="relative flex items-center overflow-hidden rounded-full border border-white/80 bg-white/95 px-3 py-2 text-sm font-medium text-[#666666] shadow-[0_4px_18px_rgba(40,35,68,0.12)] backdrop-blur-sm">
+                <span
+                  aria-hidden="true"
+                  className="generating-slides-background absolute"
+                />
+                <span className="relative z-10 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#9034EA]" />
+                  Updating slide {index + 1}...
+                </span>
+              </span>
+            </div>
+          )}
           <SlideScale
             slide={slide}
             presentationId={presentationId}

@@ -700,7 +700,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
               </div>
             </div>
           </div>
-          <div className="hidden h-full shrink-0 self-start sticky top-0 xl:block xl:w-[clamp(320px,23vw,390px)] 2xl:w-[400px]">
+          <div className="hidden h-full w-[375px] shrink-0 self-start sticky top-0 xl:block">
             <PresentationActions
               presentationId={presentation_id}
               variant={isTemplateV2Presentation ? "template-v2" : "presentation"}

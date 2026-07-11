@@ -241,7 +241,7 @@ const NavButton = ({
     >
       <span
         className={cn(
-          "flex  items-center justify-center border border-transparent text-black p-1.5 rounded-[10px] transition-all",
+          "flex h-[30px] w-[30px] items-center justify-center rounded-[10px] border border-transparent text-black transition-all",
           active && "bg-white   border-[#EDEEEF]",
           active && "text-[#101323]",
         )}
@@ -1065,7 +1065,7 @@ function PrimaryActionButton({
   return (
     <button
       type="button"
-      className="mt-[clamp(24px,2.8vw,40px)] first:mt-0"
+      className="flex flex-col items-center justify-center"
       onClick={onClick}
     >
       <p
@@ -1092,9 +1092,9 @@ function ActionsSidebar({
   onActionSelect: (action: ActionId) => void;
 }) {
   return (
-    <aside className="flex h-full w-[clamp(58px,4.8vw,70px)] shrink-0 flex-col items-center border-r border-[#F4F4F5] py-[clamp(14px,1.4vw,20px)]">
+    <aside className="flex h-full w-[70px] shrink-0 flex-col items-center gap-5 px-[6px] py-2">
       <div
-        className="flex w-full flex-col items-center space-y-[clamp(24px,2.8vw,40px)] rounded-[10px] py-[clamp(18px,2vw,28px)]"
+        className="flex w-full shrink-0 flex-col items-center gap-5 rounded-[10px] py-7"
         style={{
           background: "rgba(244, 243, 255, 0.60)",
         }}
@@ -1105,6 +1105,7 @@ function ActionsSidebar({
           label="AI"
           onClick={() => onActionSelect("ai")}
         />
+        <div className="h-px w-[30px] bg-[#EDEEEF]" />
         <PrimaryActionButton
           active={activeAction === "blocks"}
           icon={<BlocksIcon />}
@@ -1113,16 +1114,18 @@ function ActionsSidebar({
         />
       </div>
 
-      <div className="my-[clamp(18px,1.8vw,24px)] h-px w-[clamp(24px,2vw,30px)] bg-[#EDEEEF] px-1" />
+      <div className="h-px w-[30px] shrink-0 bg-[#EDEEEF]" />
 
-      <nav className="flex w-full flex-1 flex-col items-center gap-3 space-y-[clamp(24px,2.8vw,40px)]">
+      <nav className="flex w-full flex-col items-center gap-5">
         {insertActions.map((item) => (
-          <NavButton
-            key={item.id}
-            item={item}
-            active={activeAction === item.id}
-            onClick={() => onActionSelect(item.id)}
-          />
+          <React.Fragment key={item.id}>
+            <NavButton
+              item={item}
+              active={activeAction === item.id}
+              onClick={() => onActionSelect(item.id)}
+            />
+            <div className="h-px w-[30px] shrink-0 bg-[#EDEEEF]" />
+          </React.Fragment>
         ))}
       </nav>
     </aside>
@@ -1157,7 +1160,11 @@ function ActionsPanel({
   return (
     <div className="min-w-0 flex-1 bg-white">
       <div className={cn("h-full", activeAction === "ai" ? "block" : "hidden")}>
-        <Chat {...chatProps} inputDisabled={editingDisabled} />
+        <Chat
+          {...chatProps}
+          presentationData={presentationData}
+          inputDisabled={editingDisabled}
+        />
       </div>
 
       {activeAction === "blocks" && (
@@ -1217,12 +1224,14 @@ function templateV2TargetKey(
   target: TemplateV2SurfaceSelectedDetail["selection"],
 ) {
   if (target?.kind === "element") {
-    return `slide:${slideIndex ?? ""}:element:${target.elementPath ?? target.componentIndex ?? ""
-      }`;
+    return `slide:${slideIndex ?? ""}:element:${
+      target.elementPath ?? target.componentIndex ?? ""
+    }`;
   }
   if (target?.kind === "component") {
-    return `slide:${slideIndex ?? ""}:component:${target.componentId ?? target.componentIndex ?? ""
-      }`;
+    return `slide:${slideIndex ?? ""}:component:${
+      target.componentId ?? target.componentIndex ?? ""
+    }`;
   }
   if (target?.kind === "multi-component") {
     return `slide:${slideIndex ?? ""}:multi:${target.components
@@ -1238,49 +1247,53 @@ const PresentationActions = (props: PresentationActionsProps) => {
     presentationActionsUiReducer,
     initialPresentationActionsUiState,
   );
-  const [selectedTemplateV2Target, setSelectedTemplateV2Target] = useState<
-    TemplateV2SurfaceSelectedDetail["selection"]
-  >(null);
-  const [hiddenSlideReferenceKey, setHiddenSlideReferenceKey] = useState<
-    string | null
-  >(null);
+  const [templateV2SelectionContext, setTemplateV2SelectionContext] = useState<{
+    slideIndex: number | null;
+    target: TemplateV2SurfaceSelectedDetail["selection"];
+  }>({ slideIndex: null, target: null });
+  const activeTemplateV2Target =
+    templateV2SelectionContext.slideIndex === null ||
+    typeof props.currentSlide !== "number" ||
+    templateV2SelectionContext.slideIndex === props.currentSlide
+      ? templateV2SelectionContext.target
+      : null;
+  const [hiddenSlideReference, setHiddenSlideReference] = useState<number | null>(
+    null,
+  );
   const [hiddenTargetReferenceKey, setHiddenTargetReferenceKey] = useState<
     string | null
   >(null);
-  const slideReferenceKey =
-    typeof props.currentSlide === "number" ? `slide:${props.currentSlide}` : null;
   const targetReferenceKey = templateV2TargetKey(
     props.currentSlide,
-    selectedTemplateV2Target,
+    activeTemplateV2Target,
   );
-  const slideReferenceHidden =
-    Boolean(slideReferenceKey) && hiddenSlideReferenceKey === slideReferenceKey;
-  const targetReferenceHidden =
-    Boolean(targetReferenceKey) &&
-    hiddenTargetReferenceKey === targetReferenceKey;
+  const selectedTemplateV2Target =
+    targetReferenceKey && targetReferenceKey !== hiddenTargetReferenceKey
+      ? activeTemplateV2Target
+      : null;
+  const chatSlide =
+    typeof chatProps.currentSlide === "number" &&
+    chatProps.currentSlide === hiddenSlideReference
+      ? undefined
+      : chatProps.currentSlide;
 
   useEffect(() => {
-    setSelectedTemplateV2Target(null);
-    setHiddenSlideReferenceKey(null);
+    setHiddenSlideReference(null);
     setHiddenTargetReferenceKey(null);
   }, [props.currentSlide]);
 
   useEffect(() => {
     const handleSurfaceSelected = (event: Event) => {
       const detail = (event as CustomEvent<TemplateV2SurfaceSelectedDetail>).detail;
-      if (
-        detail &&
-        typeof props.currentSlide === "number" &&
-        typeof detail.slideIndex === "number" &&
-        detail.slideIndex !== props.currentSlide
-      ) {
-        return;
-      }
       const nextSelection = detail?.selection ?? null;
       if (nextSelection) {
         setHiddenTargetReferenceKey(null);
       }
-      setSelectedTemplateV2Target(nextSelection);
+      setTemplateV2SelectionContext({
+        slideIndex:
+          typeof detail?.slideIndex === "number" ? detail.slideIndex : null,
+        target: nextSelection,
+      });
     };
 
     window.addEventListener(
@@ -1293,7 +1306,7 @@ const PresentationActions = (props: PresentationActionsProps) => {
         handleSurfaceSelected,
       );
     };
-  }, [props.currentSlide]);
+  }, []);
 
   const insertEditorContent = (
     content: EditorInsertContent,
@@ -1457,7 +1470,7 @@ const PresentationActions = (props: PresentationActionsProps) => {
   return (
     <div
       data-inline-edit-ignore="true"
-      className="flex h-full w-full overflow-hidden bg-white px-[clamp(6px,0.6vw,8px)] py-[clamp(5px,0.5vw,6px)] text-[clamp(12px,0.82vw,14px)]"
+      className="flex h-full w-full overflow-hidden bg-white pl-[6px] text-[clamp(12px,0.82vw,14px)]"
     >
       <ActionsSidebar
         activeAction={activeAction}
@@ -1467,13 +1480,12 @@ const PresentationActions = (props: PresentationActionsProps) => {
         activeAction={activeAction}
         chatProps={{
           ...chatProps,
-          currentSlide: slideReferenceHidden ? undefined : chatProps.currentSlide,
-          selectedTemplateV2Target: targetReferenceHidden
-            ? null
-            : selectedTemplateV2Target,
-          onClearChatSlideReference: slideReferenceKey
-            ? () => setHiddenSlideReferenceKey(slideReferenceKey)
-            : undefined,
+          currentSlide: chatSlide,
+          selectedTemplateV2Target,
+          onClearChatSlideReference:
+            typeof chatProps.currentSlide === "number"
+              ? () => setHiddenSlideReference(chatProps.currentSlide!)
+              : undefined,
           onClearChatTargetReference: targetReferenceKey
             ? () => setHiddenTargetReferenceKey(targetReferenceKey)
             : undefined,
