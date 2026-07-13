@@ -3,6 +3,7 @@
   "name": "General",
   "description": "Flexible, well-balanced layouts for everyday presentations, from simple title slides and agendas to content-rich sections.",
   "thumbnail": "static/thumbnail.png",
+  "icon_type": "bold",
   "merged_components": [
     {
       "id": "background_canvas",
@@ -9926,7 +9927,7 @@
                       "data": "/static/icons/placeholder.svg",
                       "fit": "fill",
                       "color": "#FFFFFF",
-                      "decorative": true,
+                      "decorative": false,
                       "name": "feature_icon",
                       "is_icon": true
                     },
@@ -10068,7 +10069,7 @@
                       "data": "/static/icons/placeholder.svg",
                       "fit": "fill",
                       "color": "#FFFFFF",
-                      "decorative": true,
+                      "decorative": false,
                       "name": "feature_icon",
                       "is_icon": true
                     },
