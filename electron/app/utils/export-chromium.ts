@@ -9,13 +9,33 @@ import {
   detectBrowserPlatform,
   install,
 } from "@puppeteer/browsers";
-import { getCacheDir, resourceBaseDir } from "./constants";
+import { baseDir, getCacheDir, resourceBaseDir } from "./constants";
 import { isWindowsStoreInstall } from "./export-msix-runtime";
 import { safeError, safeLog } from "./safe-console";
 
+function resolveExportChromeBuildId(): string {
+  const configured = process.env.EXPORT_CHROME_BUILD_ID?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  try {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(baseDir, "package.json"), "utf8")
+    ) as { exportChromiumBuildId?: string };
+    const packagedBuildId = packageJson.exportChromiumBuildId?.trim();
+    if (packagedBuildId) {
+      return packagedBuildId;
+    }
+  } catch {
+    // Development and partially packaged trees fall back to the pinned build below.
+  }
+
+  return "149.0.7827.196";
+}
+
 /** Must match the Chrome revision expected by the bundled presentation-export runtime. */
-const EXPORT_CHROME_BUILD_ID =
-  process.env.EXPORT_CHROME_BUILD_ID?.trim() || "146.0.7680.76";
+const EXPORT_CHROME_BUILD_ID = resolveExportChromeBuildId();
 const BUNDLED_CHROMIUM_MANIFEST = "presenton-runtime.json";
 
 type BundledChromiumManifest = {
@@ -126,6 +146,13 @@ function resolveLegacyInstalledExportChromiumPath(): string | null {
 
   const legacyRelativePaths = getLegacyExecutableRelativePaths();
   for (const revisionDir of revisionDirs) {
+    const revisionName = path.basename(revisionDir);
+    if (
+      revisionName !== EXPORT_CHROME_BUILD_ID &&
+      !revisionName.endsWith(`-${EXPORT_CHROME_BUILD_ID}`)
+    ) {
+      continue;
+    }
     for (const relativePath of legacyRelativePaths) {
       const executablePath = path.join(revisionDir, relativePath);
       if (fs.existsSync(executablePath)) {
@@ -194,6 +221,57 @@ function getMsixChromiumCacheRoot(): string {
 }
 
 /**
+ * Packaged desktop apps see APPDATA through MSIX virtualization. Browser children
+ * break away from that context, so they need the backing LocalCache path instead
+ * of the nominal Roaming path returned inside the package.
+ */
+function resolveMsixBackingPath(virtualPath: string): string {
+  if (process.platform !== "win32") {
+    return virtualPath;
+  }
+
+  const appData = process.env.APPDATA?.trim();
+  const localAppData = process.env.LOCALAPPDATA?.trim();
+  if (!appData || !localAppData) {
+    return virtualPath;
+  }
+
+  const relativePath = path.relative(appData, virtualPath);
+  if (
+    !relativePath ||
+    path.isAbsolute(relativePath) ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${path.sep}`)
+  ) {
+    return virtualPath;
+  }
+
+  const packagesRoot = path.join(localAppData, "Packages");
+  try {
+    const packageDirs = fs
+      .readdirSync(packagesRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory());
+    for (const packageDir of packageDirs) {
+      const candidate = path.join(
+        packagesRoot,
+        packageDir.name,
+        "LocalCache",
+        "Roaming",
+        relativePath
+      );
+      if (isMaterializedChromiumComplete(candidate)) {
+        safeLog(`[Chromium] Resolved MSIX backing path: ${candidate}`);
+        return candidate;
+      }
+    }
+  } catch {
+    // The nominal path remains useful outside virtualized APPX installs.
+  }
+
+  return virtualPath;
+}
+
+/**
  * MSIX/APPX installs keep the app under Program Files\\WindowsApps. Chrome cannot
  * reliably launch from that read-only package, so copy the browser folder to user cache.
  */
@@ -210,7 +288,7 @@ async function materializeBundledChromiumForMsix(bundledExePath: string): Promis
   if (isMaterializedChromiumComplete(destExe)) {
     try {
       if ((await fs.promises.readFile(stampPath, "utf8")).trim() === sourceStamp.trim()) {
-        return destExe;
+        return resolveMsixBackingPath(destExe);
       }
     } catch {
       // Stale cache; recopy below.
@@ -229,7 +307,7 @@ async function materializeBundledChromiumForMsix(bundledExePath: string): Promis
   if (!isMaterializedChromiumComplete(destExe)) {
     throw new Error(`Chrome executable missing after MSIX materialization: ${destExe}`);
   }
-  return destExe;
+  return resolveMsixBackingPath(destExe);
 }
 
 function isMaterializedChromiumComplete(executablePath: string): boolean {
@@ -345,13 +423,16 @@ export async function removeBrokenExportChromiumCaches(): Promise<number> {
     if (installed.browser !== Browser.CHROME) {
       continue;
     }
-    if (fs.existsSync(installed.executablePath)) {
+    const wrongBuild = installed.buildId !== EXPORT_CHROME_BUILD_ID;
+    if (!wrongBuild && fs.existsSync(installed.executablePath)) {
       continue;
     }
     try {
       await fs.promises.rm(installed.path, { recursive: true, force: true });
       removedCount += 1;
-      safeLog(`[Chromium] Removed broken cache: ${installed.path}`);
+      safeLog(
+        `[Chromium] Removed ${wrongBuild ? "unpinned" : "broken"} cache: ${installed.path}`
+      );
     } catch {
       // Best effort cleanup only.
     }

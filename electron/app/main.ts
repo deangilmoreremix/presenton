@@ -47,7 +47,10 @@ import {
   prepareChromiumCacheRecovery,
   type ChromiumCacheRecoveryStatus,
 } from "./utils/chromium-cache-recovery";
-import { resolveLaunchableExportChromiumPath } from "./utils/export-chromium";
+import {
+  removeBrokenExportChromiumCaches,
+  resolveLaunchableExportChromiumPath,
+} from "./utils/export-chromium";
 import { syncUserConfigFromEnv } from "./utils/user-config-env";
 
 installSafeConsole();
@@ -346,6 +349,7 @@ async function startServers(fastApiPort: number, nextjsPort: number) {
     const imageMagickRuntime = resolveImageMagickRuntime();
     const exportPackageRoot = path.join(resourceBaseDir, "resources", "export");
     const exportConverterPath = resolveExportConverterPath(resourceBaseDir);
+    await removeBrokenExportChromiumCaches();
     const exportChromiumPath = await resolveLaunchableExportChromiumPath();
     const puppeteerCacheDir = path.join(getCacheDir(), "puppeteer");
     const puppeteerTempDir = path.join(tempDir, "puppeteer");
@@ -418,6 +422,11 @@ async function startServers(fastApiPort: number, nextjsPort: number) {
         DISABLE_AUTH: disableAuthForElectron,
         EXPORT_PACKAGE_ROOT: exportPackageRoot,
         PRESENTON_APP_ROOT: resourceBaseDir,
+        PUPPETEER_CACHE_DIR: puppeteerCacheDir,
+        PUPPETEER_TMP_DIR: puppeteerTempDir,
+        ...(exportChromiumPath && {
+          PUPPETEER_EXECUTABLE_PATH: exportChromiumPath,
+        }),
         ...(exportConverterPath && {
           BUILT_PYTHON_MODULE_PATH: exportConverterPath,
         }),
