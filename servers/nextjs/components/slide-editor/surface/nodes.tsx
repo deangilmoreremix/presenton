@@ -125,6 +125,23 @@ const VERTICAL_RESIZE_ANCHORS = new Set<ComponentTransformAnchor>([
   "bottom-center",
 ]);
 
+function isComponentSideResizeAnchor(
+  anchor: ComponentTransformAnchor | null,
+) {
+  return Boolean(
+    anchor &&
+      (HORIZONTAL_RESIZE_ANCHORS.has(anchor) ||
+        VERTICAL_RESIZE_ANCHORS.has(anchor)),
+  );
+}
+
+function hasTransformScale(node: Konva.Node) {
+  return (
+    Math.abs(node.scaleX() - 1) >= 0.001 ||
+    Math.abs(node.scaleY() - 1) >= 0.001
+  );
+}
+
 function componentTransformAnchorForNode(
   node: Konva.Node,
 ): ComponentTransformAnchor | null {
@@ -354,10 +371,15 @@ export function RawComponentNode({
   fontRevision: number;
 }) {
   const groupRef = useRef<Konva.Group | null>(null);
-  const box = componentBox(component);
+  const transformPreviewRef = useRef<RawComponent | null>(null);
+  const transformPreviewAnchorRef = useRef<ComponentTransformAnchor | null>(null);
+  const [transformPreview, setTransformPreview] =
+    useState<RawComponent | null>(null);
+  const renderedComponent = transformPreview ?? component;
+  const box = componentBox(renderedComponent);
   const selection: ComponentSelection = { kind: "component", componentIndex };
   const key = keyForSelection(selection);
-  const elements = readArray(component.elements).filter(
+  const elements = readArray(renderedComponent.elements).filter(
     isRecord,
   ) as RawElement[];
   const clipBounds = isEditMode
@@ -376,7 +398,7 @@ export function RawComponentNode({
       height={box.height}
       offsetX={box.width / 2}
       offsetY={box.height / 2}
-      rotation={readNumber(component.rotation) ?? 0}
+      rotation={readNumber(renderedComponent.rotation) ?? 0}
       clipX={clipBounds?.x}
       clipY={clipBounds?.y}
       clipWidth={clipBounds?.width}
@@ -417,9 +439,27 @@ export function RawComponentNode({
         if (!node) return;
         onComponentDragEnd(componentIndex, node);
       }}
+      onTransformStart={() => {
+        transformPreviewRef.current = null;
+        transformPreviewAnchorRef.current = null;
+        setTransformPreview(null);
+      }}
       onTransform={(event) => {
         if (!isEditMode) return;
         event.cancelBubble = true;
+        const node = groupRef.current;
+        if (!node) return;
+        const anchor = componentTransformAnchorForNode(node);
+        if (!isComponentSideResizeAnchor(anchor)) return;
+        if (!hasTransformScale(node)) return;
+        const next = componentFromNodeTransform(
+          transformPreviewRef.current ?? component,
+          node,
+          anchor,
+        );
+        transformPreviewRef.current = next;
+        transformPreviewAnchorRef.current = anchor;
+        setTransformPreview(next);
       }}
       onTransformEnd={(event) => {
         if (!isEditMode) return;
@@ -427,7 +467,27 @@ export function RawComponentNode({
         const node = groupRef.current;
         if (!node) return;
         const anchor = componentTransformAnchorForNode(node);
-        const next = componentFromNodeTransform(component, node, anchor);
+        const previewAnchor = transformPreviewAnchorRef.current;
+        const sideAnchor = isComponentSideResizeAnchor(anchor)
+          ? anchor
+          : previewAnchor;
+        let next: RawComponent;
+        if (isComponentSideResizeAnchor(sideAnchor)) {
+          if (hasTransformScale(node)) {
+            next = componentFromNodeTransform(
+              transformPreviewRef.current ?? component,
+              node,
+              sideAnchor,
+            );
+          } else {
+            next = transformPreviewRef.current ?? component;
+          }
+        } else {
+          next = componentFromNodeTransform(component, node, anchor);
+        }
+        transformPreviewRef.current = null;
+        transformPreviewAnchorRef.current = null;
+        setTransformPreview(null);
         onComponentChange(componentIndex, () => next);
       }}
     >
