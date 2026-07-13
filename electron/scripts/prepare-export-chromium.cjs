@@ -9,7 +9,13 @@ const {
   install,
 } = require("@puppeteer/browsers");
 
-const buildId = (process.env.EXPORT_CHROME_BUILD_ID || "146.0.7680.76").trim();
+const packageJson = require("../package.json");
+const buildId = (
+  process.env.EXPORT_CHROME_BUILD_ID || packageJson.exportChromiumBuildId
+).trim();
+if (!buildId) {
+  throw new Error("electron/package.json must define exportChromiumBuildId.");
+}
 const cacheDir = path.join(__dirname, "..", "resources", "chromium");
 const manifestPath = path.join(cacheDir, "presenton-runtime.json");
 const windowsRequiredRuntimeFiles = [
@@ -24,6 +30,26 @@ const windowsRequiredRuntimeFiles = [
 
 function getRevisionDir(platform) {
   return path.join(cacheDir, Browser.CHROME, `${platform}-${buildId}`);
+}
+
+function removeOtherBundledBuilds(platform) {
+  const chromeCacheDir = path.join(cacheDir, Browser.CHROME);
+  const expectedRevision = `${platform}-${buildId}`;
+  let entries;
+  try {
+    entries = fs.readdirSync(chromeCacheDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name === expectedRevision) {
+      continue;
+    }
+    const staleRevision = path.join(chromeCacheDir, entry.name);
+    console.log(`[Chromium] Removing stale bundled runtime: ${staleRevision}`);
+    fs.rmSync(staleRevision, { recursive: true, force: true });
+  }
 }
 
 function fileLooksPresent(filePath) {
@@ -415,6 +441,7 @@ async function main() {
       if (!validateExecutable(executablePath).ok) {
         removeIncompleteRuntime(platform, executablePath);
       } else {
+        removeOtherBundledBuilds(platform);
         writeManifest(platform, executablePath);
         console.log(`[Chromium] Bundled runtime already exists: ${executablePath}`);
         return;
@@ -423,6 +450,7 @@ async function main() {
   }
 
   if (validateExecutable(executablePath).ok) {
+    removeOtherBundledBuilds(platform);
     writeManifest(platform, executablePath);
     return;
   }
@@ -430,11 +458,14 @@ async function main() {
   removeIncompleteRuntime(platform, executablePath);
   fs.mkdirSync(cacheDir, { recursive: true });
   console.log(`[Chromium] Downloading Chrome for Testing ${buildId} into ${cacheDir}`);
+  let lastProgressPercent = -1;
   await install({
     ...options,
     downloadProgressCallback(downloadedBytes, totalBytes) {
       if (totalBytes <= 0) return;
       const percent = Math.floor((downloadedBytes / totalBytes) * 100);
+      if (percent === lastProgressPercent) return;
+      lastProgressPercent = percent;
       process.stdout.write(`\r[Chromium] ${percent}%`);
     },
   });
@@ -447,6 +478,7 @@ async function main() {
       `Chromium install finished, but the launch probe failed: ${validation.reason}\n${executablePath}`,
     );
   }
+  removeOtherBundledBuilds(platform);
   writeManifest(platform, executablePath);
   console.log(`[Chromium] Bundled runtime ready: ${executablePath}`);
 }
