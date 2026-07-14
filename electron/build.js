@@ -48,6 +48,7 @@ const macDistributionIdentity =
   undefined
 const shouldNotarizeDirectMacBuild =
   isDirectMacBuild && process.env.PRESENTON_SKIP_NOTARIZATION !== "1"
+const shouldSignDirectMacDmg = isDirectMacBuild && requireDirectMacSigning
 const masSigningExtraArgs =
   process.env.PRESENTON_CODESIGN_TIMESTAMP === "1" ? [] : ["--timestamp=none"]
 const codesignTimestampRetries = Number.parseInt(
@@ -873,7 +874,7 @@ const config = {
     uninstallDisplayName: "Presenton",
   },
   dmg: {
-    sign: false,
+    sign: shouldSignDirectMacDmg,
     size: "2300m",
   },
   appx: {
@@ -904,6 +905,7 @@ if (isDirectMacBuild && process.platform === "darwin") {
     identity: macDistributionIdentity || "auto",
     hardenedRuntime: true,
     notarize: shouldNotarizeDirectMacBuild,
+    dmgSign: shouldSignDirectMacDmg,
     signingRequired: requireDirectMacSigning,
   })
 }
