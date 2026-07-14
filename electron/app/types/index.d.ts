@@ -27,6 +27,9 @@ interface NextJsEnv extends NodeJS.ProcessEnv {
   DISABLE_AUTH?: string;
   EXPORT_PACKAGE_ROOT?: string;
   PRESENTON_APP_ROOT?: string;
+  PUPPETEER_EXECUTABLE_PATH?: string;
+  PUPPETEER_CACHE_DIR?: string;
+  PUPPETEER_TMP_DIR?: string;
   BUILT_PYTHON_MODULE_PATH?: string;
 }
 
