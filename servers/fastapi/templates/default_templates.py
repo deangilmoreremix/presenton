@@ -222,13 +222,14 @@ def _collect_image_urls(*values: Any) -> list[str]:
 
 def _copy_default_template_static_assets(template_dir: Path, template_id: str) -> None:
     source = template_dir / "static"
-    if not source.is_dir():
-        return
-
     app_data_dir = get_app_data_directory_env()
     if not app_data_dir:
         raise RuntimeError("APP_DATA_DIRECTORY must be set to import default templates")
 
     destination = Path(app_data_dir) / "templates" / template_id / "static"
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, destination, dirs_exist_ok=True)
+    # Bundled templates are authoritative. Removing the old static directory
+    # prevents deleted or renamed assets from surviving an application update.
+    shutil.rmtree(destination, ignore_errors=True)
+    if source.is_dir():
+        shutil.copytree(source, destination)
