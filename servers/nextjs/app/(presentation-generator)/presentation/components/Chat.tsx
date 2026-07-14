@@ -271,36 +271,42 @@ const outlineQuickPrompts = [
 ];
 
 const presentationQuickPrompts = [
-  "Expand each section",
-  "Reorder for storytelling",
-  "Add missing sections",
-  "Convert to pitch flow",
+  "Create an executive summary",
+  "Strengthen the story flow",
+  "Add data and citations",
+  "Create speaker notes",
 ];
 
 const templateV2QuickPrompts = [
-  "Summarize this template",
-  "Find editable text",
-  "Change slide 2 title",
-  "Update an image URL",
-  "Remove a component",
-  "Inspect slide 1 layout",
+  "Improve this slide's layout",
+  "Rewrite this slide for executives",
+  "Add a supporting visual",
+  "Make the deck visually consistent",
+  "Add data and source citations",
+  "Create speaker notes for this slide",
 ];
 
 const editorQuickPrompts = [
-  "Make it shorter",
-  "Make it more engaging",
-  "Add examples",
-  "Add statistics",
-  "Turn into bullet points",
+  "Rewrite for executives",
+  "Improve slide layout",
+  "Add data & citations",
+  "Create speaker notes",
+  "Make the deck consistent",
 ];
 
 const quickPromptGroups = [
   {
     label: "Popular",
-    prompts: ["Make it shorter", "Add citation", "Improve visuals"],
+    prompts: ["Make it shorter", "Make this smaller", "Generate a new image and replace this one"],
   },
-  { label: "Research", prompts: ["Case Studies", "Statics"] },
-  { label: "Design", prompts: ["Better layout", "Better charts", "Add icons"] },
+  {
+    label: "Add Data",
+    prompts: ["Add data and citations", "Add a chart", "Add a table"],
+  },
+  {
+    label: "Add Visuals",
+    prompts: ["Generate a new image and replace this one", "Add a chart", "Add a table"],
+  },
 ];
 
 const getSelectedTextModel = (config: LLMConfig) => {
@@ -676,7 +682,7 @@ const QuickPromptsPanel = ({
                 key={prompt}
                 type="button"
                 onClick={() => onPromptSelect(prompt)}
-                className="rounded-full border border-black/[0.04] bg-black/[0.02] px-4 py-1.5 font-manrope text-xs font-normal tracking-[0.24px] text-[#333333] transition-colors hover:border-[#D9D6FE] hover:bg-[#FAFAFF]"
+                className="rounded-full border border-black/[0.04] bg-black/[0.02] px-4 py-1.5 font-manrope text-xs font-normal tracking-[0.24px] text-[#333333] outline-none transition-colors hover:border-[#D9D6FE] hover:bg-[#FAFAFF] hover:text-[#7A5AF8] focus:border-[#7A5AF8] focus:outline-none focus:ring-0 focus-visible:border-[#7A5AF8] focus-visible:text-[#7A5AF8] focus-visible:outline-none focus-visible:ring-0 active:border-[#7A5AF8] active:text-[#7A5AF8]"
               >
                 {prompt}
               </button>
