@@ -792,11 +792,49 @@ thead {
   }
 }
 
+.presenton-splash-surface {
+  transform-origin: center center;
+}
+
+.presenton-splash-wordmark-layer {
+  display: block;
+}
+
+@keyframes presenton-splash-surface-grow {
+  0% {
+    transform: translate3d(-50%, -50%, 0) scale(0.001);
+  }
+
+  100% {
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes presenton-splash-text-reveal {
+  0% {
+    clip-path: circle(0 at 50% 50%);
+  }
+
+  100% {
+    clip-path: circle(71vmax at 50% 50%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .assistant-river-dot,
   .assistant-water-current,
   .assistant-water-blob,
   .generating-slides-background {
     animation: none;
+  }
+
+  .presenton-splash-surface {
+    animation: none !important;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+
+  .presenton-splash-wordmark-reveal {
+    animation: none !important;
+    clip-path: circle(71vmax at 50% 50%);
   }
 }
