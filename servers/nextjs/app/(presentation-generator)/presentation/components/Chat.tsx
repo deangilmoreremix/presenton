@@ -1154,7 +1154,7 @@ const Chat = ({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isFollowAgentEnabled, setIsFollowAgentEnabled] = useState(true);
-  const [activeMutationToolCount, setActiveMutationToolCount] = useState(0);
+  const [hasChatMutationStarted, setHasChatMutationStarted] = useState(false);
   const [activeAssistantMessageId, setActiveAssistantMessageId] = useState<
     string | null
   >(null);
@@ -1236,7 +1236,7 @@ const Chat = ({
     setInput("");
     setConversationId(null);
     setIsSending(false);
-    setActiveMutationToolCount(0);
+    setHasChatMutationStarted(false);
     setActiveAssistantMessageId(null);
     setErrorMessage(null);
     setPastedImages([]);
@@ -1418,8 +1418,8 @@ const Chat = ({
   }, [currentSlide]);
 
   useEffect(() => {
-    onChatMutationStateChange?.(activeMutationToolCount > 0);
-  }, [activeMutationToolCount, onChatMutationStateChange]);
+    onChatMutationStateChange?.(hasChatMutationStarted);
+  }, [hasChatMutationStarted, onChatMutationStateChange]);
 
   useEffect(() => {
     onFollowModeChange?.(isFollowAgentEnabled);
@@ -1448,16 +1448,11 @@ const Chat = ({
     []
   );
 
-  const updateMutationToolActivity = (
-    tool: string | undefined,
-    isActive: boolean
-  ) => {
+  const markChatMutationStarted = (tool: string | undefined) => {
     if (!tool || !MUTATING_TOOLS.has(tool)) {
       return;
     }
-    setActiveMutationToolCount((previous) =>
-      Math.max(0, previous + (isActive ? 1 : -1))
-    );
+    setHasChatMutationStarted(true);
   };
 
   const emitAgentSlideFocus = useCallback(
@@ -1666,7 +1661,7 @@ const Chat = ({
     setAttachedDocuments([]);
     setChatLinks([]);
     setConversationId(null);
-    setActiveMutationToolCount(0);
+    setHasChatMutationStarted(false);
     setErrorMessage(null);
     setExpandedActivityByMessage({});
     setHiddenOverlaySlideReference(null);
@@ -2146,6 +2141,7 @@ const Chat = ({
     }));
     setInput("");
     setErrorMessage(null);
+    setHasChatMutationStarted(false);
     setIsSending(true);
     setActiveAssistantMessageId(assistantMessageId);
     didIncrementalRefreshRef.current = false;
@@ -2275,9 +2271,7 @@ const Chat = ({
               void refreshPresentationIncrementally();
             }
             if (trace.status === "start") {
-              updateMutationToolActivity(trace.tool, true);
-            } else if (trace.status === "success" || trace.status === "error") {
-              updateMutationToolActivity(trace.tool, false);
+              markChatMutationStarted(trace.tool);
             }
             const traceActivity = formatTraceActivity(trace);
             if (!traceActivity) {
@@ -2418,7 +2412,7 @@ const Chat = ({
       ]);
       notify.error("Chat error", message);
     } finally {
-      setActiveMutationToolCount(0);
+      setHasChatMutationStarted(false);
       if (abortControllerRef.current === streamAbortController) {
         abortControllerRef.current = null;
       }

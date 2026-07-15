@@ -946,7 +946,7 @@ function GeneratingSlidesOverlay() {
         <span aria-hidden className="generating-slides-background absolute" />
         <span className="relative z-10 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#9034EA]" />
-          Generating slides...
+          Updating slides...
         </span>
       </span>
     </div>
