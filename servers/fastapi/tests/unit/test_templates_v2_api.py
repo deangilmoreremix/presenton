@@ -126,6 +126,51 @@ def _two_template_layouts():
     }
 
 
+def _template_layouts_with_icon_types():
+    layout = deepcopy(TEMPLATE_LAYOUTS["layouts"][0])
+    layout["components"][0]["elements"] = [
+        {
+            "type": "image",
+            "position": {"x": 0, "y": 0},
+            "size": {"width": 48, "height": 48},
+            "data": "/app_data/icons/one.svg",
+            "decorative": False,
+            "name": "primary_icon",
+            "is_icon": True,
+            "icon_type": "bold",
+        },
+        {
+            "type": "image",
+            "position": {"x": 64, "y": 0},
+            "size": {"width": 48, "height": 48},
+            "data": "/app_data/icons/two.svg",
+            "decorative": False,
+            "name": "secondary_icon",
+            "is_icon": True,
+            "icon_type": "thin",
+        },
+        {
+            "type": "group",
+            "position": {"x": 128, "y": 0},
+            "size": {"width": 48, "height": 48},
+            "name": "nested_icon_group",
+            "children": [
+                {
+                    "type": "image",
+                    "position": {"x": 0, "y": 0},
+                    "size": {"width": 48, "height": 48},
+                    "data": "/app_data/icons/three.svg",
+                    "decorative": False,
+                    "name": "nested_icon",
+                    "is_icon": True,
+                    "icon_type": "thin",
+                }
+            ],
+        },
+    ]
+    return {"layouts": [layout]}
+
+
 class _RowsResult:
     def __init__(self, rows):
         self._rows = rows
@@ -273,6 +318,48 @@ def test_create_template_v2_converts_generates_and_persists(tmp_path, fake_async
     }
     assert fake_async_session.added == [template]
     assert fake_async_session.commit_count == 1
+
+
+def test_create_template_v2_uses_most_common_generated_icon_type(
+    tmp_path,
+    fake_async_session,
+):
+    pptx_path = tmp_path / "icon-style.pptx"
+    pptx_path.write_bytes(b"pptx")
+    generated_layouts = SlideLayouts.model_validate(_template_layouts_with_icon_types())
+
+    with patch(
+        "api.v1.ppt.endpoints.templates.resolve_app_path_to_filesystem",
+        return_value=str(pptx_path),
+    ), patch(
+        "api.v1.ppt.endpoints.templates.EXPORT_TASK_SERVICE.convert_pptx_to_json",
+        new=AsyncMock(return_value=PptxToJsonDocument(**RAW_LAYOUTS)),
+    ), patch(
+        "api.v1.ppt.endpoints.templates.generate_template",
+        new=Mock(return_value=generated_layouts),
+    ), patch(
+        "api.v1.ppt.endpoints.templates.merge_similar_components",
+        new=Mock(return_value=MERGED_COMPONENTS),
+    ), patch(
+        "api.v1.ppt.endpoints.templates.random.randint",
+        return_value=4801,
+    ):
+        template = asyncio.run(
+            _create_template_v2_sync(
+                CreateTemplateV2Request(
+                    pptx_url="/app_data/uploads/icon-style.pptx",
+                    slide_image_urls=["/app_data/images/slide-1.png"],
+                    icon_type="bold",
+                ),
+                sql_session=fake_async_session,
+            )
+        )
+
+    assert template.assets["icon_type"] == "thin"
+    assert template.assets["icon_weight"] == "thin"
+    elements = template.layouts["layouts"][0]["components"][0]["elements"]
+    assert elements[1]["icon_type"] == "thin"
+    assert elements[2]["children"][0]["icon_type"] == "thin"
 
 
 def test_create_template_v2_caps_raw_layouts_to_preview_images(tmp_path, fake_async_session):
@@ -795,6 +882,39 @@ def test_patch_template_v2_slide_layout_updates_stored_layouts(fake_async_sessio
     assert template.layouts["layouts"][0]["id"] == "slide_1"
     assert template.layouts["layouts"][1] == patched_layout
     assert template.assets == {"layout_indexes": [0, 1]}
+    assert fake_async_session.commit_count == 1
+
+
+def test_patch_template_v2_slide_layout_updates_icon_type_from_layouts(
+    fake_async_session,
+):
+    template_id = str(uuid.uuid4())
+    template = TemplateV2(
+        name="Custom",
+        layouts=TEMPLATE_LAYOUTS,
+        raw_layouts=RAW_LAYOUTS,
+        assets={"icon_type": "bold", "icon_weight": "bold"},
+    )
+    fake_async_session._get_results[template_id] = template
+    patched_layout = _template_layouts_with_icon_types()["layouts"][0]
+
+    response = asyncio.run(
+        patch_template_v2_slide_layout(
+            template_id,
+            PatchTemplateV2SlideLayoutRequest(
+                index=0,
+                layout=patched_layout,
+            ),
+            sql_session=fake_async_session,
+        )
+    )
+
+    assert response == template
+    assert template.assets == {
+        "icon_type": "thin",
+        "icon_weight": "thin",
+        "layout_indexes": [0],
+    }
     assert fake_async_session.commit_count == 1
 
 

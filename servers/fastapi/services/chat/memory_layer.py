@@ -3490,7 +3490,12 @@ class PresentationChatMemoryLayer:
         if element_type == "image":
             asset_url = cls._template_v2_asset_url(value)
             if asset_url:
+                from services.chat.slide_ui_helpers import (
+                    _normalize_generated_image_fit,
+                )
+
                 element["data"] = asset_url
+                _normalize_generated_image_fit(element, asset_url)
                 prompt = cls._template_v2_asset_prompt(
                     value,
                     element.get("is_icon") is True,

@@ -836,8 +836,10 @@ function adaptEllipse(raw: UnknownRecord): SlideElement | null {
 }
 
 function adaptLine(raw: UnknownRecord): SlideElement {
+  const size = adaptLineSize(readRecord(raw, "size"));
   return {
     ...baseElement(raw),
+    ...(size ? { size } : {}),
     type: "line",
     stroke:
       adaptStroke(readRecord(raw, "stroke")) ?? {
@@ -1187,6 +1189,14 @@ function adaptSize(value: UnknownRecord | null): { width: number; height: number
   return {
     width: clamp(round(readNumber(value, "width") ?? MIN_ELEMENT_SIZE), MIN_ELEMENT_SIZE, EDITOR_STAGE_WIDTH),
     height: clamp(round(readNumber(value, "height") ?? MIN_ELEMENT_SIZE), MIN_ELEMENT_SIZE, EDITOR_STAGE_HEIGHT),
+  };
+}
+
+function adaptLineSize(value: UnknownRecord | null): { width: number; height: number } | null {
+  if (!value) return null;
+  return {
+    width: round(readNumber(value, "width") ?? 0),
+    height: round(readNumber(value, "height") ?? 0),
   };
 }
 

@@ -48,6 +48,11 @@ interface Box {
   height?: number;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 interface FontFaceDefinition {
   family: string;
   url: string;
@@ -76,6 +81,7 @@ const ELEMENT_TYPES = new Set([
   "image",
   "text-list",
   "table",
+  "polygon",
   "rectangle",
   "ellipse",
   "line",
@@ -418,12 +424,14 @@ function renderItem(item: JsonRecord, mode: RenderMode): string {
   }
 
   switch (readString(item.type)) {
+    case "polygon":
+      return renderPolygon(item, mode);
     case "rectangle":
-      return `<div style="${frameAndBoxStyle(item, mode)}"></div>`;
+      return renderPolygon(item, mode);
     case "ellipse":
       return `<div style="${frameAndBoxStyle(item, mode, "border-radius:50%")}"></div>`;
     case "line":
-      return renderLine(item, mode);
+      return renderPolygon(item, mode);
     case "svg":
       return renderSvg(item, mode);
     case "image":
@@ -478,6 +486,13 @@ function renderImage(item: JsonRecord, mode: RenderMode): string {
     )}${clipPath}overflow:hidden;"><img alt="" src="${escapeAttribute(
       source
     )}" style="display:block;max-width:none;max-height:none;height:100%;width:100%;object-fit:${fit};${focusStyle}${cropTransformStyle}"></div>`;
+  }
+  if (clipPath) {
+    return `<div style="${frameStyle(item, mode)}${boxStyle(
+      item
+    )}${clipPath}overflow:hidden;"><img alt="" src="${escapeAttribute(
+      source
+    )}" style="display:block;max-width:none;max-height:none;height:100%;width:100%;object-fit:${fit};${focusStyle}"></div>`;
   }
   return `<img alt="" src="${escapeAttribute(source)}" style="${frameStyle(
     item,
@@ -728,6 +743,49 @@ function renderLine(item: JsonRecord, mode: RenderMode): string {
   )}" stroke="${escapeAttribute(
     color
   )}" stroke-width="${cssNumber(width)}"${dash ? ` stroke-dasharray="${dash}"` : ""}/></svg></div>`;
+}
+
+function renderPolygon(item: JsonRecord, mode: RenderMode): string {
+  const points = polygonPoints(item);
+  if (points.length < 2) return "";
+
+  const box = polygonBox(item, points);
+  const closed = polygonClosed(item, points);
+  const stroke = readRecord(item.stroke);
+  const fill = readRecord(item.fill);
+  const fillColor = closed
+    ? colorWithOpacity(readString(fill.color) ?? "", readNumber(fill.opacity))
+    : "";
+  const strokeWidth = Math.max(0, readNumber(stroke.width) ?? 1);
+  const strokeColor = colorWithOpacity(
+    readString(stroke.color) ?? (!closed ? "#000000" : ""),
+    readNumber(stroke.opacity)
+  );
+  if (!fillColor && !(strokeColor && strokeWidth > 0)) return "";
+
+  const pointString = points
+    .map((point) => `${cssNumber(point.x - box.x)},${cssNumber(point.y - box.y)}`)
+    .join(" ");
+  const dash = readArray(stroke.dash)
+    .map(readNumber)
+    .filter((value): value is number => value != null)
+    .join(" ");
+  const shape = closed
+    ? `<polygon points="${escapeAttribute(pointString)}"${fillColor ? ` fill="${escapeAttribute(fillColor)}"` : ` fill="none"`}${strokeColor && strokeWidth > 0
+      ? ` stroke="${escapeAttribute(strokeColor)}" stroke-width="${cssNumber(strokeWidth)}"`
+      : ""
+    }${dash ? ` stroke-dasharray="${dash}"` : ""}/>`
+    : `<polyline points="${escapeAttribute(pointString)}" fill="none"${strokeColor && strokeWidth > 0
+      ? ` stroke="${escapeAttribute(strokeColor)}" stroke-width="${cssNumber(strokeWidth)}"`
+      : ""
+    }${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
+  return `<div style="${frameStyleFromBox(box, mode)}${transformStyle(
+    item
+  )}overflow:visible"><svg width="100%" height="100%" viewBox="0 0 ${cssNumber(
+    box.width ?? 1
+  )} ${cssNumber(
+    box.height ?? 1
+  )}" preserveAspectRatio="none" style="display:block;overflow:visible">${shape}</svg></div>`;
 }
 
 function renderSvg(item: JsonRecord, mode: RenderMode): string {

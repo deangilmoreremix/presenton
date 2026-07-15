@@ -191,9 +191,15 @@ function renderImage(element: TemplateV2Element, key: string, mode: RenderMode) 
   const flipH = readBoolean(element.flip_h);
   const flipV = readBoolean(element.flip_v);
   const cropScale = imageCropScale(element);
-  const transform = imageTransform(flipH, flipV, cropScale);
-  const transformOrigin =
-    cropScale > 1 ? objectPosition ?? "center" : undefined;
+  const frameTransform = imageFlipTransform(flipH, flipV);
+  const cropTransform = imageCropTransform(cropScale);
+  const cropTransformOrigin = cropScale > 1 ? objectPosition ?? "center" : undefined;
+  const imageTransform = clipPath
+    ? cropTransform
+    : imageTransformValue(frameTransform, cropTransform);
+  const imageTransformOrigin = clipPath
+    ? cropTransformOrigin
+    : cropTransformOrigin ?? (frameTransform ? "center" : undefined);
 
   return (
     <div
@@ -202,6 +208,10 @@ function renderImage(element: TemplateV2Element, key: string, mode: RenderMode) 
         ...frameStyle(element, mode),
         borderRadius,
         overflow: "hidden",
+        clipPath,
+        transform: clipPath ? frameTransform : undefined,
+        transformOrigin: clipPath && frameTransform ? "center" : undefined,
+        WebkitClipPath: clipPath,
       }}
     >
       <img
@@ -211,12 +221,10 @@ function renderImage(element: TemplateV2Element, key: string, mode: RenderMode) 
         style={{
           display: "block",
           height: "100%",
-          clipPath,
           objectFit: fit,
           objectPosition,
-          transform,
-          transformOrigin,
-          WebkitClipPath: clipPath,
+          transform: imageTransform,
+          transformOrigin: imageTransformOrigin,
           width: "100%",
         }}
       />
@@ -233,9 +241,8 @@ function renderImage(element: TemplateV2Element, key: string, mode: RenderMode) 
             maskSize: fit === "fill" ? "100% 100%" : fit,
             pointerEvents: "none",
             position: "absolute",
-            transform,
-            transformOrigin,
-            WebkitClipPath: clipPath,
+            transform: imageTransform,
+            transformOrigin: imageTransformOrigin,
             WebkitMaskImage: `url(${resolvedSrc})`,
             WebkitMaskPosition: objectPosition ?? "center",
             WebkitMaskRepeat: "no-repeat",
@@ -809,13 +816,23 @@ function imageCropScale(element: TemplateV2Element) {
   return Math.min(6, Math.max(1, value));
 }
 
-function imageTransform(flipH: boolean, flipV: boolean, cropScale: number) {
+function imageFlipTransform(flipH: boolean, flipV: boolean) {
   const transforms = [
     flipH ? "scaleX(-1)" : "",
     flipV ? "scaleY(-1)" : "",
-    cropScale > 1 ? `scale(${cropScale})` : "",
   ].filter(Boolean);
   return transforms.length ? transforms.join(" ") : undefined;
+}
+
+function imageCropTransform(cropScale: number) {
+  return cropScale > 1 ? `scale(${cropScale})` : undefined;
+}
+
+function imageTransformValue(
+  frameTransform: string | undefined,
+  cropTransform: string | undefined,
+) {
+  return [frameTransform, cropTransform].filter(Boolean).join(" ") || undefined;
 }
 
 function horizontalAlign(value: string | null) {

@@ -101,10 +101,20 @@ Convert the provided raw slide elements to components.
 - Use `table` element for table and `chart` element for chart.
 - Use `infographic` element for infographic or metric visuals like `progress_bar`, `gauge`, etc.
 - Use `text-list` element for list of text like bullet points, numbered list, unordered list, etc.
-- Use `rectangle`, `ellipse`, `line` etc for geometry.
+- Use `polygon` for straight-edged geometry, including lines, rectangles,
+  squares, triangles, pentagons, hexagons, dividers, and arbitrary polygonal
+  accents.
+- A `polygon` uses `points: [{"x": number, "y": number}, ...]` in local
+  coordinates relative to its parent. Do not use `position` or `size` for
+  polygon geometry.
+- Use exactly two points for a line or divider. Use four points for rectangles
+  and squares. Use five or more points for pentagons, hexagons, and similar
+  straight-edged shapes.
+- Use `ellipse` only for genuinely curved oval or circular geometry.
 - Use `container` for flexible alignment and layout.
 - Use `image` for images and icons.
 - Identify icon color from slide image.
+- For raster photos or generated content images, use `fit: "cover"` when the image should fill its frame without distortion, and use `fit: "contain"` when the full image must remain visible. Use `fit: "fill"` only for intentionally stretchable SVG/freeform assets, including clipped PPTX image fills with `clip_path`; never use it for plain photo boxes.
 
 # Decorative and Content Element Rules:
 - Use `decorative=false` for elements that carry slide meaning or should be replaced, including text, charts, tables, metrics, icons in bullet points and primary images/icons.
@@ -140,6 +150,7 @@ Convert the provided raw slide elements to components.
 # Schema Rules:
 - Set `decorative=true` for elements that should stay fixed as part of the template design.
 - Set `decorative=false` for content elements that should be replaced when creating a new slide from this layout.
+- For icon image elements, set `icon_type` to the closest visual style: `bold`, `duotone`, `fill`, `light`, `regular`, or `thin`. Omit `icon_type` for non-icon images.
 - Try to keep `max_length`, `min_length`, `max_items` and `min_items` same as in the raw slide layout.
 - If `flex` or `grid` contains list of same items, set the `max_length`, `min_length`, and other schema related constraints same for items.
 - For same items arranged in `flex`/`grid` derive schema fields by averaging between those similar items.

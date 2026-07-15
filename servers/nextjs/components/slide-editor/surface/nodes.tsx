@@ -68,10 +68,15 @@ import {
   isRecord,
   keyForSelection,
   layoutChildren,
-  linePoints,
+  lineElementGeometryFromFrame,
+  linePointsForElement,
+  lineStrokeWidth,
   nullableBoxEqual,
   numberPathEqual,
   positionFromNodeInParent,
+  polygonClosedForElement,
+  polygonElementFromFrame,
+  polygonLocalPointsForElement,
   rawElementKey,
   readArray,
   readBoolean,
@@ -879,19 +884,39 @@ function RawElementNode({
         node.scaleX(1);
         node.scaleY(1);
         const fontScale = fontScaleFromResize(scaleX, scaleY);
-        onElementChange(selection, (current) => ({
-          ...scaleRawElementTextMetrics(current, fontScale),
-          position: positionFromNodeInParent(
-            node,
-            parentBox,
-            { ...box, ...nextSize },
-          ),
-          size: nextSize,
-          rotation: node.rotation(),
-          ...(layoutManaged || isManualPositioned(current)
-            ? { __presenton_manual_position: true }
-            : {}),
-        }));
+        const nextPosition = positionFromNodeInParent(
+          node,
+          parentBox,
+          { ...box, ...nextSize },
+        );
+        onElementChange(selection, (current) => {
+          const scaled = scaleRawElementTextMetrics(current, fontScale);
+          const type = readString(current.type);
+          const geometry =
+            type === "polygon"
+              ? polygonElementFromFrame(scaled, nextPosition, scaleX, scaleY)
+              : {
+                  ...scaled,
+                  ...(type === "line"
+                    ? lineElementGeometryFromFrame(
+                        current,
+                        nextPosition,
+                        scaleX,
+                        scaleY,
+                      )
+                    : {
+                        position: nextPosition,
+                        size: nextSize,
+                      }),
+                };
+          return {
+            ...geometry,
+            rotation: node.rotation(),
+            ...(layoutManaged || isManualPositioned(current)
+              ? { __presenton_manual_position: true }
+              : {}),
+          };
+        });
       }}
     >
       {isEditMode ? (
@@ -1062,19 +1087,49 @@ function RawElementVisual({
   }
   if (type === "line") {
     const stroke = colorWithOpacity(
-      strokeColor(element.stroke),
+      strokeColor(element.stroke) ?? "#000000",
       strokeOpacity(element.stroke),
     );
-    const lineWidth = strokeWidth(element.stroke);
+    const lineWidth = lineStrokeWidth(element);
     const lineDash = readArray(asRecord(element.stroke)?.dash)
       .map(readNumber)
-      .filter((value): value is number => value != null && value >= 0);
+      .filter((value): value is number => value != null);
     if (!stroke || lineWidth <= 0) return null;
     return (
       <Line
-        points={linePoints(width, height, lineWidth)}
+        points={linePointsForElement(element, width, height)}
         stroke={stroke}
         strokeWidth={lineWidth}
+        dash={lineDash.length ? lineDash : undefined}
+        hitStrokeWidth={Math.max(20, lineWidth)}
+        {...shadowProps(element)}
+        listening={interactive}
+      />
+    );
+  }
+  if (type === "polygon") {
+    const points = polygonLocalPointsForElement(element);
+    const closed = polygonClosedForElement(element);
+    const fill = closed
+      ? colorWithOpacity(fillColor(element.fill), fillOpacity(element.fill))
+      : undefined;
+    const stroke = colorWithOpacity(
+      strokeColor(element.stroke) ?? (!closed ? "#000000" : undefined),
+      strokeOpacity(element.stroke),
+    );
+    const lineWidth = lineStrokeWidth(element);
+    const lineDash = readArray(asRecord(element.stroke)?.dash)
+      .map(readNumber)
+      .filter((value): value is number => value != null);
+    if (points.length < 4) return null;
+    if (!fill && !(stroke && lineWidth > 0)) return null;
+    return (
+      <Line
+        points={points}
+        closed={closed}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={stroke ? lineWidth : 0}
         dash={lineDash.length ? lineDash : undefined}
         hitStrokeWidth={Math.max(20, lineWidth)}
         {...shadowProps(element)}
@@ -1303,10 +1358,10 @@ function RawImageElement({
   const color = readString(element.color);
   const isIcon = isRawIconElement(element);
   const renderSrc = useMemo(() => {
-    if (!src || !color || !isIcon || typeof window === "undefined") return src;
+    if (!src || !isIcon || typeof window === "undefined") return src;
     const baseUrl = window.location.href;
     if (!isStaticSvgIconSource(src, baseUrl)) return src;
-    return buildSvgUpdateUrl(src, baseUrl, { color }) ?? src;
+    return buildSvgUpdateUrl(src, baseUrl, { color, forceRoute: true }) ?? src;
   }, [color, isIcon, src]);
   const loaded = useLoadedKonvaImage(renderSrc);
 
@@ -1323,7 +1378,7 @@ function RawImageElement({
     );
   }
 
-  const fit = readString(element.fit) ?? "contain";
+  const fit = imageFit(element.fit);
   const focusX = clamp(readNumber(element.focus_x) ?? 50, 0, 100) / 100;
   const focusY = clamp(readNumber(element.focus_y) ?? 50, 0, 100) / 100;
   const cropScale = clamp(readNumber(element.crop_scale) ?? 1, 1, 6);
@@ -1381,21 +1436,27 @@ function RawImageElement({
   const imageNode = (
     <KonvaImage
       image={loaded}
-      x={offsetX + (flipH ? drawW : 0)}
-      y={offsetY + (flipV ? drawH : 0)}
+      x={offsetX}
+      y={offsetY}
       width={drawW}
       height={drawH}
       crop={crop}
-      scaleX={flipH ? -1 : 1}
-      scaleY={flipV ? -1 : 1}
       listening={interactive}
     />
   );
 
-  const clippedImageNode = clipPath ? (
+  const contentNode = clipPath || flipH || flipV ? (
     <Group
-      clipFunc={(context) =>
-        drawImageClipPath(context, clipPath, width, height)
+      x={flipH ? width : 0}
+      y={flipV ? height : 0}
+      width={width}
+      height={height}
+      scaleX={flipH ? -1 : 1}
+      scaleY={flipV ? -1 : 1}
+      clipFunc={
+        clipPath
+          ? (context) => drawImageClipPath(context, clipPath, width, height)
+          : undefined
       }
       listening={interactive}
     >
@@ -1412,9 +1473,16 @@ function RawImageElement({
       }
       listening={interactive}
     >
-      {clippedImageNode}
+      {contentNode}
     </Group>
   );
+}
+
+function imageFit(value: unknown): "contain" | "cover" | "fill" {
+  const fit = readString(value);
+  return fit === "contain" || fit === "cover" || fit === "fill"
+    ? fit
+    : "contain";
 }
 
 type ParsedImageClipPath =

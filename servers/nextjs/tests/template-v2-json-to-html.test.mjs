@@ -131,6 +131,32 @@ test("renders zero-height horizontal lines with a stroke-sized frame", async () 
   assert.match(html, /stroke-width="2\.67"/);
 });
 
+test("renders signed line deltas from the line start point", async () => {
+  const { templateV2UiToHtml } = await rendererPromise;
+  const html = templateV2UiToHtml({
+    elements: [
+      {
+        type: "line",
+        position: { x: 100, y: 80 },
+        size: { width: -40, height: 0 },
+        stroke: { color: "#111111", width: 3 },
+      },
+      {
+        type: "line",
+        position: { x: 120, y: 200 },
+        size: { width: 0, height: -50 },
+        stroke: { color: "#222222", width: 2 },
+      },
+    ],
+  });
+
+  assert.ok(html);
+  assert.match(html, /left:60px;top:80px;width:40px;height:3px;/);
+  assert.match(html, /x1="40" y1="0" x2="0" y2="0"/);
+  assert.match(html, /left:120px;top:150px;width:2px;height:50px;/);
+  assert.match(html, /x1="0" y1="50" x2="0" y2="0"/);
+});
+
 test("normalizes camelCase chart kinds before rendering chart config", async () => {
   const { templateV2UiToHtml } = await rendererPromise;
   const html = templateV2UiToHtml({

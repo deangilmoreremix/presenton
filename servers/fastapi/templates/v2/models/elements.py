@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Literal, Optional, TypeAlias, Union, List
+from typing import Annotated, Any, Literal, Optional, TypeAlias, Union, List
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 
 def _validate_min_max(
@@ -59,6 +59,15 @@ class ImageFit(str, Enum):
     CONTAIN = "contain"
     COVER = "cover"
     FILL = "fill"
+
+
+class IconType(str, Enum):
+    BOLD = "bold"
+    DUOTONE = "duotone"
+    FILL = "fill"
+    LIGHT = "light"
+    REGULAR = "regular"
+    THIN = "thin"
 
 
 class ChartType(str, Enum):
@@ -208,6 +217,7 @@ class Image(BaseModel):  # Konva Image
     name: str
     prompt: Optional[str] = None
     is_icon: bool
+    icon_type: Optional[IconType] = None
 
 
 class TextList(BaseModel):  # Konva Group
@@ -279,6 +289,17 @@ class Line(BaseModel):
     size: Optional[Size] = None
     rotation: Optional[float] = None
     stroke: Stroke
+    shadow: Optional[Shadow] = None
+
+
+class Polygon(BaseModel):
+    type: Literal["polygon"]
+    points: list[Position] = Field(min_length=2)
+    closed: Optional[bool] = None
+    rotation: Optional[float] = None
+    opacity: Optional[float] = None
+    fill: Optional[Fill] = None
+    stroke: Optional[Stroke] = None
     shadow: Optional[Shadow] = None
 
 
@@ -417,6 +438,56 @@ class Group(BaseModel):
     name: str
 
 
+def _legacy_number(value: Any, fallback: float = 0.0) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return fallback
+    return fallback
+
+
+def _legacy_geometry_to_polygon(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+
+    element_type = value.get("type")
+    if element_type not in {"line", "rectangle"}:
+        return value
+
+    position = value.get("position") if isinstance(value.get("position"), dict) else {}
+    size = value.get("size") if isinstance(value.get("size"), dict) else {}
+    x = _legacy_number(position.get("x") if isinstance(position, dict) else None)
+    y = _legacy_number(position.get("y") if isinstance(position, dict) else None)
+    width = _legacy_number(size.get("width") if isinstance(size, dict) else None)
+    height = _legacy_number(size.get("height") if isinstance(size, dict) else None)
+
+    polygon = {
+        key: item
+        for key, item in value.items()
+        if key not in {"type", "position", "size", "border_radius"}
+    }
+    polygon["type"] = "polygon"
+    if element_type == "line":
+        polygon["points"] = [
+            {"x": x, "y": y},
+            {"x": x + width, "y": y + height},
+        ]
+        polygon.setdefault("closed", False)
+    else:
+        polygon["points"] = [
+            {"x": x, "y": y},
+            {"x": x + width, "y": y},
+            {"x": x + width, "y": y + height},
+            {"x": x, "y": y + height},
+        ]
+        polygon.setdefault("closed", True)
+
+    return polygon
+
+
 SlideElement: TypeAlias = Annotated[
     Union[
         Text,
@@ -427,12 +498,14 @@ SlideElement: TypeAlias = Annotated[
         Rectangle,
         Ellipse,
         Line,
+        Polygon,
         Chart,
         Infographic,
         Flex,
         Grid,
         Group,
     ],
+    BeforeValidator(_legacy_geometry_to_polygon),
     Field(discriminator="type"),
 ]
 
@@ -457,12 +530,14 @@ __all__ = [
     "HorizontalAlignment",
     "Image",
     "ImageFit",
+    "IconType",
     "Infographic",
     "InfographicType",
     "LayoutAlignment",
     "Line",
     "Marker",
     "Padding",
+    "Polygon",
     "Position",
     "Rectangle",
     "Shadow",

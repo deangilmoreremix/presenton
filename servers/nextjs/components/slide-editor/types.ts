@@ -265,6 +265,14 @@ export type LineElement = ElementBase & {
   stroke: Stroke;
 };
 
+export type PolygonElement = Omit<ElementBase, "position" | "size"> & {
+  type: "polygon";
+  points: Position[];
+  closed?: boolean | null;
+  fill?: Fill | null;
+  stroke?: Stroke | null;
+};
+
 export type SvgElement = ElementBase & {
   type: "svg";
   svg: string;
@@ -349,6 +357,7 @@ export type SlideElement =
   | RectangleElement
   | EllipseElement
   | LineElement
+  | PolygonElement
   | SvgElement
   | ChartElement
   | InfographicElement

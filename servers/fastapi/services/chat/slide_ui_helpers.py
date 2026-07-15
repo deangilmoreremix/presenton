@@ -11,6 +11,7 @@ CONTENT_EDITABLE_ELEMENT_TYPES = {"text", "text-list", "table", "image", "chart"
 VISIBLE_ELEMENT_TYPES = CONTENT_EDITABLE_ELEMENT_TYPES | {
     "container",
     "rectangle",
+    "polygon",
     "ellipse",
     "line",
     "infographic",
@@ -307,6 +308,36 @@ def _normalize_image_element(element: dict[str, Any]) -> None:
     )
     if prompt:
         element.setdefault("prompt", prompt)
+
+
+def _normalize_generated_image_fit(
+    element: dict[str, Any],
+    asset_url: str | None,
+) -> None:
+    if element.get("is_icon") is True or element.get("fit") != "fill":
+        return
+    if _has_image_clip_path(element):
+        return
+    if _looks_like_svg_asset_reference(asset_url):
+        return
+    element["fit"] = "cover"
+
+
+def _has_image_clip_path(element: dict[str, Any]) -> bool:
+    for key in ("clip_path", "clipPath", "clippath"):
+        value = element.get(key)
+        if isinstance(value, str) and value.strip() and value.strip().lower() != "none":
+            return True
+    return False
+
+
+def _looks_like_svg_asset_reference(value: str | None) -> bool:
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().lower()
+    if normalized.startswith("data:image/svg+xml"):
+        return True
+    return normalized.split("?", 1)[0].split("#", 1)[0].endswith(".svg")
 
 
 def _normalize_chart_type(value: Any, *, fallback: str = "bar") -> str:
@@ -1492,6 +1523,7 @@ def _apply_image_element_value(element: dict[str, Any], value: Any) -> None:
             "Image/icon updates require `text` with an image or icon URL."
         )
     element["data"] = asset_url
+    _normalize_generated_image_fit(element, asset_url)
     prompt = _template_v2_asset_prompt(
         value,
         is_icon=element.get("is_icon") is True,

@@ -121,6 +121,8 @@ export interface TemplateV2Element {
   type?: string | null;
   position?: TemplateV2Point | null;
   size?: TemplateV2Size | null;
+  points?: TemplateV2Point[] | null;
+  closed?: boolean | string | null;
   fill?: Record<string, unknown> | null;
   stroke?: Record<string, unknown> | null;
   border_radius?: Record<string, unknown> | null;

@@ -72,6 +72,7 @@ def test_image_element_accepts_flip_flags():
             "focus_y": 75.0,
             "crop_scale": 1.8,
             "clip_path": "path('M 0 0 L 100 0 L 100 100 Z')",
+            "icon_type": "duotone",
         }
     )
     assert image.flip_h is True
@@ -80,6 +81,8 @@ def test_image_element_accepts_flip_flags():
     assert image.focus_y == 75.0
     assert image.crop_scale == 1.8
     assert image.clip_path == "path('M 0 0 L 100 0 L 100 100 Z')"
+    assert image.icon_type is not None
+    assert image.icon_type.value == "duotone"
 
     layout = RawSlideLayout.model_validate(
         {
@@ -98,6 +101,7 @@ def test_image_element_accepts_flip_flags():
                     "focus_y": 75.0,
                     "crop_scale": 1.8,
                     "clip_path": "path('M 0 0 L 100 0 L 100 100 Z')",
+                    "icon_type": "duotone",
                 }
             ],
         }
@@ -109,10 +113,25 @@ def test_image_element_accepts_flip_flags():
     assert layout_image.focus_y == 75.0
     assert layout_image.crop_scale == 1.8
     assert layout_image.clip_path == "path('M 0 0 L 100 0 L 100 100 Z')"
+    assert layout_image.icon_type is not None
+    assert layout_image.icon_type.value == "duotone"
     assert (
         layout.model_dump(mode="json")["elements"][0]["clip_path"]
         == "path('M 0 0 L 100 0 L 100 100 Z')"
     )
+    assert layout.model_dump(mode="json")["elements"][0]["icon_type"] == "duotone"
+
+    with pytest.raises(ValidationError, match="icon_type"):
+        Image.model_validate(
+            {
+                "type": "image",
+                "decorative": False,
+                "name": "hero",
+                "is_icon": True,
+                "data": "/app_data/images/hero.png",
+                "icon_type": "heavy",
+            }
+        )
 
 
 def test_element_models_match_export_schema_changes():
