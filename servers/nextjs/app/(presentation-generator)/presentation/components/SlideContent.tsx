@@ -7,6 +7,7 @@ import SlideActionBar from "./SlideActionBar";
 interface SlideContentProps {
   slide: any;
   index: number;
+  selected?: boolean;
   presentationId: string;
   onSlideAdded?: (
     index: number,
@@ -29,6 +30,7 @@ interface SlideContentProps {
 const SlideContent = ({
   slide,
   index,
+  selected = false,
   presentationId,
   onSlideAdded,
   isChatEditing = false,
@@ -112,6 +114,8 @@ const SlideContent = ({
             theme={theme ?? null}
             fonts={fonts}
             renderIndex={index}
+            enableViewportCulling
+            isSelected={selected}
             showBlankPromptOverlay={showBlankPromptOverlay}
             onBlankPromptOverlayDismiss={onBlankPromptOverlayDismiss}
             showTemplatePromptOverlay={showTemplatePromptOverlay}
@@ -137,6 +141,7 @@ export default memo(
   (previous, next) =>
     previous.slide === next.slide &&
     previous.index === next.index &&
+    previous.selected === next.selected &&
     previous.presentationId === next.presentationId &&
     previous.onSlideAdded === next.onSlideAdded &&
     previous.isChatEditing === next.isChatEditing &&
