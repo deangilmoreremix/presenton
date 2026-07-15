@@ -707,21 +707,20 @@ function polygonPoints(element: TemplateV2Element): PreviewPoint[] {
     : points;
   const curve = readRecord(element.curve);
   const rawType = readString(curve.type)?.trim().toLowerCase();
-  const curveType = rawType === "beizer" ? "bezier" : rawType;
   const segments = Math.max(1, Math.min(96, Math.round(readNumber(curve.segments) ?? 16)));
-  if (curveType === "smooth") {
+  const implicitEllipseCurve = element.type === "ellipse" && rawType == null;
+  if (rawType === "smooth" || implicitEllipseCurve) {
     return sampleSmoothCurve(
       rounded,
       closed,
-      Math.max(0, Math.min(1, readNumber(curve.tension) ?? 0.4)),
-      segments,
-    );
-  }
-  if (curveType === "bezier") {
-    return sampleBezierCurve(
-      rounded,
-      readPointArray(curve.control_points ?? curve.controlPoints),
-      segments,
+      Math.max(
+        0,
+        Math.min(
+          1,
+          readNumber(curve.tension) ?? (implicitEllipseCurve ? 1 : 0.4),
+        ),
+      ),
+      implicitEllipseCurve ? 8 : segments,
     );
   }
   return rounded;
@@ -745,7 +744,7 @@ function ellipsePoints(
   y: number,
   width: number,
   height: number,
-  segments = 48,
+  segments = 8,
 ): PreviewPoint[] {
   const radiusX = width / 2;
   const radiusY = height / 2;
@@ -810,6 +809,33 @@ function roundedPolygonPoints(points: PreviewPoint[], radii: number[], segments 
   return rounded;
 }
 
+function hermitePoint(
+  start: PreviewPoint,
+  end: PreviewPoint,
+  startTangent: PreviewPoint,
+  endTangent: PreviewPoint,
+  t: number,
+): PreviewPoint {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  return {
+    x:
+      h00 * start.x +
+      h10 * startTangent.x +
+      h01 * end.x +
+      h11 * endTangent.x,
+    y:
+      h00 * start.y +
+      h10 * startTangent.y +
+      h01 * end.y +
+      h11 * endTangent.y,
+  };
+}
+
 function sampleSmoothCurve(
   points: PreviewPoint[],
   closed: boolean,
@@ -824,59 +850,20 @@ function sampleSmoothCurve(
     const p1 = pointAt(points, index);
     const p2 = pointAt(points, index + 1);
     const p3 = closed ? pointAt(points, index + 2) : points[Math.min(points.length - 1, index + 2)];
+    const tangentScale = tension * 0.5;
+    const startTangent = {
+      x: (p2.x - p0.x) * tangentScale,
+      y: (p2.y - p0.y) * tangentScale,
+    };
+    const endTangent = {
+      x: (p3.x - p1.x) * tangentScale,
+      y: (p3.y - p1.y) * tangentScale,
+    };
     if (index === 0) sampled.push(p1);
     for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      const t2 = t * t;
-      const t3 = t2 * t;
       sampled.push({
-        x:
-          (2 * p1.x +
-            (-p0.x + p2.x) * tension * t +
-            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * tension * t2 +
-            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * tension * t3) /
-          2,
-        y:
-          (2 * p1.y +
-            (-p0.y + p2.y) * tension * t +
-            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * tension * t2 +
-            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * tension * t3) /
-          2,
+        ...hermitePoint(p1, p2, startTangent, endTangent, step / segments),
       });
-    }
-  }
-  return sampled;
-}
-
-function sampleBezierCurve(points: PreviewPoint[], controls: PreviewPoint[], segments: number) {
-  if (points.length < 2 || controls.length === 0) return points;
-  const sampled: PreviewPoint[] = [points[0]];
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const start = points[index];
-    const end = points[index + 1];
-    const c1 = controls[index * 2] ?? controls[0];
-    const c2 = controls[index * 2 + 1];
-    for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      sampled.push(
-        c2
-          ? {
-              x:
-                (1 - t) ** 3 * start.x +
-                3 * (1 - t) ** 2 * t * c1.x +
-                3 * (1 - t) * t * t * c2.x +
-                t ** 3 * end.x,
-              y:
-                (1 - t) ** 3 * start.y +
-                3 * (1 - t) ** 2 * t * c1.y +
-                3 * (1 - t) * t * t * c2.y +
-                t ** 3 * end.y,
-            }
-          : {
-              x: (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * c1.x + t * t * end.x,
-              y: (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * c1.y + t * t * end.y,
-            },
-      );
     }
   }
   return sampled;

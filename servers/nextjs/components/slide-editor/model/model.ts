@@ -229,7 +229,7 @@ export function updateElementInUi(
     updater,
   );
   if (elements === currentElements) return sourceUi;
-  components[selection.componentIndex] = normalizeSingleChartWrapperComponent(
+  components[selection.componentIndex] = normalizeSingleElementWrapperComponent(
     { ...component, elements },
     selection,
   );
@@ -308,6 +308,48 @@ export function normalizeSingleChartWrapperComponent(
       },
     ],
   };
+}
+
+export function normalizeSingleVectorShapeWrapperComponent(
+  component: RawComponent,
+  selection: ElementSelection,
+): RawComponent {
+  if (selection.elementPath.length !== 1) return component;
+  const elements = readArray(component.elements);
+  if (elements.length !== 1) return component;
+  const child = asRecord(elements[0]);
+  if (!child || !isVectorShapeType(readString(child.type))) return component;
+  if ((readNumber(component.rotation) ?? 0) !== 0) return component;
+
+  const childBox = elementBox(child);
+  const componentPosition = readPoint(component.position);
+  return {
+    ...component,
+    position: {
+      x: componentPosition.x + childBox.x,
+      y: componentPosition.y + childBox.y,
+    },
+    size: {
+      width: childBox.width,
+      height: childBox.height,
+    },
+    elements: [
+      translateVectorShapeElement(child, {
+        x: -childBox.x,
+        y: -childBox.y,
+      }),
+    ],
+  };
+}
+
+function normalizeSingleElementWrapperComponent(
+  component: RawComponent,
+  selection: ElementSelection,
+): RawComponent {
+  return normalizeSingleVectorShapeWrapperComponent(
+    normalizeSingleChartWrapperComponent(component, selection),
+    selection,
+  );
 }
 
 export function updateElementArray(
@@ -1268,6 +1310,128 @@ function readPointArray(value: unknown): Point[] {
     .filter((point): point is Point => point != null);
 }
 
+export type VectorVertexEntry = {
+  index: number;
+  point: Point;
+};
+
+export function vectorVertexEntriesForElement(element: RawElement): VectorVertexEntry[] {
+  return readArray(element.points)
+    .map((item, index) => {
+      const point = asRecord(item);
+      const x = readNumber(point?.x);
+      const y = readNumber(point?.y);
+      return x != null && y != null ? { index, point: { x, y } } : null;
+    })
+    .filter((entry): entry is VectorVertexEntry => entry != null);
+}
+
+function translatePointArray(value: unknown, delta: Point) {
+  return readArray(value).map((item) => {
+    const point = asRecord(item);
+    const x = readNumber(point?.x);
+    const y = readNumber(point?.y);
+    if (x == null || y == null) return item;
+    return { ...point, x: x + delta.x, y: y + delta.y };
+  });
+}
+
+function insertArrayItem<T>(value: unknown, index: number, item: T) {
+  if (!Array.isArray(value)) return null;
+  const next = [...value];
+  next.splice(index, 0, item);
+  return next;
+}
+
+function removeArrayItem(value: unknown, index: number) {
+  if (!Array.isArray(value) || index < 0 || index >= value.length) return null;
+  const next = [...value];
+  next.splice(index, 1);
+  return next;
+}
+
+function vectorShapeClosedForRawPoints(element: RawElement) {
+  const explicit = readBoolean(element.closed);
+  if (explicit != null) return explicit;
+  return vectorVertexEntriesForElement(element).length > 2;
+}
+
+export function updateVectorVertexPoint(
+  element: RawElement,
+  index: number,
+  point: Point,
+): RawElement {
+  const points = readArray(element.points);
+  if (index < 0 || index >= points.length) return element;
+  return {
+    ...element,
+    points: points.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const record = asRecord(item);
+      return { ...(record ?? {}), x: point.x, y: point.y };
+    }),
+  };
+}
+
+export function insertVectorPointInElement(
+  element: RawElement,
+  afterIndex: number,
+  point: Point,
+): RawElement {
+  const points = readArray(element.points);
+  const insertionIndex = Math.max(0, Math.min(points.length, afterIndex + 1));
+  const nextPoints = [...points];
+  nextPoints.splice(insertionIndex, 0, { x: point.x, y: point.y });
+
+  const nextCornerRadii = insertArrayItem(
+    element.corner_radii ?? element.cornerRadii,
+    insertionIndex,
+    0,
+  );
+  const next = {
+    ...element,
+    points: nextPoints,
+    ...(nextCornerRadii ? { corner_radii: nextCornerRadii } : {}),
+  };
+  return next;
+}
+
+export function removeVectorPointFromElement(
+  element: RawElement,
+  index: number,
+): RawElement {
+  const vertices = vectorVertexEntriesForElement(element);
+  const minimumPoints = vectorShapeClosedForRawPoints(element) ? 3 : 2;
+  if (vertices.length <= minimumPoints) return element;
+
+  const points = readArray(element.points);
+  if (index < 0 || index >= points.length) return element;
+  const nextPoints = removeArrayItem(points, index);
+  if (!nextPoints) return element;
+
+  const nextCornerRadii = removeArrayItem(
+    element.corner_radii ?? element.cornerRadii,
+    index,
+  );
+  const next = {
+    ...element,
+    points: nextPoints,
+    ...(nextCornerRadii ? { corner_radii: nextCornerRadii } : {}),
+  };
+  return next;
+}
+
+export function translateVectorShapeElement(
+  element: RawElement,
+  delta: Point,
+): RawElement {
+  if (Math.abs(delta.x) < 0.01 && Math.abs(delta.y) < 0.01) return element;
+  return {
+    ...element,
+    points: translatePointArray(element.points, delta),
+  };
+}
+
 function polygonSourcePointsForElement(element: RawElement): Point[] {
   const type = readString(element.type);
   if (type === "line") {
@@ -1310,7 +1474,7 @@ function ellipsePoints(
   y: number,
   width: number,
   height: number,
-  segments = 48,
+  segments = 8,
 ): Point[] {
   const radiusX = width / 2;
   const radiusY = height / 2;
@@ -1378,19 +1542,53 @@ function roundedPolygonPoints(points: Point[], radii: number[], segments = 8): P
 
 function curveSettings(element: RawElement) {
   const curve = asRecord(element.curve);
-  if (!curve) return null;
+  if (!curve) {
+    return readString(element.type) === "ellipse"
+      ? { type: "smooth", tension: 1, segments: 8 }
+      : null;
+  }
   const rawType = readString(curve.type)?.trim().toLowerCase();
-  const type = rawType === "beizer" ? "bezier" : rawType;
-  if (type !== "smooth" && type !== "bezier") return null;
+  if (rawType !== "smooth") return null;
   return {
-    type,
+    type: "smooth",
     tension: clamp(readNumber(curve.tension) ?? 0.4, 0, 1),
     segments: Math.max(1, Math.min(96, Math.round(readNumber(curve.segments) ?? 16))),
-    controlPoints: readPointArray(curve.control_points ?? curve.controlPoints),
   };
 }
 
-function sampleSmoothCurve(points: Point[], closed: boolean, tension: number, segments: number): Point[] {
+function hermitePoint(
+  start: Point,
+  end: Point,
+  startTangent: Point,
+  endTangent: Point,
+  t: number,
+): Point {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  return {
+    x:
+      h00 * start.x +
+      h10 * startTangent.x +
+      h01 * end.x +
+      h11 * endTangent.x,
+    y:
+      h00 * start.y +
+      h10 * startTangent.y +
+      h01 * end.y +
+      h11 * endTangent.y,
+  };
+}
+
+function sampleSmoothCurve(
+  points: Point[],
+  closed: boolean,
+  tension: number,
+  segments: number,
+): Point[] {
   if (points.length < 3 || tension <= 0) return points;
   const sampled: Point[] = [];
   const segmentCount = closed ? points.length : points.length - 1;
@@ -1402,63 +1600,19 @@ function sampleSmoothCurve(points: Point[], closed: boolean, tension: number, se
       ? pointAt(points, index + 2)
       : points[Math.min(points.length - 1, index + 2)];
     if (index === 0) sampled.push(p1);
+    const tangentScale = tension * 0.5;
+    const startTangent = {
+      x: (p2.x - p0.x) * tangentScale,
+      y: (p2.y - p0.y) * tangentScale,
+    };
+    const endTangent = {
+      x: (p3.x - p1.x) * tangentScale,
+      y: (p3.y - p1.y) * tangentScale,
+    };
     for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      const t2 = t * t;
-      const t3 = t2 * t;
-      const scaledTension = tension;
-      sampled.push({
-        x:
-          (2 * p1.x +
-            (-p0.x + p2.x) * scaledTension * t +
-            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * scaledTension * t2 +
-            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * scaledTension * t3) /
-          2,
-        y:
-          (2 * p1.y +
-            (-p0.y + p2.y) * scaledTension * t +
-            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * scaledTension * t2 +
-            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * scaledTension * t3) /
-          2,
-      });
-    }
-  }
-  return sampled;
-}
-
-function quadraticBezierPoint(start: Point, control: Point, end: Point, t: number): Point {
-  return {
-    x: (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * control.x + t * t * end.x,
-    y: (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * control.y + t * t * end.y,
-  };
-}
-
-function cubicBezierPoint(start: Point, c1: Point, c2: Point, end: Point, t: number): Point {
-  return {
-    x:
-      (1 - t) ** 3 * start.x +
-      3 * (1 - t) ** 2 * t * c1.x +
-      3 * (1 - t) * t * t * c2.x +
-      t ** 3 * end.x,
-    y:
-      (1 - t) ** 3 * start.y +
-      3 * (1 - t) ** 2 * t * c1.y +
-      3 * (1 - t) * t * t * c2.y +
-      t ** 3 * end.y,
-  };
-}
-
-function sampleBezierCurve(points: Point[], controls: Point[], segments: number): Point[] {
-  if (points.length < 2 || controls.length === 0) return points;
-  const sampled: Point[] = [points[0]];
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const start = points[index];
-    const end = points[index + 1];
-    const c1 = controls[index * 2] ?? controls[0];
-    const c2 = controls[index * 2 + 1];
-    for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      sampled.push(c2 ? cubicBezierPoint(start, c1, c2, end, t) : quadraticBezierPoint(start, c1, end, t));
+      sampled.push(
+        hermitePoint(p1, p2, startTangent, endTangent, step / segments),
+      );
     }
   }
   return sampled;
@@ -1475,7 +1629,7 @@ export function polygonPointsForElement(element: RawElement): Point[] {
   if (curve.type === "smooth") {
     return sampleSmoothCurve(rounded, closed, curve.tension, curve.segments);
   }
-  return sampleBezierCurve(rounded, curve.controlPoints, curve.segments);
+  return rounded;
 }
 
 export function polygonClosedForElement(
@@ -1511,11 +1665,13 @@ export function polygonRenderBox(element: RawElement): Box {
   };
 }
 
-export function polygonLocalPointsForElement(element: RawElement): number[] {
-  const box = polygonRenderBox(element);
+export function polygonLocalPointsForElement(
+  element: RawElement,
+  originBox = polygonRenderBox(element),
+): number[] {
   return polygonPointsForElement(element).flatMap((point) => [
-    point.x - box.x,
-    point.y - box.y,
+    point.x - originBox.x,
+    point.y - originBox.y,
   ]);
 }
 
@@ -1853,6 +2009,7 @@ export function mergeEditorToolbarElement(
   renderedBox: Box,
 ): RawElement {
   const editor = editorElement as unknown as UnknownRecord;
+  const type = readString(current.type);
   const currentPosition = readPoint(current.position);
   const editorPosition = asRecord(editor.position);
   const editorSize = asRecord(editor.size);
@@ -1878,6 +2035,36 @@ export function mergeEditorToolbarElement(
       editorHeight ?? renderedBox.height,
     ),
   };
+  if (isVectorShapeType(type)) {
+    const currentBox = polygonRenderBox(current);
+    const localFramePosition = {
+      x: currentBox.x + ((editorX ?? renderedBox.x) - renderedBox.x),
+      y: currentBox.y + ((editorY ?? renderedBox.y) - renderedBox.y),
+    };
+    const scaleX = renderedBox.width > 0 ? nextSize.width / renderedBox.width : 1;
+    const scaleY = renderedBox.height > 0 ? nextSize.height / renderedBox.height : 1;
+    const editable: RawElement = {
+      ...current,
+      ...editor,
+      stroke: editorStrokeToRaw(editor.stroke, current.stroke),
+    };
+    const next = polygonElementFromFrame(
+      editable,
+      localFramePosition,
+      scaleX,
+      scaleY,
+    );
+    if (
+      Math.abs(localFramePosition.x - currentBox.x) > 0.01 ||
+      Math.abs(localFramePosition.y - currentBox.y) > 0.01 ||
+      Math.abs(nextSize.width - currentBox.width) > 0.01 ||
+      Math.abs(nextSize.height - currentBox.height) > 0.01
+    ) {
+      next.__presenton_manual_position = true;
+    }
+    return next;
+  }
+
   const merged: RawElement = {
     ...current,
     ...editor,
@@ -2060,9 +2247,7 @@ export function polygonElementFromFrame(
     y: framePosition.y + (point.y - box.y) * safeScaleY,
   });
   const curve = asRecord(element.curve);
-  const controlPoints = curve
-    ? readPointArray(curve.control_points ?? curve.controlPoints).map(transformPoint)
-    : [];
+  const curveType = readString(curve?.type)?.trim().toLowerCase();
   const cornerRadii = readArray(element.corner_radii ?? element.cornerRadii)
     .map(readNumber)
     .filter((value): value is number => value != null)
@@ -2077,15 +2262,11 @@ export function polygonElementFromFrame(
     type: "vector_shape",
     points: points.map(transformPoint),
     ...(cornerRadii.length > 0 ? { corner_radii: cornerRadii } : {}),
-    ...(curve
+    ...(curve && curveType === "smooth"
       ? {
           curve: {
             ...curve,
-            type:
-              readString(curve.type)?.trim().toLowerCase() === "beizer"
-                ? "bezier"
-                : readString(curve.type),
-            ...(controlPoints.length > 0 ? { control_points: controlPoints } : {}),
+            type: "smooth",
           },
         }
       : {}),

@@ -264,17 +264,9 @@ class Table(BaseModel):
 
 
 class VectorShapeCurve(BaseModel):
-    type: Literal["smooth", "bezier"]
+    type: Literal["smooth"]
     tension: Optional[float] = Field(default=None, ge=0, le=1)
     segments: Optional[int] = Field(default=16, ge=1, le=96)
-    control_points: Optional[list[Position]] = None
-
-    @field_validator("type", mode="before")
-    @classmethod
-    def _normalize_curve_type(cls, value: object) -> object:
-        if isinstance(value, str) and value.strip().lower() == "beizer":
-            return "bezier"
-        return value
 
 
 class VectorShape(BaseModel):
@@ -441,7 +433,7 @@ def _ellipse_points(
     y: float,
     width: float,
     height: float,
-    segments: int = 48,
+    segments: int = 8,
 ) -> list[dict[str, float]]:
     radius_x = width / 2
     radius_y = height / 2
@@ -513,6 +505,9 @@ def _legacy_geometry_to_vector_shape(value: Any) -> Any:
     else:
         vector_shape["points"] = _ellipse_points(x, y, width, height)
         vector_shape.setdefault("closed", True)
+        vector_shape.setdefault(
+            "curve", {"type": "smooth", "tension": 1, "segments": 8}
+        )
 
     return vector_shape
 

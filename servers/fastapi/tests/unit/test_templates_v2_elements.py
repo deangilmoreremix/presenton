@@ -183,13 +183,17 @@ def test_legacy_geometry_validates_as_vector_shapes():
     ]
     assert isinstance(ellipse, VectorShape)
     assert ellipse.closed is True
-    assert len(ellipse.points) == 48
+    assert len(ellipse.points) == 8
+    assert ellipse.curve is not None
+    assert ellipse.curve.type == "smooth"
+    assert ellipse.curve.tension == 1
+    assert ellipse.curve.segments == 8
     assert layout.model_dump(mode="json")["elements"][0]["type"] == "vector_shape"
     assert "position" not in layout.model_dump(mode="json")["elements"][1]
     assert "size" not in layout.model_dump(mode="json")["elements"][1]
 
 
-def test_vector_shape_accepts_smooth_and_bezier_curves():
+def test_vector_shape_accepts_smooth_curves_only():
     layout = RawSlideLayout.model_validate(
         {
             "id": "curved_geometry",
@@ -206,33 +210,37 @@ def test_vector_shape_accepts_smooth_and_bezier_curves():
                     "curve": {"type": "smooth", "tension": 0.5, "segments": 12},
                     "stroke": {"color": "#111111", "width": 2},
                 },
-                {
-                    "type": "vector_shape",
-                    "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}],
-                    "closed": False,
-                    "curve": {
-                        "type": "beizer",
-                        "segments": 8,
-                        "control_points": [{"x": 50, "y": -60}],
-                    },
-                    "stroke": {"color": "#222222", "width": 2},
-                },
             ],
         }
     )
 
-    smooth, bezier = layout.elements
+    (smooth,) = layout.elements
     assert isinstance(smooth, VectorShape)
     assert smooth.curve is not None
     assert smooth.curve.type == "smooth"
     assert smooth.curve.tension == 0.5
     assert smooth.curve.segments == 12
-    assert isinstance(bezier, VectorShape)
-    assert bezier.closed is False
-    assert bezier.curve is not None
-    assert bezier.curve.type == "bezier"
-    assert bezier.curve.control_points is not None
-    assert len(bezier.curve.control_points) == 1
+
+    with pytest.raises(ValidationError):
+        RawSlideLayout.model_validate(
+            {
+                "id": "unsupported_curve",
+                "description": "Bezier curves are no longer supported.",
+                "elements": [
+                    {
+                        "type": "vector_shape",
+                        "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}],
+                        "closed": False,
+                        "curve": {
+                            "type": "beizer",
+                            "segments": 8,
+                            "control_points": [{"x": 50, "y": -60}],
+                        },
+                        "stroke": {"color": "#222222", "width": 2},
+                    },
+                ],
+            }
+        )
 
 
 def test_element_models_match_export_schema_changes():

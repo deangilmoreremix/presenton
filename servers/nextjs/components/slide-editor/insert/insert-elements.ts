@@ -663,7 +663,7 @@ export function createImageInsertContent(kind?: string): EditorInsertContent {
 
 export function createElementInsertElements(kind?: string): SlideElement[] {
   switch (kind) {
-    case "rectangle":
+    case "vector-rectangle":
       return [
         {
           type: "vector_shape",
@@ -678,17 +678,18 @@ export function createElementInsertElements(kind?: string): SlideElement[] {
           stroke: { color: "7A5AF8", width: 1.5 },
         },
       ];
-    case "ellipse":
+    case "vector-ellipse":
       return [
         {
           type: "vector_shape",
           points: ellipseVectorPoints(134, 134, 346, 198),
           closed: true,
+          curve: { type: "smooth", tension: 1, segments: 8 },
           fill: { color: "F4F3FF", opacity: 1 },
           stroke: { color: "7A5AF8", width: 1.5 },
         },
       ];
-    case "line":
+    case "vector-line":
       return [
         {
           type: "vector_shape",
@@ -710,7 +711,7 @@ function ellipseVectorPoints(
   y: number,
   width: number,
   height: number,
-  segments = 48,
+  segments = 8,
 ) {
   const radiusX = width / 2;
   const radiusY = height / 2;

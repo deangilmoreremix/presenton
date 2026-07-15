@@ -182,10 +182,6 @@ export function normalizeInsertedBorderRadius(value: unknown) {
 }
 
 function localizePolygonElement(element: RawElement, box: Box): RawElement {
-  const curve = asRecord(element.curve);
-  const rawControlPoints = curve
-    ? readArray(curve.control_points ?? curve.controlPoints)
-    : [];
   return {
     ...element,
     points: readArray(element.points)
@@ -195,20 +191,6 @@ function localizePolygonElement(element: RawElement, box: Box): RawElement {
         x: (readNumber(point.x) ?? 0) - box.x,
         y: (readNumber(point.y) ?? 0) - box.y,
       })),
-    ...(curve && rawControlPoints.length > 0
-      ? {
-          curve: {
-            ...curve,
-            control_points: rawControlPoints
-              .map(asRecord)
-              .filter((point): point is UnknownRecord => Boolean(point))
-              .map((point) => ({
-                x: (readNumber(point.x) ?? 0) - box.x,
-                y: (readNumber(point.y) ?? 0) - box.y,
-              })),
-          },
-        }
-      : {}),
   };
 }
 
@@ -229,6 +211,9 @@ function legacyGeometryToVectorShape(element: UnknownRecord): UnknownRecord {
     ...(type === "rectangle"
       ? { corner_radii: cornerRadiiFromBorderRadius(element.border_radius ?? element.borderRadius) }
       : {}),
+    ...(type === "ellipse"
+      ? { curve: { type: "smooth", tension: 1, segments: 8 } }
+      : {}),
     position: undefined,
     size: undefined,
     border_radius: undefined,
@@ -243,7 +228,7 @@ function polygonBoundsForElement(element: UnknownRecord): Box | null {
     type !== "rectangle" &&
     type !== "ellipse"
   ) return null;
-  const points = [...pointsForElement(element), ...controlPointsForElement(element)];
+  const points = pointsForElement(element);
   if (points.length === 0) return null;
   const minX = Math.min(...points.map((point) => point.x));
   const minY = Math.min(...points.map((point) => point.y));
@@ -290,8 +275,9 @@ function pointsForElement(element: UnknownRecord): Array<{ x: number; y: number 
     const radiusY = size.height / 2;
     const centerX = position.x + radiusX;
     const centerY = position.y + radiusY;
-    return Array.from({ length: 48 }, (_, index) => {
-      const angle = (Math.PI * 2 * index) / 48;
+    const segments = 8;
+    return Array.from({ length: segments }, (_, index) => {
+      const angle = (Math.PI * 2 * index) / segments;
       return {
         x: centerX + radiusX * Math.cos(angle),
         y: centerY + radiusY * Math.sin(angle),
@@ -300,22 +286,6 @@ function pointsForElement(element: UnknownRecord): Array<{ x: number; y: number 
   }
 
   return readArray(element.points)
-    .map(asRecord)
-    .filter((point): point is UnknownRecord => Boolean(point))
-    .map((point) => {
-      const x = readNumber(point.x);
-      const y = readNumber(point.y);
-      return x != null && y != null ? { x, y } : null;
-    })
-    .filter((point): point is { x: number; y: number } => point != null);
-}
-
-function controlPointsForElement(
-  element: UnknownRecord,
-): Array<{ x: number; y: number }> {
-  const curve = asRecord(element.curve);
-  if (!curve) return [];
-  return readArray(curve.control_points ?? curve.controlPoints)
     .map(asRecord)
     .filter((point): point is UnknownRecord => Boolean(point))
     .map((point) => {

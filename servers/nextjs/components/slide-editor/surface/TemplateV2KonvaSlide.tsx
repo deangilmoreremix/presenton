@@ -131,6 +131,7 @@ import {
   isManualPositioned,
   isRecord,
   isRawIconElement,
+  isVectorShapeType,
   keyForSelection,
   keysForSelection,
   layoutChildren,
@@ -430,6 +431,9 @@ function TemplateV2KonvaSlideComponent({
   const horizontalResizeOnly =
     editorToolbarTarget?.element.type === "line" ||
     readString(selectedElement?.type) === "line";
+  const selectedIsVectorShape =
+    editorToolbarTarget?.element.type === "vector_shape" ||
+    isVectorShapeType(readString(selectedElement?.type));
   const toolbarElement = useMemo(
     () => {
       if (!selectedElement || !selectedBox) return null;
@@ -1925,6 +1929,7 @@ function TemplateV2KonvaSlideComponent({
               isEditMode={isEditMode}
               editingKey={editingKey}
               selectedTableCell={visibleSelectedTableCell}
+              selectedKey={selectedKey}
               setNodeRef={setSelectionNodeRef}
               onSelect={select}
               onTableCellSelect={selectTableCell}
@@ -1948,6 +1953,7 @@ function TemplateV2KonvaSlideComponent({
               }
               editingKey={editingKey}
               selectedTableCell={visibleSelectedTableCell}
+              selectedKey={selectedKey}
               setNodeRef={setSelectionNodeRef}
               onSelect={select}
               onTableCellSelect={selectTableCell}
@@ -1964,15 +1970,21 @@ function TemplateV2KonvaSlideComponent({
           {isEditMode ? (
             <TemplateV2SelectionTransformers
               nodeRefs={nodeRefs}
-              parentComponentKey={inlineEdit ? null : selectedParentComponentKey}
+              parentComponentKey={
+                inlineEdit || selectedIsVectorShape
+                  ? null
+                  : selectedParentComponentKey
+              }
               selectedKey={selectedKey}
               selectedKeys={selectedKeys}
               selectionKind={selection?.kind ?? null}
               horizontalResizeOnly={horizontalResizeOnly}
+              fullElementTransform={selectedIsVectorShape}
               suppressSelectedOutline={Boolean(
                 selectedTableCell ||
                   inlineEdit ||
-                  readString(selectedElement?.type) === "chart",
+                  readString(selectedElement?.type) === "chart" ||
+                  selectedIsVectorShape,
               )}
             />
           ) : null}

@@ -3,7 +3,10 @@ import {
   Circle,
   Cloud,
   Scan,
+  Spline,
   Square,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { withHash } from "@/components/slide-editor/utils/color";
@@ -13,6 +16,10 @@ import {
   uniformBorderRadius,
 } from "@/components/slide-editor/model/element-model";
 import type { ShapeSlideElement } from "@/components/slide-editor/state/state";
+import type {
+  VectorShapeCurve,
+  VectorShapeElement,
+} from "@/components/slide-editor/types";
 import { DeferredColorInput } from "@/components/slide-editor/toolbar/DeferredColorInput";
 import {
   FloatingToolbar,
@@ -36,6 +43,7 @@ type ShapePanel =
   | "fill"
   | "stroke"
   | "radius"
+  | "vector"
   | "shadow"
   | "opacity"
   | null;
@@ -72,6 +80,8 @@ type ShadowFallback = {
   offset_y: number;
 };
 
+type CurveMode = "none" | "smooth";
+
 export function ShapeToolbar({
   anchorBox,
   element,
@@ -106,8 +116,8 @@ export function ShapeToolbar({
   const shadow = element.shadow ?? DEFAULT_SHAPE_SHADOW;
   const shadowEnabled = element.shadow != null;
   const isRectangle = element.type === "rectangle";
-  const isVectorShape =
-    element.type === "vector_shape";
+  const isVectorShape = element.type === "vector_shape";
+  const vectorElement = isVectorShape ? element : null;
   const canChangeType = element.type === "rectangle" || element.type === "ellipse";
   const canRoundCorners =
     isRectangle ||
@@ -121,9 +131,25 @@ export function ShapeToolbar({
     : isVectorShape
       ? Math.min(maxRadius, averageCornerRadii(element.corner_radii))
       : 0;
+  const vectorClosed = vectorElement ? vectorElement.closed !== false : false;
+  const vectorCurveMode = vectorElement ? curveMode(vectorElement.curve) : "none";
+  const vectorSegments = vectorElement
+    ? normalizedSegments(vectorElement.curve?.segments)
+    : 16;
+  const vectorTension = vectorElement
+    ? normalizedTension(vectorElement.curve?.tension)
+    : 0.4;
+  const vectorCornerRadii = vectorElement
+    ? cornerRadiiForVector(vectorElement)
+    : [];
 
   const update = (changes: Partial<ShapeSlideElement>) => {
     onChange(index, { ...element, ...changes } as ShapeSlideElement);
+  };
+
+  const updateVector = (changes: Partial<VectorShapeElement>) => {
+    if (!vectorElement) return;
+    onChange(index, { ...vectorElement, ...changes } as ShapeSlideElement);
   };
 
   const updateType = (type: ShapeSlideElement["type"]) => {
@@ -140,6 +166,22 @@ export function ShapeToolbar({
   const toggleShadowPanel = () => {
     if (!shadowEnabled) update({ shadow });
     togglePanel("shadow");
+  };
+  const setCurveMode = (mode: CurveMode) => {
+    if (!vectorElement) return;
+    updateVector({ curve: curveForMode(vectorElement, mode) });
+  };
+  const updateCurve = (changes: Partial<VectorShapeCurve>) => {
+    if (!vectorElement) return;
+    const current = curveForMode(vectorElement, vectorCurveMode);
+    if (!current) return;
+    updateVector({ curve: { ...current, ...changes } });
+  };
+  const updateCornerRadius = (cornerIndex: number, value: number) => {
+    if (!vectorElement) return;
+    const radii = cornerRadiiForVector(vectorElement);
+    radii[cornerIndex] = value;
+    updateVector({ corner_radii: radii });
   };
 
   return (
@@ -282,7 +324,7 @@ export function ShapeToolbar({
             <Scan size={16} aria-hidden="true" />
           </ToolbarButton>
           {openPanel === "radius" ? (
-            <Panel className="w-[220px] p-3">
+            <Panel className="w-[252px] space-y-3 p-3">
               <SliderField
                 label="Border radius"
                 value={radius}
@@ -298,6 +340,102 @@ export function ShapeToolbar({
                   )
                 }
               />
+              {vectorElement && vectorCornerRadii.length === 4 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {["TL", "TR", "BR", "BL"].map((label, cornerIndex) => (
+                    <NumberField
+                      key={label}
+                      label={label}
+                      value={vectorCornerRadii[cornerIndex] ?? 0}
+                      min={0}
+                      max={maxRadius}
+                      step={1}
+                      onCommit={(value) => updateCornerRadius(cornerIndex, value)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </Panel>
+          ) : null}
+        </div>
+      ) : null}
+
+      {vectorElement ? (
+        <div className="relative">
+          <ToolbarButton
+            title="Vector path"
+            pressed={openPanel === "vector"}
+            onClick={() => togglePanel("vector")}
+          >
+            <Spline size={16} aria-hidden="true" />
+          </ToolbarButton>
+          {openPanel === "vector" ? (
+            <Panel className="w-[300px] space-y-4 p-3">
+              <button
+                type="button"
+                aria-pressed={vectorClosed}
+                onClick={() => updateVector({ closed: !vectorClosed })}
+                className="flex w-full items-center justify-between rounded-md border border-[#EDEEEF] px-3 py-2 text-left text-xs text-[#4B5563] hover:bg-[#F8F8FA]"
+              >
+                <span className="font-medium text-[#191919]">Closed path</span>
+                <span className="flex items-center gap-1 text-[#7A5AF8]">
+                  {vectorClosed ? (
+                    <ToggleRight size={17} aria-hidden="true" />
+                  ) : (
+                    <ToggleLeft size={17} aria-hidden="true" />
+                  )}
+                  {vectorClosed ? "On" : "Off"}
+                </span>
+              </button>
+
+              <div className="space-y-2">
+                <div className="text-[12px] font-medium text-[#4B5563]">
+                  Curve
+                </div>
+                <div className="grid grid-cols-2 gap-1 rounded-md bg-[#F6F6F9] p-1">
+                  {(["none", "smooth"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={vectorCurveMode === mode}
+                      onClick={() => setCurveMode(mode)}
+                      className={cn(
+                        "h-8 rounded-[4px] text-xs capitalize text-[#4B5563] hover:bg-white",
+                        vectorCurveMode === mode &&
+                          "bg-white text-[#7A5AF8] shadow-sm",
+                      )}
+                    >
+                      {mode === "none" ? "Straight" : mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {vectorCurveMode === "smooth" ? (
+                <div className="space-y-3">
+                  <SliderField
+                    label="Tension"
+                    value={vectorTension}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    formatValue={(value) => formatNumber(value)}
+                    onCommit={(tension) => updateCurve({ tension })}
+                  />
+                  <SliderField
+                    label="Smoothness"
+                    value={vectorSegments}
+                    min={1}
+                    max={96}
+                    step={1}
+                    formatValue={(value) => `${Math.round(value)}`}
+                    onCommit={(segments) =>
+                      updateCurve({ segments: Math.round(segments) })
+                    }
+                  />
+                </div>
+              ) : null}
+
             </Panel>
           ) : null}
         </div>
@@ -653,6 +791,41 @@ function averageCornerRadii(value: number[] | null | undefined) {
   const radii = value.filter((item) => Number.isFinite(item));
   if (radii.length === 0) return 0;
   return radii.reduce((sum, item) => sum + item, 0) / radii.length;
+}
+
+function curveMode(curve: VectorShapeCurve | null | undefined): CurveMode {
+  if (curve?.type === "smooth") return curve.type;
+  return "none";
+}
+
+export function normalizedSegments(value: number | null | undefined) {
+  return Math.max(1, Math.min(96, Math.round(value ?? 16)));
+}
+
+function normalizedTension(value: number | null | undefined) {
+  return Math.max(0, Math.min(1, value ?? 0.4));
+}
+
+export function curveForMode(
+  element: VectorShapeElement,
+  mode: CurveMode,
+): VectorShapeCurve | null {
+  if (mode === "none") return null;
+  if (mode === "smooth") {
+    return {
+      type: "smooth",
+      tension: normalizedTension(element.curve?.tension),
+      segments: normalizedSegments(element.curve?.segments),
+    };
+  }
+  return null;
+}
+
+function cornerRadiiForVector(element: VectorShapeElement) {
+  if (element.points.length !== 4) return [];
+  return [0, 1, 2, 3].map((index) =>
+    Math.max(0, element.corner_radii?.[index] ?? 0),
+  );
 }
 
 function LineWidthIcon() {

@@ -210,9 +210,9 @@ const imageItems = [
 ] satisfies PaletteItem[];
 
 const elementItems = [
-  { id: "rectangle", label: "Rectangle", icon: RectangleHorizontal },
-  { id: "ellipse", label: "Ellipse", icon: Circle },
-  { id: "line", label: "Line", icon: Minus },
+  { id: "vector-rectangle", label: "Rectangle", icon: RectangleHorizontal },
+  { id: "vector-ellipse", label: "Ellipse", icon: Circle },
+  { id: "vector-line", label: "Line", icon: Minus },
 ] satisfies PaletteItem[];
 
 const templateBlocksCache = new Map<string, TemplateBlockGroup[]>();

@@ -831,7 +831,7 @@ function adaptVectorShape(raw: UnknownRecord): SlideElement | null {
     points,
     closed: adaptVectorShapeClosed(raw, points),
     corner_radii: adaptCornerRadii(raw, points.length),
-    curve: adaptVectorShapeCurve(raw),
+    curve: adaptVectorShapeCurve(raw) ?? adaptImplicitVectorShapeCurve(raw),
     fill,
     stroke,
     shadow: adaptShadow(readRecord(raw, "shadow")),
@@ -893,24 +893,18 @@ function adaptVectorShapeCurve(raw: UnknownRecord): VectorShapeCurve | null {
   const curve = readRecord(raw, "curve");
   if (!curve) return null;
   const rawType = readString(curve.type)?.trim().toLowerCase();
-  const type = rawType === "beizer" ? "bezier" : rawType;
-  if (type !== "smooth" && type !== "bezier") return null;
-  const rawControlPoints = curve.control_points ?? curve.controlPoints;
-  const controlPoints = (Array.isArray(rawControlPoints) ? rawControlPoints : [])
-    .map((value) => {
-      const point = asRecord(value);
-      if (!point) return null;
-      const x = readRawNumber(point.x);
-      const y = readRawNumber(point.y);
-      return x != null && y != null ? { x: round(x), y: round(y) } : null;
-    })
-    .filter((point): point is AdaptedPosition => point != null);
+  if (rawType !== "smooth") return null;
   return {
-    type,
+    type: "smooth",
     tension: clampOptional(readRawNumber(curve.tension), 0, 1),
     segments: clampOptional(readRawNumber(curve.segments), 1, 96),
-    control_points: controlPoints.length > 0 ? controlPoints : null,
   };
+}
+
+function adaptImplicitVectorShapeCurve(raw: UnknownRecord): VectorShapeCurve | null {
+  return readString(raw.type) === "ellipse"
+    ? { type: "smooth", tension: 1, segments: 8 }
+    : null;
 }
 
 function adaptCornerRadii(raw: UnknownRecord, pointCount: number): number[] | null {
@@ -968,8 +962,9 @@ function legacyEllipsePoints(raw: UnknownRecord): AdaptedPosition[] {
   const radiusY = size.height / 2;
   const centerX = position.x + radiusX;
   const centerY = position.y + radiusY;
-  return Array.from({ length: 48 }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / 48;
+  const segments = 8;
+  return Array.from({ length: segments }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / segments;
     return {
       x: round(centerX + radiusX * Math.cos(angle)),
       y: round(centerY + radiusY * Math.sin(angle)),

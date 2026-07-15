@@ -49,6 +49,7 @@ type TemplateV2SelectionTransformersProps = {
   selectedKeys?: string[];
   selectionKind: SelectionKind;
   horizontalResizeOnly?: boolean;
+  fullElementTransform?: boolean;
   suppressSelectedOutline?: boolean;
 };
 
@@ -317,14 +318,16 @@ export function TemplateV2SelectionTransformers({
   selectedKeys,
   selectionKind,
   horizontalResizeOnly = false,
+  fullElementTransform = false,
   suppressSelectedOutline = false,
 }: TemplateV2SelectionTransformersProps) {
   const selectedTransformerRef = useRef<Konva.Transformer | null>(null);
   const contextTransformerRef = useRef<Konva.Transformer | null>(null);
-  const isLineElementSelection =
-    selectionKind === "element" && horizontalResizeOnly;
+  const isTransformableElementSelection =
+    selectionKind === "element" &&
+    (horizontalResizeOnly || fullElementTransform);
   const canTransformSelection =
-    selectionKind === "component" || isLineElementSelection;
+    selectionKind === "component" || isTransformableElementSelection;
   const boundAnchorDrag = useCallback(
     (_oldPoint: TransformerPoint, newPoint: TransformerPoint) =>
       preventInvertedAnchorDrag(selectedTransformerRef.current, newPoint),
@@ -437,6 +440,7 @@ export function TemplateV2SelectionTransformers({
     selectedKeys,
     selectionKind,
     canTransformSelection,
+    fullElementTransform,
     suppressSelectedOutline,
   ]);
 
@@ -472,7 +476,7 @@ export function TemplateV2SelectionTransformers({
         boundBoxFunc={boundTransformBox}
         enabledAnchors={
           canTransformSelection
-            ? horizontalResizeOnly
+            ? horizontalResizeOnly && !fullElementTransform
               ? HORIZONTAL_ONLY_ANCHORS
               : undefined
             : []

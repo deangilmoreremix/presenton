@@ -1854,10 +1854,7 @@ function polygonPoints(item: JsonRecord): Point[] {
     : points;
   const curve = curveSettings(item);
   if (!curve) return rounded;
-  if (curve.type === "smooth") {
-    return sampleSmoothCurve(rounded, closed, curve.tension, curve.segments);
-  }
-  return sampleBezierCurve(rounded, curve.controlPoints, curve.segments);
+  return sampleSmoothCurve(rounded, closed, curve.tension, curve.segments);
 }
 
 function ellipsePoints(
@@ -1865,7 +1862,7 @@ function ellipsePoints(
   y: number,
   width: number,
   height: number,
-  segments = 48
+  segments = 8
 ): Point[] {
   const radiusX = width / 2;
   const radiusY = height / 2;
@@ -1930,22 +1927,44 @@ function roundedPolygonPoints(points: Point[], radii: number[], segments = 8): P
 
 function curveSettings(item: JsonRecord) {
   const curve = readRecordOrNull(item.curve);
-  if (!curve) return null;
+  if (!curve) {
+    return readString(item.type) === "ellipse"
+      ? { type: "smooth", tension: 1, segments: 8 }
+      : null;
+  }
   const rawType = readString(curve.type)?.trim().toLowerCase();
-  const type = rawType === "beizer" ? "bezier" : rawType;
-  if (type !== "smooth" && type !== "bezier") return null;
+  if (rawType !== "smooth") return null;
   return {
-    type,
+    type: "smooth",
     tension: clamp(readNumber(curve.tension) ?? 0.4, 0, 1),
     segments: Math.max(1, Math.min(96, Math.round(readNumber(curve.segments) ?? 16))),
-    controlPoints: readArray(curve.control_points ?? curve.controlPoints)
-      .map(readRecord)
-      .map((point) => {
-        const x = readNumber(point.x);
-        const y = readNumber(point.y);
-        return x != null && y != null ? { x, y } : null;
-      })
-      .filter((point): point is Point => point != null),
+  };
+}
+
+function hermitePoint(
+  start: Point,
+  end: Point,
+  startTangent: Point,
+  endTangent: Point,
+  t: number
+): Point {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  return {
+    x:
+      h00 * start.x +
+      h10 * startTangent.x +
+      h01 * end.x +
+      h11 * endTangent.x,
+    y:
+      h00 * start.y +
+      h10 * startTangent.y +
+      h01 * end.y +
+      h11 * endTangent.y,
   };
 }
 
@@ -1959,62 +1978,19 @@ function sampleSmoothCurve(points: Point[], closed: boolean, tension: number, se
     const p2 = pointAt(points, index + 1);
     const p3 = closed ? pointAt(points, index + 2) : points[Math.min(points.length - 1, index + 2)];
     if (index === 0) sampled.push(p1);
+    const tangentScale = tension * 0.5;
+    const startTangent = {
+      x: (p2.x - p0.x) * tangentScale,
+      y: (p2.y - p0.y) * tangentScale,
+    };
+    const endTangent = {
+      x: (p3.x - p1.x) * tangentScale,
+      y: (p3.y - p1.y) * tangentScale,
+    };
     for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      const t2 = t * t;
-      const t3 = t2 * t;
-      sampled.push({
-        x:
-          (2 * p1.x +
-            (-p0.x + p2.x) * tension * t +
-            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * tension * t2 +
-            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * tension * t3) /
-          2,
-        y:
-          (2 * p1.y +
-            (-p0.y + p2.y) * tension * t +
-            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * tension * t2 +
-            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * tension * t3) /
-          2,
-      });
-    }
-  }
-  return sampled;
-}
-
-function quadraticBezierPoint(start: Point, control: Point, end: Point, t: number): Point {
-  return {
-    x: (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * control.x + t * t * end.x,
-    y: (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * control.y + t * t * end.y,
-  };
-}
-
-function cubicBezierPoint(start: Point, c1: Point, c2: Point, end: Point, t: number): Point {
-  return {
-    x:
-      (1 - t) ** 3 * start.x +
-      3 * (1 - t) ** 2 * t * c1.x +
-      3 * (1 - t) * t * t * c2.x +
-      t ** 3 * end.x,
-    y:
-      (1 - t) ** 3 * start.y +
-      3 * (1 - t) ** 2 * t * c1.y +
-      3 * (1 - t) * t * t * c2.y +
-      t ** 3 * end.y,
-  };
-}
-
-function sampleBezierCurve(points: Point[], controls: Point[], segments: number): Point[] {
-  if (points.length < 2 || controls.length === 0) return points;
-  const sampled: Point[] = [points[0]];
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const start = points[index];
-    const end = points[index + 1];
-    const c1 = controls[index * 2] ?? controls[0];
-    const c2 = controls[index * 2 + 1];
-    for (let step = 1; step <= segments; step += 1) {
-      const t = step / segments;
-      sampled.push(c2 ? cubicBezierPoint(start, c1, c2, end, t) : quadraticBezierPoint(start, c1, end, t));
+      sampled.push(
+        hermitePoint(p1, p2, startTangent, endTangent, step / segments)
+      );
     }
   }
   return sampled;

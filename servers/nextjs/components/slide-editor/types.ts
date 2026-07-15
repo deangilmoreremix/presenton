@@ -266,10 +266,9 @@ export type LineElement = ElementBase & {
 };
 
 export type VectorShapeCurve = {
-  type: "smooth" | "bezier";
+  type: "smooth";
   tension?: number | null;
   segments?: number | null;
-  control_points?: Position[] | null;
 };
 
 export type VectorShapeElement = ElementBase & {

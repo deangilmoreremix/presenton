@@ -114,10 +114,6 @@ export function resizeRawElementBounds(
     const type = readString(element.type);
     const polygonPoints =
       type === "vector_shape" ? readArray(element.points) : [];
-    const curve = asRecord(element.curve);
-    const controlPoints = curve
-      ? readArray(curve.control_points ?? curve.controlPoints)
-      : [];
     const radiusScale = Math.min(safeScaleX, safeScaleY);
     const cornerRadii = readArray(element.corner_radii ?? element.cornerRadii);
     const childInfo = childArrayInfo(element);
@@ -145,22 +141,6 @@ export function resizeRawElementBounds(
                 y: (readNumber(record.y) ?? 0) * safeScaleY,
               };
             }),
-          }
-        : {}),
-      ...(controlPoints.length > 0 && curve
-        ? {
-            curve: {
-              ...curve,
-              control_points: controlPoints.map((point) => {
-                const record = asRecord(point);
-                if (!record) return point;
-                return {
-                  ...record,
-                  x: (readNumber(record.x) ?? 0) * safeScaleX,
-                  y: (readNumber(record.y) ?? 0) * safeScaleY,
-                };
-              }),
-            },
           }
         : {}),
       ...(cornerRadii.length > 0

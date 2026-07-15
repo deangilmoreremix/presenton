@@ -180,7 +180,7 @@ test("renders point-based vector shapes without position or size", async () => {
   assert.match(html, /<polygon points="0,0 120,0 160,80 0,80" fill="#F4F3FF" stroke="#7A5AF8" stroke-width="2"/);
 });
 
-test("renders vector shapes with corner radii and bezier curves", async () => {
+test("renders vector shapes with corner radii", async () => {
   const { templateV2UiToHtml } = await rendererPromise;
   const html = templateV2UiToHtml({
     elements: [
@@ -197,27 +197,33 @@ test("renders vector shapes with corner radii and bezier curves", async () => {
         fill: { color: "#F4F3FF" },
         stroke: { color: "#7A5AF8", width: 2 },
       },
-      {
-        type: "vector_shape",
-        points: [
-          { x: 220, y: 120 },
-          { x: 420, y: 120 },
-        ],
-        closed: false,
-        curve: {
-          type: "beizer",
-          segments: 8,
-          control_points: [{ x: 320, y: 20 }],
-        },
-        stroke: { color: "#111111", width: 3 },
-      },
     ],
   });
 
   assert.ok(html);
   assert.match(html, /<polygon points="0,16 0\.25,12\.25/);
-  assert.match(html, /<polyline points="0,50 25,28\.125/);
-  assert.match(html, /stroke="#111111" stroke-width="3"/);
+});
+
+test("renders smooth vector curves through original points", async () => {
+  const { templateV2UiToHtml } = await rendererPromise;
+  const html = templateV2UiToHtml({
+    elements: [
+      {
+        type: "vector_shape",
+        points: [
+          { x: 0, y: 0 },
+          { x: 50, y: 100 },
+          { x: 100, y: 0 },
+        ],
+        closed: false,
+        curve: { type: "smooth", tension: 0.4, segments: 4 },
+        stroke: { color: "#111111", width: 2 },
+      },
+    ],
+  });
+
+  assert.ok(html);
+  assert.match(html, /<polyline points="0,0 .* 50,100 .* 100,0"/);
 });
 
 test("normalizes camelCase chart kinds before rendering chart config", async () => {
