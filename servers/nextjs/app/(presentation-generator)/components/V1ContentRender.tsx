@@ -157,6 +157,9 @@ export const V1ContentRender = ({
     isEditMode,
     fonts,
     renderIndex,
+    displayScale = 1,
+    enableViewportCulling = false,
+    isSelected = false,
     showBlankPromptOverlay = false,
     onBlankPromptOverlayDismiss,
     showTemplatePromptOverlay = false,
@@ -168,6 +171,9 @@ export const V1ContentRender = ({
     theme?: any,
     fonts?: unknown,
     renderIndex?: number,
+    displayScale?: number,
+    enableViewportCulling?: boolean,
+    isSelected?: boolean,
     showBlankPromptOverlay?: boolean,
     onBlankPromptOverlayDismiss?: () => void,
     showTemplatePromptOverlay?: boolean,
@@ -223,6 +229,9 @@ export const V1ContentRender = ({
                     slideIndex={safeSlide.index ?? 0}
                     renderIndex={renderIndex}
                     fonts={fonts}
+                    displayScale={displayScale}
+                    enableViewportCulling={enableViewportCulling}
+                    isSelected={isSelected}
                 />
                 {isEditMode &&
                     ((showBlankPromptOverlay && isBlankSlide) ||

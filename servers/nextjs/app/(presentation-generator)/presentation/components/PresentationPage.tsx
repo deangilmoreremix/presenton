@@ -664,9 +664,13 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
                       presentationData.slides.map(
                         (slide: any, index: number) => (
                           <SlideContent
-                            key={`${slide.type}-${index}-${slide.index}`}
+                            key={
+                              slide.id ??
+                              `${slide.type ?? "slide"}-${slide.index ?? index}`
+                            }
                             slide={slide}
                             index={index}
+                            selected={selectedSlide === index}
                             presentationId={presentation_id}
                             onSlideAdded={handleEditorSlideNavigation}
                             theme={presentationData?.theme}

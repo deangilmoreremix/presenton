@@ -58,6 +58,7 @@ import {
 
 
 import { updateSlideUi } from "@/store/slices/presentationGeneration";
+import { useNearViewport } from "@/app/hooks/useNearViewport";
 import { resolveBackendAssetSource } from "@/utils/api";
 import { bucketFileSize, sanitizeAnalyticsError } from "@/utils/analytics";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
@@ -189,17 +190,22 @@ function autoSizeInlineTextFrame(
   };
 }
 
-const EDITING_SCENE_DEVICE_OVERSAMPLE = 1.5;
-const MIN_EDITING_SCENE_PIXEL_RATIO = 3;
-const MAX_EDITING_SCENE_PIXEL_RATIO = 4;
+const MIN_EDITING_SCENE_PIXEL_RATIO = 1;
+const MAX_EDITING_SCENE_PIXEL_RATIO = 2;
 
-function syncEditingScenePixelRatio(layer: Konva.Layer | null) {
+function syncEditingScenePixelRatio(
+  layer: Konva.Layer | null,
+  displayScale: number,
+) {
   if (!layer || typeof window === "undefined") return;
+  const safeDisplayScale = Number.isFinite(displayScale)
+    ? Math.max(0, displayScale)
+    : 1;
   const pixelRatio = Math.min(
     MAX_EDITING_SCENE_PIXEL_RATIO,
     Math.max(
       MIN_EDITING_SCENE_PIXEL_RATIO,
-      (window.devicePixelRatio || 1) * EDITING_SCENE_DEVICE_OVERSAMPLE,
+      (window.devicePixelRatio || 1) * safeDisplayScale,
     ),
   );
   const canvas = layer.getCanvas();
@@ -234,6 +240,9 @@ type TemplateV2KonvaSlideProps = {
   slideIndex: number;
   renderIndex?: number;
   fonts?: unknown;
+  displayScale?: number;
+  enableViewportCulling?: boolean;
+  isSelected?: boolean;
 };
 
 function TemplateV2KonvaSlideComponent({
@@ -244,12 +253,16 @@ function TemplateV2KonvaSlideComponent({
   slideIndex,
   renderIndex,
   fonts,
+  displayScale = 1,
+  enableViewportCulling = false,
+  isSelected = false,
 }: TemplateV2KonvaSlideProps) {
   const dispatch = useDispatch();
   const surfaceId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const nodeRefs = useRef(new Map<string, Konva.Node>());
+  const backgroundLayerRef = useRef<Konva.Layer | null>(null);
   const contentLayerRef = useRef<Konva.Layer | null>(null);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pendingImageUploadRef = useRef<ElementSelection | null>(null);
@@ -262,7 +275,21 @@ function TemplateV2KonvaSlideComponent({
   const templateFonts = useMemo(() => templateFontOptionsFromMap(fonts), [
     fonts,
   ]);
-  const fontLoadState = useFontLoadState(uiDraft, templateFonts);
+  const {
+    isNearViewport,
+    ref: setViewportRoot,
+  } = useNearViewport<HTMLDivElement>({
+    enabled: enableViewportCulling,
+    forceActive: isSelected,
+    rootMargin: "800px 0px",
+    rootSelector: "[data-presentation-slides-scroll-container='true']",
+  });
+  const isRenderActive = !enableViewportCulling || isNearViewport;
+  const fontLoadState = useFontLoadState(
+    uiDraft,
+    templateFonts,
+    isRenderActive,
+  );
   const currentUiRef = useRef<RawUi>(uiDraft);
   const [selection, setSelection] = useState<Selection>(null);
   const selectionRef = useRef<Selection>(selection);
@@ -300,7 +327,8 @@ function TemplateV2KonvaSlideComponent({
   const setRootNode = useCallback((node: HTMLDivElement | null) => {
     rootRef.current = node;
     setRootElement(node);
-  }, []);
+    setViewportRoot(node);
+  }, [setViewportRoot]);
 
   const components = useMemo(
     () => readArray(uiDraft.components).filter(isRecord) as RawComponent[],
@@ -541,18 +569,22 @@ function TemplateV2KonvaSlideComponent({
   }, [selection]);
 
   useEffect(() => {
-    if (!fontLoadState.ready) return;
+    if (!isRenderActive || !fontLoadState.ready) return;
     contentLayerRef.current?.batchDraw();
-  }, [fontLoadState.ready, fontLoadState.revision]);
+  }, [fontLoadState.ready, fontLoadState.revision, isRenderActive]);
 
   useEffect(() => {
-    if (!isEditMode || typeof window === "undefined") return;
-    const refreshPixelRatio = () =>
-      syncEditingScenePixelRatio(contentLayerRef.current);
+    if (!isEditMode || !isRenderActive || typeof window === "undefined") {
+      return;
+    }
+    const refreshPixelRatio = () => {
+      syncEditingScenePixelRatio(backgroundLayerRef.current, displayScale);
+      syncEditingScenePixelRatio(contentLayerRef.current, displayScale);
+    };
     refreshPixelRatio();
     window.addEventListener("resize", refreshPixelRatio);
     return () => window.removeEventListener("resize", refreshPixelRatio);
-  }, [isEditMode]);
+  }, [displayScale, isEditMode, isRenderActive]);
 
   useEffect(() => {
     selectedComponentIndexesRef.current = selectedComponentIndexes;
@@ -574,7 +606,13 @@ function TemplateV2KonvaSlideComponent({
   }, [clearInlineEdit, clearTableCellSelection, layout]);
 
   useEffect(() => {
-    if (!hasFloatingToolbar || typeof window === "undefined") return;
+    if (
+      !isRenderActive ||
+      !hasFloatingToolbar ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
     let frame = 0;
     const refreshToolbarPosition = () => {
       window.cancelAnimationFrame(frame);
@@ -588,7 +626,7 @@ function TemplateV2KonvaSlideComponent({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", refreshToolbarPosition);
     };
-  }, [hasFloatingToolbar]);
+  }, [hasFloatingToolbar, isRenderActive]);
 
   const isSurfaceActive = useCallback(
     () =>
@@ -629,7 +667,12 @@ function TemplateV2KonvaSlideComponent({
   }, [isEditMode, slideId, surfaceId, surfaceSlideIndex]);
 
   useEffect(() => {
-    if (!isEditMode || !isSurfaceActive() || typeof window === "undefined") {
+    if (
+      !isRenderActive ||
+      !isEditMode ||
+      !isSurfaceActive() ||
+      typeof window === "undefined"
+    ) {
       return;
     }
     window.dispatchEvent(
@@ -646,6 +689,7 @@ function TemplateV2KonvaSlideComponent({
     );
   }, [
     isEditMode,
+    isRenderActive,
     isSurfaceActive,
     selectedSurfaceTarget,
     slideId,
@@ -718,6 +762,7 @@ function TemplateV2KonvaSlideComponent({
   useEffect(() => {
     if (
       !isEditMode ||
+      !isRenderActive ||
       !hasDismissibleEditorUi ||
       typeof document === "undefined" ||
       typeof window === "undefined"
@@ -784,7 +829,12 @@ function TemplateV2KonvaSlideComponent({
       document.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("scroll", handleScroll, true);
     };
-  }, [clearEditorUiState, hasDismissibleEditorUi, isEditMode]);
+  }, [
+    clearEditorUiState,
+    hasDismissibleEditorUi,
+    isEditMode,
+    isRenderActive,
+  ]);
 
   const commitUi = useCallback(
     (nextUi: RawUi, pushHistory = true) => {
@@ -1534,7 +1584,9 @@ function TemplateV2KonvaSlideComponent({
   );
 
   useEffect(() => {
-    if (!isEditMode || typeof document === "undefined") return;
+    if (!isRenderActive || !isEditMode || typeof document === "undefined") {
+      return;
+    }
 
     const handleLayerShortcut = (event: KeyboardEvent) => {
       if (
@@ -1561,7 +1613,12 @@ function TemplateV2KonvaSlideComponent({
     document.addEventListener("keydown", handleLayerShortcut, true);
     return () =>
       document.removeEventListener("keydown", handleLayerShortcut, true);
-  }, [isEditMode, isSurfaceActive, reorderComponentLayerAtIndex]);
+  }, [
+    isEditMode,
+    isRenderActive,
+    isSurfaceActive,
+    reorderComponentLayerAtIndex,
+  ]);
 
   const targetComponentActions =
     useMemo<TemplateV2SelectionComponentActions | null>(() => {
@@ -1738,7 +1795,9 @@ function TemplateV2KonvaSlideComponent({
   );
 
   useEffect(() => {
-    if (!isEditMode || typeof window === "undefined") return;
+    if (!isRenderActive || !isEditMode || typeof window === "undefined") {
+      return;
+    }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
@@ -1757,7 +1816,7 @@ function TemplateV2KonvaSlideComponent({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelection, isEditMode, selection]);
+  }, [deleteSelection, isEditMode, isRenderActive, selection]);
 
   useEffect(() => {
     if (!isEditMode || typeof window === "undefined") return;
@@ -1795,7 +1854,9 @@ function TemplateV2KonvaSlideComponent({
   }, [commitUi, isEditMode, isSurfaceActive, slideId, surfaceSlideIndex]);
 
   useEffect(() => {
-    if (!isEditMode || typeof document === "undefined") return;
+    if (!isRenderActive || !isEditMode || typeof document === "undefined") {
+      return;
+    }
     const handlePointerDown = (event: PointerEvent) => {
       const root = rootRef.current;
       const targetNode = event.target instanceof Node ? event.target : null;
@@ -1827,11 +1888,14 @@ function TemplateV2KonvaSlideComponent({
     clearEditorUiState,
     clearSurface,
     isEditMode,
+    isRenderActive,
     isSurfaceActive,
   ]);
 
   useEffect(() => {
-    if (!isEditMode || typeof document === "undefined") return;
+    if (!isRenderActive || !isEditMode || typeof document === "undefined") {
+      return;
+    }
 
     const handleUndoRedoShortcut = (event: KeyboardEvent) => {
       if (
@@ -1864,7 +1928,7 @@ function TemplateV2KonvaSlideComponent({
     document.addEventListener("keydown", handleUndoRedoShortcut, true);
     return () =>
       document.removeEventListener("keydown", handleUndoRedoShortcut, true);
-  }, [isEditMode, isSurfaceActive, redo, undo]);
+  }, [isEditMode, isRenderActive, isSurfaceActive, redo, undo]);
 
   if (!uiDraft) {
     return (
@@ -1892,7 +1956,8 @@ function TemplateV2KonvaSlideComponent({
           onChange={handleImageUploadChange}
         />
       ) : null}
-      <Stage
+      {isRenderActive ? (
+        <Stage
         width={STAGE_WIDTH}
         height={STAGE_HEIGHT}
         onMouseDown={(event) => {
@@ -1912,7 +1977,7 @@ function TemplateV2KonvaSlideComponent({
           activateSurface();
         }}
       >
-        <Layer listening={false}>
+        <Layer ref={backgroundLayerRef} listening={false}>
           <Rect width={STAGE_WIDTH} height={STAGE_HEIGHT} fill={backgroundColor(uiDraft)} />
         </Layer>
         <Layer ref={contentLayerRef} listening={isEditMode}>
@@ -1977,7 +2042,8 @@ function TemplateV2KonvaSlideComponent({
             />
           ) : null}
         </Layer>
-      </Stage>
+        </Stage>
+      ) : null}
       <TemplateV2SelectionToolbar
         anchorBox={floatingToolbarAnchorBox}
         canUngroupComponent={canUngroupSelectedComponent}
