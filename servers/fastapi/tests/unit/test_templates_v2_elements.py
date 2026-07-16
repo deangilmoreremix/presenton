@@ -9,7 +9,7 @@ from templates.v2.models.elements import (
     Table,
     Text,
     TextList,
-    VectorShape,
+    Vector,
 )
 from templates.v2.models.layouts import RawSlideLayout
 
@@ -177,7 +177,7 @@ def test_vector_accepts_smooth_curves_only():
     )
 
     (smooth,) = layout.elements
-    assert isinstance(smooth, VectorShape)
+    assert isinstance(smooth, Vector)
     assert smooth.curve is not None
     assert smooth.curve.type == "smooth"
     assert smooth.curve.tension == 0.5

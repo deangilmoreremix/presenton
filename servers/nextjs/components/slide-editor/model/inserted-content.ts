@@ -75,7 +75,7 @@ export function insertedElementToComponent(
     description: label ?? "Inserted element",
     position: { x: box.x, y: box.y },
     elements: [
-      isVectorShapeType(readString(rawElement.type))
+      isVectorType(readString(rawElement.type))
         ? localizePolygonElement(rawElement, box)
         : {
             ...rawElement,
@@ -194,7 +194,7 @@ function localizePolygonElement(element: RawElement, box: Box): RawElement {
   };
 }
 
-function isVectorShapeType(type: string | null | undefined) {
+function isVectorType(type: string | null | undefined) {
   return type === "vector";
 }
 

@@ -262,17 +262,17 @@ class Table(BaseModel):
     min_rows: int
 
 
-class VectorShapeCurve(BaseModel):
+class VectorCurve(BaseModel):
     type: Literal["smooth"]
     tension: Optional[float] = Field(default=None, ge=0, le=1)
     segments: Optional[int] = Field(default=16, ge=1, le=96)
 
 
-class VectorShape(BaseModel):
+class Vector(BaseModel):
     type: Literal["vector"]
     points: list[Position] = Field(min_length=2)
     closed: Optional[bool] = None
-    curve: Optional[VectorShapeCurve] = None
+    curve: Optional[VectorCurve] = None
     corner_radii: Optional[list[Annotated[float, Field(ge=0)]]] = None
     rotation: Optional[float] = None
     opacity: Optional[float] = None
@@ -423,7 +423,7 @@ SlideElement: TypeAlias = Annotated[
         Image,
         TextList,
         Table,
-        VectorShape,
+        Vector,
         Chart,
         Infographic,
         Flex,
@@ -471,6 +471,6 @@ __all__ = [
     "TextList",
     "TextRun",
     "VerticalAlignment",
-    "VectorShape",
-    "VectorShapeCurve",
+    "Vector",
+    "VectorCurve",
 ]

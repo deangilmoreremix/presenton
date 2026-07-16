@@ -4,24 +4,28 @@ import React, { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   AlignCenter,
   AreaChart,
+  ArrowRight,
   BarChart3,
   ChevronDown,
   Circle,
   Columns2,
+  Diamond,
   Grid3X3,
   GripVertical,
+  Hexagon,
   Image,
   LineChart,
   List,
   ListOrdered,
   Minus,
+  Pentagon,
   PieChart,
   Quote,
   RectangleHorizontal,
   Rows3,
-  Send,
   Shapes,
   Table2,
+  Triangle,
   Type,
   ListMinus,
   Search,
@@ -56,7 +60,6 @@ import {
 } from "@/components/slide-editor/events/events";
 import Chat from "./Chat";
 import TemplateService from "../../services/api/template";
-import { TemplateV2KonvaSlide } from "@/components/slide-editor/surface/TemplateV2KonvaSlide";
 import { TemplateV2HtmlSlidePreview } from "../../components/TemplateV2HtmlSlidePreview";
 
 type PresentationActionsProps = React.ComponentProps<typeof Chat> & {
@@ -211,7 +214,13 @@ const imageItems = [
 
 const elementItems = [
   { id: "vector-rectangle", label: "Rectangle", icon: RectangleHorizontal },
+  { id: "vector-circle", label: "Circle", icon: Circle },
   { id: "vector-ellipse", label: "Ellipse", icon: Circle },
+  { id: "vector-triangle", label: "Triangle", icon: Triangle },
+  { id: "vector-diamond", label: "Diamond", icon: Diamond },
+  { id: "vector-pentagon", label: "Pentagon", icon: Pentagon },
+  { id: "vector-hexagon", label: "Hexagon", icon: Hexagon },
+  { id: "vector-arrow", label: "Arrow", icon: ArrowRight },
   { id: "vector-line", label: "Line", icon: Minus },
 ] satisfies PaletteItem[];
 

@@ -10,6 +10,7 @@ import type {
   Font,
   Marker,
   SlideElement,
+  Stroke,
   TableCell,
 } from "@/components/slide-editor/types";
 
@@ -659,45 +660,119 @@ export function createImageInsertContent(kind?: string): EditorInsertContent {
   }
 }
 
+const DEFAULT_VECTOR_FILL: Fill = { color: "F4F3FF", opacity: 1 };
+const DEFAULT_VECTOR_STROKE: Stroke = { color: "7A5AF8", width: 1.5 };
+const DEFAULT_VECTOR_LINE_STROKE: Stroke = { color: "101323", width: 2 };
+const DEFAULT_VECTOR_CURVE = { type: "smooth" as const, tension: 1, segments: 8 };
+
+function makeVector({
+  points,
+  closed = true,
+  fill = DEFAULT_VECTOR_FILL,
+  stroke = DEFAULT_VECTOR_STROKE,
+  curve,
+}: {
+  points: Array<{ x: number; y: number }>;
+  closed?: boolean;
+  fill?: Fill | null;
+  stroke?: Stroke | null;
+  curve?: { type: "smooth"; tension?: number; segments?: number };
+}): SlideElement {
+  return {
+    type: "vector",
+    points,
+    closed,
+    ...(curve ? { curve } : {}),
+    ...(fill ? { fill } : {}),
+    ...(stroke ? { stroke } : {}),
+  };
+}
+
 export function createElementInsertElements(kind?: string): SlideElement[] {
   switch (kind) {
     case "vector-rectangle":
       return [
-        {
-          type: "vector",
+        makeVector({
           points: [
             { x: 134, y: 134 },
             { x: 518, y: 134 },
             { x: 518, y: 326 },
             { x: 134, y: 326 },
           ],
-          closed: true,
-          fill: { color: "F4F3FF", opacity: 1 },
-          stroke: { color: "7A5AF8", width: 1.5 },
-        },
+        }),
+      ];
+    case "vector-circle":
+      return [
+        makeVector({
+          points: ellipseVectorPoints(134, 134, 220, 220),
+          curve: DEFAULT_VECTOR_CURVE,
+        }),
       ];
     case "vector-ellipse":
       return [
-        {
-          type: "vector",
+        makeVector({
           points: ellipseVectorPoints(134, 134, 346, 198),
-          closed: true,
-          curve: { type: "smooth", tension: 1, segments: 8 },
-          fill: { color: "F4F3FF", opacity: 1 },
-          stroke: { color: "7A5AF8", width: 1.5 },
-        },
+          curve: DEFAULT_VECTOR_CURVE,
+        }),
+      ];
+    case "vector-triangle":
+      return [
+        makeVector({
+          points: [
+            { x: 326, y: 122 },
+            { x: 518, y: 354 },
+            { x: 134, y: 354 },
+          ],
+        }),
+      ];
+    case "vector-diamond":
+      return [
+        makeVector({
+          points: [
+            { x: 326, y: 122 },
+            { x: 518, y: 238 },
+            { x: 326, y: 354 },
+            { x: 134, y: 238 },
+          ],
+        }),
+      ];
+    case "vector-pentagon":
+      return [
+        makeVector({
+          points: regularPolygonVectorPoints(326, 248, 150, 5, -Math.PI / 2),
+        }),
+      ];
+    case "vector-hexagon":
+      return [
+        makeVector({
+          points: regularPolygonVectorPoints(326, 248, 166, 6),
+        }),
+      ];
+    case "vector-arrow":
+      return [
+        makeVector({
+          points: [
+            { x: 134, y: 206 },
+            { x: 420, y: 206 },
+            { x: 420, y: 158 },
+            { x: 574, y: 248 },
+            { x: 420, y: 338 },
+            { x: 420, y: 290 },
+            { x: 134, y: 290 },
+          ],
+        }),
       ];
     case "vector-line":
       return [
-        {
-          type: "vector",
+        makeVector({
           points: [
             { x: 134, y: 218 },
             { x: 569, y: 219 },
           ],
           closed: false,
-          stroke: { color: "101323", width: 2 },
-        },
+          fill: null,
+          stroke: DEFAULT_VECTOR_LINE_STROKE,
+        }),
       ];
     default:
       return [];
@@ -720,6 +795,22 @@ function ellipseVectorPoints(
     return {
       x: centerX + radiusX * Math.cos(angle),
       y: centerY + radiusY * Math.sin(angle),
+    };
+  });
+}
+
+function regularPolygonVectorPoints(
+  centerX: number,
+  centerY: number,
+  radius: number,
+  sides: number,
+  rotation = 0,
+) {
+  return Array.from({ length: sides }, (_, index) => {
+    const angle = rotation + (Math.PI * 2 * index) / sides;
+    return {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
     };
   });
 }

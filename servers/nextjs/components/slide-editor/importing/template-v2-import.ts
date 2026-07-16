@@ -24,7 +24,7 @@ import {
   type TextElement,
   type TextListItem,
   type TextRun,
-  type VectorShapeCurve,
+  type VectorCurve,
 } from "@/components/slide-editor/types";
 
 const MIN_ELEMENT_SIZE = 1;
@@ -691,7 +691,7 @@ function adaptElement(value: unknown): SlideElement | null {
     case "table":
       return adaptTable(raw);
     case "vector":
-      return adaptVectorShape(raw);
+      return adaptVector(raw);
     case "chart":
       return adaptChart(raw);
     case "infographic":
@@ -822,11 +822,11 @@ function adaptTable(raw: UnknownRecord): SlideElement {
   };
 }
 
-function adaptVectorShape(raw: UnknownRecord): SlideElement | null {
+function adaptVector(raw: UnknownRecord): SlideElement | null {
   const base = baseElement(raw);
   const fill = adaptFill(readRecord(raw, "fill"));
   const stroke = adaptStroke(readRecord(raw, "stroke"));
-  const points = adaptVectorShapePoints(raw);
+  const points = adaptVectorPoints(raw);
   if (!hasVisiblePaint(fill, stroke, base.opacity)) return null;
   if (points.length < 2) return null;
 
@@ -838,16 +838,16 @@ function adaptVectorShape(raw: UnknownRecord): SlideElement | null {
     ...pointBase,
     type: "vector",
     points,
-    closed: adaptVectorShapeClosed(raw, points),
+    closed: adaptVectorClosed(raw, points),
     corner_radii: adaptCornerRadii(raw, points.length),
-    curve: adaptVectorShapeCurve(raw) ?? adaptImplicitVectorShapeCurve(raw),
+    curve: adaptVectorCurve(raw) ?? adaptImplicitVectorCurve(raw),
     fill,
     stroke,
     shadow: adaptShadow(readRecord(raw, "shadow")),
   };
 }
 
-function adaptVectorShapePoints(raw: UnknownRecord): AdaptedPosition[] {
+function adaptVectorPoints(raw: UnknownRecord): AdaptedPosition[] {
   return readArray(raw, "points")
     .map((value) => {
       const point = asRecord(value);
@@ -859,7 +859,7 @@ function adaptVectorShapePoints(raw: UnknownRecord): AdaptedPosition[] {
     .filter((point): point is AdaptedPosition => point != null);
 }
 
-function adaptVectorShapeClosed(
+function adaptVectorClosed(
   raw: UnknownRecord,
   points: AdaptedPosition[],
 ): boolean {
@@ -873,7 +873,7 @@ function adaptVectorShapeClosed(
   return points.length > 2;
 }
 
-function adaptVectorShapeCurve(raw: UnknownRecord): VectorShapeCurve | null {
+function adaptVectorCurve(raw: UnknownRecord): VectorCurve | null {
   const curve = readRecord(raw, "curve");
   if (!curve) return null;
   const rawType = readString(curve.type)?.trim().toLowerCase();
@@ -885,7 +885,7 @@ function adaptVectorShapeCurve(raw: UnknownRecord): VectorShapeCurve | null {
   };
 }
 
-function adaptImplicitVectorShapeCurve(raw: UnknownRecord): VectorShapeCurve | null {
+function adaptImplicitVectorCurve(raw: UnknownRecord): VectorCurve | null {
   void raw;
   return null;
 }

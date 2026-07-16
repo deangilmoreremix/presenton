@@ -307,7 +307,7 @@ export function normalizeSingleChartWrapperComponent(
   };
 }
 
-export function normalizeSingleVectorShapeWrapperComponent(
+export function normalizeSingleVectorWrapperComponent(
   component: RawComponent,
   selection: ElementSelection,
 ): RawComponent {
@@ -315,7 +315,7 @@ export function normalizeSingleVectorShapeWrapperComponent(
   const elements = readArray(component.elements);
   if (elements.length !== 1) return component;
   const child = asRecord(elements[0]);
-  if (!child || !isVectorShapeType(readString(child.type))) return component;
+  if (!child || !isVectorType(readString(child.type))) return component;
   if ((readNumber(component.rotation) ?? 0) !== 0) return component;
 
   const childBox = elementBox(child);
@@ -329,7 +329,7 @@ export function normalizeSingleVectorShapeWrapperComponent(
       y: componentPosition.y + childBox.y,
     },
     elements: [
-      translateVectorShapeElement(child, {
+      translateVectorElement(child, {
         x: -childBox.x,
         y: -childBox.y,
       }),
@@ -341,7 +341,7 @@ function normalizeSingleElementWrapperComponent(
   component: RawComponent,
   selection: ElementSelection,
 ): RawComponent {
-  return normalizeSingleVectorShapeWrapperComponent(
+  return normalizeSingleVectorWrapperComponent(
     normalizeSingleChartWrapperComponent(component, selection),
     selection,
   );
@@ -464,7 +464,7 @@ export function scaleRawElements(
     const box = elementBox(element);
     const explicitSize = readOptionalSize(element.size);
     const type = readString(element.type);
-    const polygonPoints = isVectorShapeType(type) ? readArray(element.points) : [];
+    const polygonPoints = isVectorType(type) ? readArray(element.points) : [];
     const radiusScale = Math.min(Math.abs(scaleX), Math.abs(scaleY));
     const cornerRadii = readArray(element.corner_radii ?? element.cornerRadii);
     const childInfo = childArrayInfo(element);
@@ -1028,7 +1028,7 @@ export function selectionForInsertedComponent(
   const component = asRecord(readArray(ui.components)[safeComponentIndex]);
   const elements = readArray(component?.elements).filter(isRecord) as RawElement[];
 
-  if (elements.length === 1 && isVectorLineShapeElement(elements[0])) {
+  if (elements.length === 1 && isVectorLineElement(elements[0])) {
     return {
       kind: "element",
       componentIndex: safeComponentIndex,
@@ -1343,7 +1343,7 @@ export function lineRenderBox(element: RawElement): Box {
   };
 }
 
-export function isVectorShapeType(type: string | null | undefined) {
+export function isVectorType(type: string | null | undefined) {
   return type === "vector";
 }
 
@@ -1374,8 +1374,8 @@ export function vectorVertexEntriesForElement(element: RawElement): VectorVertex
     .filter((entry): entry is VectorVertexEntry => entry != null);
 }
 
-export function isVectorLineShapeElement(element: RawElement | null | undefined) {
-  if (!element || !isVectorShapeType(readString(element.type))) return false;
+export function isVectorLineElement(element: RawElement | null | undefined) {
+  if (!element || !isVectorType(readString(element.type))) return false;
   const vertices = vectorVertexEntriesForElement(element);
   if (vertices.length !== 2) return false;
   return !(readBoolean(element.closed) ?? false);
@@ -1405,7 +1405,7 @@ function removeArrayItem(value: unknown, index: number) {
   return next;
 }
 
-function vectorShapeClosedForRawPoints(element: RawElement) {
+function vectorClosedForRawPoints(element: RawElement) {
   const explicit = readBoolean(element.closed);
   if (explicit != null) return explicit;
   return vectorVertexEntriesForElement(element).length > 2;
@@ -1456,7 +1456,7 @@ export function removeVectorPointFromElement(
   index: number,
 ): RawElement {
   const vertices = vectorVertexEntriesForElement(element);
-  const minimumPoints = vectorShapeClosedForRawPoints(element) ? 3 : 2;
+  const minimumPoints = vectorClosedForRawPoints(element) ? 3 : 2;
   if (vertices.length <= minimumPoints) return element;
 
   const points = readArray(element.points);
@@ -1476,7 +1476,7 @@ export function removeVectorPointFromElement(
   return next;
 }
 
-export function translateVectorShapeElement(
+export function translateVectorElement(
   element: RawElement,
   delta: Point,
 ): RawElement {
@@ -1733,7 +1733,7 @@ export function polygonLocalPointsForElement(
 export function elementBox(element: RawElement): Box {
   const type = readString(element.type);
   const box =
-    isVectorShapeType(type)
+    isVectorType(type)
       ? polygonRenderBox(element)
       : type === "line"
       ? lineRenderBox(element)
@@ -1756,7 +1756,7 @@ export function isManualPositioned(element: RawElement) {
 
 export function elementSize(element: RawElement, fallback?: Size): Size {
   const type = readString(element.type);
-  if (isVectorShapeType(type)) {
+  if (isVectorType(type)) {
     const box = polygonRenderBox(element);
     return { width: box.width, height: box.height };
   }
@@ -2090,7 +2090,7 @@ export function mergeEditorToolbarElement(
       editorHeight ?? renderedBox.height,
     ),
   };
-  if (isVectorShapeType(type)) {
+  if (isVectorType(type)) {
     const currentBox = polygonRenderBox(current);
     const localFramePosition = {
       x: currentBox.x + ((editorX ?? renderedBox.x) - renderedBox.x),
@@ -2117,7 +2117,7 @@ export function mergeEditorToolbarElement(
     ) {
       next.__presenton_manual_position = true;
     }
-    return next;
+    return applyEditorStyleRemovals(next, editor);
   }
 
   const merged: RawElement = {
@@ -2166,7 +2166,20 @@ export function mergeEditorToolbarElement(
   ) {
     merged.__presenton_manual_position = true;
   }
-  return merged;
+  return applyEditorStyleRemovals(merged, editor);
+}
+
+function applyEditorStyleRemovals(
+  element: RawElement,
+  editor: UnknownRecord,
+): RawElement {
+  const next = { ...element };
+  for (const key of ["fill", "stroke", "shadow"] as const) {
+    if (Object.prototype.hasOwnProperty.call(editor, key) && editor[key] === null) {
+      delete next[key];
+    }
+  }
+  return next;
 }
 
 export function rawStrokeForEditor(value: unknown) {
@@ -2176,6 +2189,7 @@ export function rawStrokeForEditor(value: unknown) {
 }
 
 export function editorStrokeToRaw(value: unknown, fallback: unknown) {
+  if (value === null) return null;
   const stroke = asRecord(value);
   if (!stroke) return fallback;
   return {

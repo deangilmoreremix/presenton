@@ -131,8 +131,8 @@ import {
   isManualPositioned,
   isRecord,
   isRawIconElement,
-  isVectorLineShapeElement,
-  isVectorShapeType,
+  isVectorLineElement,
+  isVectorType,
   keyForSelection,
   keysForSelection,
   layoutChildren,
@@ -439,11 +439,11 @@ function TemplateV2KonvaSlideComponent({
     readString(selectedElement?.type) === "line";
   const selectedIsVectorElement =
     selection?.kind === "element" &&
-    isVectorShapeType(readString(selectedElement?.type));
+    isVectorType(readString(selectedElement?.type));
   const selectedIsVectorPointEditing =
     selectedIsVectorElement &&
     selection?.kind === "element" &&
-    (isVectorLineShapeElement(selectedElement) ||
+    (isVectorLineElement(selectedElement) ||
       vectorEditingKey === keyForSelection(selection));
   const shouldHideParentComponentBoundary = inlineEdit || selectedIsVectorElement;
   const transformerParentComponentKey = shouldHideParentComponentBoundary
@@ -1773,7 +1773,7 @@ function TemplateV2KonvaSlideComponent({
         openChartEditor(elementSelection);
         return;
       }
-      if (isVectorShapeType(type)) {
+      if (isVectorType(type)) {
         activateSurface(elementSelection);
         setSelection(elementSelection);
         clearTableCellSelection();

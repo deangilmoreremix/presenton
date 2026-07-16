@@ -17,8 +17,8 @@ import {
 } from "@/components/slide-editor/model/element-model";
 import type { ShapeSlideElement } from "@/components/slide-editor/state/state";
 import type {
-  VectorShapeCurve,
-  VectorShapeElement,
+  VectorCurve,
+  VectorElement,
 } from "@/components/slide-editor/types";
 import { DeferredColorInput } from "@/components/slide-editor/toolbar/DeferredColorInput";
 import {
@@ -64,6 +64,12 @@ const DEFAULT_SHAPE_SHADOW = {
   offset_x: 6,
   offset_y: 6,
 };
+const DEFAULT_SHAPE_FILL = { color: "#FFFFFF", opacity: 1 };
+const DEFAULT_SHAPE_STROKE = {
+  color: "#1A1A1A",
+  opacity: 1,
+  width: 1.5,
+};
 
 type ShadowValue = {
   color?: string | null;
@@ -107,28 +113,28 @@ export function ShapeToolbar({
         h: anchorBox.height / scale,
       }
     : rawBox;
-  const fill = element.fill ?? { color: "#FFFFFF", opacity: 1 };
-  const stroke = element.stroke ?? {
-    color: "#1A1A1A",
-    opacity: 1,
-    width: 0,
-  };
+  const fill = element.fill ?? DEFAULT_SHAPE_FILL;
+  const stroke = element.stroke
+    ? { ...DEFAULT_SHAPE_STROKE, ...element.stroke }
+    : DEFAULT_SHAPE_STROKE;
   const shadow = element.shadow ?? DEFAULT_SHAPE_SHADOW;
+  const fillEnabled = element.fill != null;
+  const strokeEnabled = element.stroke != null && stroke.width > 0;
   const shadowEnabled = element.shadow != null;
   const isRectangle = element.type === "rectangle";
-  const isVectorShape = element.type === "vector";
-  const vectorElement = isVectorShape ? element : null;
+  const isVector = element.type === "vector";
+  const vectorElement = isVector ? element : null;
   const canChangeType = element.type === "rectangle" || element.type === "ellipse";
   const canRoundCorners =
     isRectangle ||
-    (isVectorShape && element.closed !== false && element.points.length === 4);
+    (isVector && element.closed !== false && element.points.length === 4);
   const maxRadius = Math.max(
     1,
     Math.min(128, box.w / 2, box.h / 2),
   );
   const radius = isRectangle
     ? Math.min(maxRadius, averageBorderRadius(element.border_radius))
-    : isVectorShape
+    : isVector
       ? Math.min(maxRadius, averageCornerRadii(element.corner_radii))
       : 0;
   const vectorClosed = vectorElement ? vectorElement.closed !== false : false;
@@ -147,7 +153,36 @@ export function ShapeToolbar({
     onChange(index, { ...element, ...changes } as ShapeSlideElement);
   };
 
-  const updateVector = (changes: Partial<VectorShapeElement>) => {
+  const setFillEnabled = (enabled: boolean) => {
+    if (enabled) {
+      update({ fill });
+      return;
+    }
+    update({ fill: null });
+  };
+
+  const setStrokeEnabled = (enabled: boolean) => {
+    if (enabled) {
+      update({
+        stroke: {
+          ...stroke,
+          width: Math.max(stroke.width ?? 0, DEFAULT_SHAPE_STROKE.width),
+        },
+      });
+      return;
+    }
+    update({ stroke: null });
+  };
+
+  const setShadowEnabled = (enabled: boolean) => {
+    if (enabled) {
+      update({ shadow });
+      return;
+    }
+    update({ shadow: null });
+  };
+
+  const updateVector = (changes: Partial<VectorElement>) => {
     if (!vectorElement) return;
     onChange(index, { ...vectorElement, ...changes } as ShapeSlideElement);
   };
@@ -163,15 +198,11 @@ export function ShapeToolbar({
   const togglePanel = (panel: Exclude<ShapePanel, null>) => {
     setOpenPanel((current) => (current === panel ? null : panel));
   };
-  const toggleShadowPanel = () => {
-    if (!shadowEnabled) update({ shadow });
-    togglePanel("shadow");
-  };
   const setCurveMode = (mode: CurveMode) => {
     if (!vectorElement) return;
     updateVector({ curve: curveForMode(vectorElement, mode) });
   };
-  const updateCurve = (changes: Partial<VectorShapeCurve>) => {
+  const updateCurve = (changes: Partial<VectorCurve>) => {
     if (!vectorElement) return;
     const current = curveForMode(vectorElement, vectorCurveMode);
     if (!current) return;
@@ -207,33 +238,45 @@ export function ShapeToolbar({
           onClick={() => togglePanel("fill")}
           className={cn(
             "grid h-[22px] w-[22px] place-items-center rounded-[999px] border border-[#D7DAE3] hover:bg-[#F8F8FA]",
-            openPanel === "fill" && "ring-2 ring-[#2E90FA]/30",
+            (openPanel === "fill" || fillEnabled) &&
+              "border-[#E4D7FF] bg-[#F4F1FF] ring-2 ring-[#7C3AED]/30",
           )}
         >
           <span
             aria-hidden="true"
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: withHash(fill.color) }}
+            className="h-3 w-3 rounded-full border border-black/10"
+            style={{
+              backgroundColor: fillEnabled ? withHash(fill.color) : "#FFFFFF",
+            }}
           />
         </button>
         {openPanel === "fill" ? (
           <Panel className="w-[220px] space-y-3 p-3">
-            <ColorField
-              label="Fill color"
-              color={fill.color}
-              onCommit={(color) => update({ fill: { ...fill, color } })}
+            <ToggleRow
+              label="Fill"
+              enabled={fillEnabled}
+              onToggle={() => setFillEnabled(!fillEnabled)}
             />
-            <SliderField
-              label="Fill opacity"
-              value={fill.opacity ?? 1}
-              min={0}
-              max={1}
-              step={0.01}
-              formatValue={(value) => `${Math.round(value * 100)}%`}
-              onCommit={(opacity) =>
-                update({ fill: { ...fill, opacity } })
-              }
-            />
+            {fillEnabled ? (
+              <>
+                <ColorField
+                  label="Fill color"
+                  color={fill.color}
+                  onCommit={(color) => update({ fill: { ...fill, color } })}
+                />
+                <SliderField
+                  label="Fill opacity"
+                  value={fill.opacity ?? 1}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  formatValue={(value) => `${Math.round(value * 100)}%`}
+                  onCommit={(opacity) =>
+                    update({ fill: { ...fill, opacity } })
+                  }
+                />
+              </>
+            ) : null}
           </Panel>
         ) : null}
       </div>
@@ -241,38 +284,47 @@ export function ShapeToolbar({
       <div className="relative">
         <ToolbarButton
           title="Shape border"
-          pressed={openPanel === "stroke"}
+          pressed={openPanel === "stroke" || strokeEnabled}
           onClick={() => togglePanel("stroke")}
         >
           <LineWidthIcon />
         </ToolbarButton>
         {openPanel === "stroke" ? (
           <Panel className="w-[220px] space-y-3 p-3">
-            <ColorField
-              label="Border color"
-              color={stroke.color}
-              onCommit={(color) => update({ stroke: { ...stroke, color } })}
+            <ToggleRow
+              label="Stroke"
+              enabled={strokeEnabled}
+              onToggle={() => setStrokeEnabled(!strokeEnabled)}
             />
-            <SliderField
-              label="Border width"
-              value={stroke.width ?? 0}
-              min={0}
-              max={16}
-              step={0.5}
-              formatValue={(value) => `${formatNumber(value)}pt`}
-              onCommit={(width) => update({ stroke: { ...stroke, width } })}
-            />
-            <SliderField
-              label="Border opacity"
-              value={stroke.opacity ?? 1}
-              min={0}
-              max={1}
-              step={0.01}
-              formatValue={(value) => `${Math.round(value * 100)}%`}
-              onCommit={(opacity) =>
-                update({ stroke: { ...stroke, opacity } })
-              }
-            />
+            {strokeEnabled ? (
+              <>
+                <ColorField
+                  label="Border color"
+                  color={stroke.color}
+                  onCommit={(color) => update({ stroke: { ...stroke, color } })}
+                />
+                <SliderField
+                  label="Border width"
+                  value={stroke.width ?? DEFAULT_SHAPE_STROKE.width}
+                  min={0}
+                  max={16}
+                  step={0.5}
+                  formatValue={(value) => `${formatNumber(value)}pt`}
+                  onCommit={(width) => update({ stroke: { ...stroke, width } })}
+                />
+                <SliderField
+                  label="Border opacity"
+                  value={stroke.opacity ?? 1}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  formatValue={(value) => `${Math.round(value * 100)}%`}
+                  onCommit={(opacity) =>
+                    update({ stroke: { ...stroke, opacity } })
+                  }
+                />
+              </>
+            ) : null}
           </Panel>
         ) : null}
       </div>
@@ -334,7 +386,7 @@ export function ShapeToolbar({
                 formatValue={(value) => formatNumber(value)}
                 onCommit={(value) =>
                   update(
-                    isVectorShape
+                    isVector
                       ? { corner_radii: [value, value, value, value] }
                       : { border_radius: uniformBorderRadius(value) },
                   )
@@ -447,14 +499,16 @@ export function ShapeToolbar({
         <ToolbarButton
           title="Shape shadow"
           pressed={openPanel === "shadow" || shadowEnabled}
-          onClick={toggleShadowPanel}
+          onClick={() => togglePanel("shadow")}
         >
           <Cloud size={16} strokeWidth={1.7} aria-hidden="true" />
         </ToolbarButton>
         {openPanel === "shadow" ? (
           <ShadowPanel
+            enabled={shadowEnabled}
             fallback={DEFAULT_SHAPE_SHADOW}
             shadow={shadow}
+            onToggle={() => setShadowEnabled(!shadowEnabled)}
             onChange={(changes) => update({ shadow: { ...shadow, ...changes } })}
           />
         ) : null}
@@ -546,71 +600,112 @@ export function Divider() {
   return <span aria-hidden="true" className="h-[23px] w-px flex-none bg-[#EDEEEF]" />;
 }
 
+export function ToggleRow({
+  enabled,
+  label,
+  onToggle,
+}: {
+  enabled: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={enabled}
+      onClick={onToggle}
+      className="flex w-full items-center justify-between rounded-md border border-[#EDEEEF] px-3 py-2 text-left text-xs text-[#4B5563] hover:bg-[#F8F8FA]"
+    >
+      <span className="font-medium text-[#191919]">{label}</span>
+      <span className="flex items-center gap-1 text-[#7A5AF8]">
+        {enabled ? (
+          <ToggleRight size={17} aria-hidden="true" />
+        ) : (
+          <ToggleLeft size={17} aria-hidden="true" />
+        )}
+        {enabled ? "On" : "Off"}
+      </span>
+    </button>
+  );
+}
+
 export function ShadowPanel({
+  enabled = true,
   fallback,
+  onToggle,
   shadow,
   onChange,
 }: {
+  enabled?: boolean;
   fallback: ShadowFallback;
+  onToggle?: () => void;
   shadow: ShadowValue;
   onChange: (changes: Partial<ShadowValue>) => void;
 }) {
   return (
     <Panel className="left-auto right-0 w-[282px] translate-x-0 space-y-4 p-4">
-      <div className="space-y-2">
-        <div className="text-[12px] font-medium text-[#4B5563]">Position</div>
-        <div className="grid grid-cols-2 gap-2">
-          <NumberField
-            label="X"
-            value={shadow.offset_x ?? fallback.offset_x}
-            min={-64}
-            max={64}
-            step={1}
-            suffix="px"
-            onCommit={(offset_x) => onChange({ offset_x })}
+      {onToggle ? (
+        <ToggleRow label="Shadow" enabled={enabled} onToggle={onToggle} />
+      ) : null}
+
+      {enabled ? (
+        <>
+          <div className="space-y-2">
+            <div className="text-[12px] font-medium text-[#4B5563]">Position</div>
+            <div className="grid grid-cols-2 gap-2">
+              <NumberField
+                label="X"
+                value={shadow.offset_x ?? fallback.offset_x}
+                min={-64}
+                max={64}
+                step={1}
+                suffix="px"
+                onCommit={(offset_x) => onChange({ offset_x })}
+              />
+              <NumberField
+                label="Y"
+                value={shadow.offset_y ?? fallback.offset_y}
+                min={-64}
+                max={64}
+                step={1}
+                suffix="px"
+                onCommit={(offset_y) => onChange({ offset_y })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-[12px] font-medium text-[#4B5563]">Blur</div>
+            <NumberField
+              label="Amount"
+              value={shadow.blur ?? fallback.blur}
+              min={0}
+              max={100}
+              step={1}
+              onCommit={(blur) => onChange({ blur })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-[12px] font-medium text-[#4B5563]">Color</div>
+            <ColorField
+              label="Color"
+              color={shadow.color ?? fallback.color}
+              onCommit={(color) => onChange({ color })}
+            />
+          </div>
+
+          <SliderField
+            label="Opacity"
+            value={shadow.opacity ?? fallback.opacity}
+            min={0}
+            max={1}
+            step={0.01}
+            formatValue={(value) => `${Math.round(value * 100)}%`}
+            onCommit={(opacity) => onChange({ opacity })}
           />
-          <NumberField
-            label="Y"
-            value={shadow.offset_y ?? fallback.offset_y}
-            min={-64}
-            max={64}
-            step={1}
-            suffix="px"
-            onCommit={(offset_y) => onChange({ offset_y })}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-[12px] font-medium text-[#4B5563]">Blur</div>
-        <NumberField
-          label="Amount"
-          value={shadow.blur ?? fallback.blur}
-          min={0}
-          max={100}
-          step={1}
-          onCommit={(blur) => onChange({ blur })}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-[12px] font-medium text-[#4B5563]">Color</div>
-        <ColorField
-          label="Color"
-          color={shadow.color ?? fallback.color}
-          onCommit={(color) => onChange({ color })}
-        />
-      </div>
-
-      <SliderField
-        label="Opacity"
-        value={shadow.opacity ?? fallback.opacity}
-        min={0}
-        max={1}
-        step={0.01}
-        formatValue={(value) => `${Math.round(value * 100)}%`}
-        onCommit={(opacity) => onChange({ opacity })}
-      />
+        </>
+      ) : null}
     </Panel>
   );
 }
@@ -793,7 +888,7 @@ function averageCornerRadii(value: number[] | null | undefined) {
   return radii.reduce((sum, item) => sum + item, 0) / radii.length;
 }
 
-function curveMode(curve: VectorShapeCurve | null | undefined): CurveMode {
+function curveMode(curve: VectorCurve | null | undefined): CurveMode {
   if (curve?.type === "smooth") return curve.type;
   return "none";
 }
@@ -807,9 +902,9 @@ function normalizedTension(value: number | null | undefined) {
 }
 
 export function curveForMode(
-  element: VectorShapeElement,
+  element: VectorElement,
   mode: CurveMode,
-): VectorShapeCurve | null {
+): VectorCurve | null {
   if (mode === "none") return null;
   if (mode === "smooth") {
     return {
@@ -821,7 +916,7 @@ export function curveForMode(
   return null;
 }
 
-function cornerRadiiForVector(element: VectorShapeElement) {
+function cornerRadiiForVector(element: VectorElement) {
   if (element.points.length !== 4) return [];
   return [0, 1, 2, 3].map((index) =>
     Math.max(0, element.corner_radii?.[index] ?? 0),

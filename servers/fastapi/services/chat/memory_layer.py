@@ -52,9 +52,14 @@ BLANK_TEMPLATE_V2_LAYOUT: dict[str, Any] = {
     "components": [],
     "elements": [
         {
-            "type": "rectangle",
-            "position": {"x": 0, "y": 0},
-            "size": {"width": 1280, "height": 720},
+            "type": "vector",
+            "points": [
+                {"x": 0, "y": 0},
+                {"x": 1280, "y": 0},
+                {"x": 1280, "y": 720},
+                {"x": 0, "y": 720},
+            ],
+            "closed": True,
             "fill": {"color": "#FFFFFF"},
             "decorative": True,
         }

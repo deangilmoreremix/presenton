@@ -67,8 +67,8 @@ import {
   isManualPositioned,
   isRawIconElement,
   isStaticSvgIconSource,
-  isVectorLineShapeElement,
-  isVectorShapeType,
+  isVectorLineElement,
+  isVectorType,
   isRecord,
   keyForSelection,
   layoutChildren,
@@ -102,7 +102,7 @@ import {
   strokeOpacity,
   strokeWidth,
   removeVectorPointFromElement,
-  translateVectorShapeElement,
+  translateVectorElement,
   updateVectorVertexPoint,
   valueProgress,
   vectorVertexEntriesForElement,
@@ -859,8 +859,8 @@ function RawElementNode({
     selectedTableCell?.elementPath === key ? selectedTableCell : null;
   const editing = editingKey === key;
   const type = readString(element.type);
-  const isVectorShape = isVectorShapeType(type);
-  const isVectorLineShape = isVectorLineShapeElement(element);
+  const isVector = isVectorType(type);
+  const isVectorLine = isVectorLineElement(element);
   const vectorPointEditing = vectorEditingKey === key;
   const [vectorDragPreview, setVectorDragPreview] =
     useState<RawElement | null>(null);
@@ -892,14 +892,14 @@ function RawElementNode({
   const showVectorPointHandles =
     isEditMode &&
     isSelected &&
-    isVectorShape &&
+    isVector &&
     !editing &&
-    (vectorPointEditing || isVectorLineShape);
-  const vectorShapeDraggable =
-    isEditMode && isSelected && isVectorShape && !editing && !showVectorPointHandles;
+    (vectorPointEditing || isVectorLine);
+  const vectorDraggable =
+    isEditMode && isSelected && isVector && !editing && !showVectorPointHandles;
   useEffect(() => {
-    if (!isSelected || !isVectorShape) setVectorDragPreview(null);
-  }, [isSelected, isVectorShape]);
+    if (!isSelected || !isVector) setVectorDragPreview(null);
+  }, [isSelected, isVector]);
   const handleTableCellSelect = useCallback(
     (rowIndex: number, colIndex: number) => {
       onTableCellSelect(selection, rowIndex, colIndex);
@@ -914,22 +914,22 @@ function RawElementNode({
   );
   const handleVectorDragStart = useCallback(
     (event: Konva.KonvaEventObject<DragEvent>) => {
-      if (!vectorShapeDraggable) return;
+      if (!vectorDraggable) return;
       event.cancelBubble = true;
       onSelect(selection);
     },
-    [onSelect, selection, vectorShapeDraggable],
+    [onSelect, selection, vectorDraggable],
   );
   const handleVectorDragMove = useCallback(
     (event: Konva.KonvaEventObject<DragEvent>) => {
-      if (!vectorShapeDraggable) return;
+      if (!vectorDraggable) return;
       event.cancelBubble = true;
     },
-    [vectorShapeDraggable],
+    [vectorDraggable],
   );
   const handleVectorDragEnd = useCallback(
     (event: Konva.KonvaEventObject<DragEvent>) => {
-      if (!vectorShapeDraggable) return;
+      if (!vectorDraggable) return;
       event.cancelBubble = true;
       const node = groupRef.current;
       if (!node) return;
@@ -954,7 +954,7 @@ function RawElementNode({
         y: centerOrigin ? nextPosition.y + box.height / 2 : nextPosition.y,
       });
       onElementChange(selection, (current) => ({
-        ...translateVectorShapeElement(current, delta),
+        ...translateVectorElement(current, delta),
         ...(layoutManaged || isManualPositioned(current)
           ? { __presenton_manual_position: true }
           : {}),
@@ -967,7 +967,7 @@ function RawElementNode({
       onElementChange,
       onElementDragEnd,
       selection,
-      vectorShapeDraggable,
+      vectorDraggable,
     ],
   );
   const previewVectorVertex = useCallback(
@@ -1033,16 +1033,16 @@ function RawElementNode({
       clipHeight={clipChildren ? box.height : undefined}
       rotation={readNumber(element.rotation) ?? 0}
       opacity={readNumber(element.opacity) ?? 1}
-      draggable={vectorShapeDraggable}
+      draggable={vectorDraggable}
       onMouseDown={(event) => {
         if (!isEditMode) return;
-        if (isVectorShape) {
+        if (isVector) {
           event.cancelBubble = true;
           onSelect(selection);
-          if (isVectorLineShape) onOpenEditor(selection);
+          if (isVectorLine) onOpenEditor(selection);
           return;
         }
-        if (vectorShapeDraggable) {
+        if (vectorDraggable) {
           event.cancelBubble = true;
           onSelect(selection);
           return;
@@ -1051,13 +1051,13 @@ function RawElementNode({
       }}
       onTouchStart={(event) => {
         if (!isEditMode) return;
-        if (isVectorShape) {
+        if (isVector) {
           event.cancelBubble = true;
           onSelect(selection);
-          if (isVectorLineShape) onOpenEditor(selection);
+          if (isVectorLine) onOpenEditor(selection);
           return;
         }
-        if (vectorShapeDraggable) {
+        if (vectorDraggable) {
           event.cancelBubble = true;
           onSelect(selection);
           return;
@@ -1120,7 +1120,7 @@ function RawElementNode({
           const scaled = scaleRawElementTextMetrics(current, fontScale);
           const type = readString(current.type);
           const geometry =
-            isVectorShapeType(type)
+            isVectorType(type)
               ? polygonElementFromFrame(scaled, nextPosition, scaleX, scaleY)
               : {
                   ...scaled,
@@ -1155,7 +1155,7 @@ function RawElementNode({
           width={visualBox.width}
           height={visualBox.height}
           interactive={isEditMode}
-          vectorOriginBox={isVectorShape ? box : null}
+          vectorOriginBox={isVector ? box : null}
           selectedTableCell={selectedCell}
           onTableCellSelect={handleTableCellSelect}
           onTableCellEdit={handleTableCellEdit}
@@ -1163,7 +1163,7 @@ function RawElementNode({
         />
       )}
       {showVectorPointHandles ? (
-        <VectorShapeVertexHandles
+        <VectorVertexHandles
           element={renderedElement}
           originBox={box}
           onCommit={commitVectorVertex}
@@ -1246,7 +1246,7 @@ export const MemoizedRawElementNode = memo(RawElementNode, (previous, next) => {
   );
 });
 
-function VectorShapeVertexHandles({
+function VectorVertexHandles({
   element,
   originBox,
   onSelect,
@@ -1557,7 +1557,7 @@ function RawElementVisual({
       />
     );
   }
-  if (isVectorShapeType(type)) {
+  if (isVectorType(type)) {
     const points = polygonLocalPointsForElement(
       element,
       vectorOriginBox ?? undefined,
