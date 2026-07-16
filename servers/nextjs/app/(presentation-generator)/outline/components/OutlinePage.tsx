@@ -385,7 +385,7 @@ const OutlinePage: React.FC = () => {
               </div>
 
               {isOutlineAssistantVisible && (
-                <aside className="h-[min(760px,calc(100vh-250px))] overflow-hidden border border-[#EDEEEF] bg-white lg:sticky lg:top-[92px] lg:h-[min(760px,calc(100vh-250px))]">
+                <aside className="h-[min(760px,calc(100vh-250px))] overflow-hidden border border-[#EDEEEF] bg-white lg:sticky lg:top-[92px] lg:h-[calc(100vh-105px)]">
                   <Chat
                     key={presentation_id}
                     presentationId={presentation_id}
@@ -402,7 +402,7 @@ const OutlinePage: React.FC = () => {
             className={cn(
               "fixed bottom-[26px] z-50",
               isOutlineAssistantVisible
-                ? "left-5 sm:left-10 lg:left-auto lg:right-[calc(5rem+352px+2.5rem)]"
+                ? "left-5 sm:left-10 lg:left-auto lg:right-[calc(8rem+355px+4rem)]"
                 : "right-[26px]"
             )}
           >

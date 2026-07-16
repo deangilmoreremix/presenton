@@ -1023,10 +1023,10 @@ const formatTraceActivity = (
         trace.status === "error"
           ? "error"
           : trace.status === "success"
-          ? "success"
-          : trace.status === "ready" || trace.status === "info"
-          ? "info"
-          : "running",
+            ? "success"
+            : trace.status === "ready" || trace.status === "info"
+              ? "info"
+              : "running",
     };
   }
 
@@ -1340,8 +1340,8 @@ const Chat = ({
               m.role === "assistant"
                 ? "assistant"
                 : m.role === "user"
-                ? "user"
-                : "user",
+                  ? "user"
+                  : "user",
             content:
               m.role === "user"
                 ? stripBackendContextFromUserMessage(m.content)
@@ -1381,19 +1381,19 @@ const Chat = ({
       previous.map((message) =>
         message.id === activePreview.assistantMessageId
           ? {
-              ...message,
-              editPreview: {
-                originalSlides: activePreview.mutatedSlideIndices
-                  .map(
-                    (slideIndex) =>
-                      activePreview.originalSlidesByIndex[slideIndex],
-                  )
-                  .filter(Boolean),
-                modifiedSlides,
-                slideIndices: activePreview.mutatedSlideIndices,
-                changeCount: Math.max(1, activePreview.changeCount),
-              },
-            }
+            ...message,
+            editPreview: {
+              originalSlides: activePreview.mutatedSlideIndices
+                .map(
+                  (slideIndex) =>
+                    activePreview.originalSlidesByIndex[slideIndex],
+                )
+                .filter(Boolean),
+              modifiedSlides,
+              slideIndices: activePreview.mutatedSlideIndices,
+              changeCount: Math.max(1, activePreview.changeCount),
+            },
+          }
           : message,
       ),
     );
@@ -1514,9 +1514,8 @@ const Chat = ({
         return;
       }
 
-      const traceSignature = `${trace.round ?? "?"}:${trace.tool}:${
-        trace.status
-      }:${targetSlideIndex}`;
+      const traceSignature = `${trace.round ?? "?"}:${trace.tool}:${trace.status
+        }:${targetSlideIndex}`;
       if (lastFollowedTraceRef.current === traceSignature) {
         return;
       }
@@ -1565,8 +1564,7 @@ const Chat = ({
 
     if (typeof currentSlide === "number") {
       contextLines.push(
-        `UI context: the currently selected slide is slide ${
-          currentSlide + 1
+        `UI context: the currently selected slide is slide ${currentSlide + 1
         } (zero-based index ${currentSlide}).`
       );
     }
@@ -1587,10 +1585,8 @@ const Chat = ({
         target.componentLabels?.filter(Boolean) ??
         target.components.map((component) => component.componentLabel).filter(Boolean);
       contextLines.push(
-        `UI context: the user has selected ${target.components.length} TemplateV2 components${
-          labels.length ? ` (${labels.join(", ")})` : ""
-        }${
-          componentIds.length ? ` with componentIds=${componentIds.join(",")}` : ""
+        `UI context: the user has selected ${target.components.length} TemplateV2 components${labels.length ? ` (${labels.join(", ")})` : ""
+        }${componentIds.length ? ` with componentIds=${componentIds.join(",")}` : ""
         }. These selected components are the primary target for short edits like "these", "group these", "remove these", "move them", or "resize them"; do not apply those requests to the whole slide unless the user explicitly says slide. For grouping selected components, inspect the selected slide with getSlideAtIndex, then call updateComponent with action=group, componentId set to one selected component id, and componentIds set to all selected component ids exactly.`
       );
     } else if (selectedTemplateV2Target) {
@@ -1627,8 +1623,8 @@ const Chat = ({
                 `Image ${index + 1} (${image.name}): ${image.url}`,
                 image.extractedText
                   ? `Extracted image text ${index + 1}:\n${trimAttachmentContent(
-                      image.extractedText
-                    )}`
+                    image.extractedText
+                  )}`
                   : "",
               ]
                 .filter(Boolean)
@@ -1771,8 +1767,7 @@ const Chat = ({
       await onPresentationChanged?.();
       notify.success(
         version === "original" ? "Original restored" : "Changes restored",
-        `${preview.slideIndices.length} ${
-          preview.slideIndices.length === 1 ? "slide" : "slides"
+        `${preview.slideIndices.length} ${preview.slideIndices.length === 1 ? "slide" : "slides"
         } updated.`,
       );
     } catch (error) {
@@ -1865,15 +1860,15 @@ const Chat = ({
         const settledActivity: AssistantActivity[] =
           lastActivity && lastActivity.state === "running"
             ? [
-                ...currentActivity.slice(0, -1),
-                {
-                  ...lastActivity,
-                  state:
-                    activity.state === "error"
-                      ? "error"
-                      : ("success" as AssistantActivity["state"]),
-                },
-              ]
+              ...currentActivity.slice(0, -1),
+              {
+                ...lastActivity,
+                state:
+                  activity.state === "error"
+                    ? "error"
+                    : ("success" as AssistantActivity["state"]),
+              },
+            ]
             : currentActivity;
 
         const lastSettledActivity = settledActivity[settledActivity.length - 1];
@@ -2060,8 +2055,8 @@ const Chat = ({
       (attachedDocuments.length > 0
         ? "Use the attached document."
         : chatLinks.length > 0
-        ? "Use the provided link."
-        : "Use the pasted image.");
+          ? "Use the provided link."
+          : "Use the pasted image.");
 
     if (
       (!trimmedMessage && !hasAttachedContext) ||
@@ -2117,12 +2112,12 @@ const Chat = ({
     );
     activeEditPreviewRef.current = originalPreviewSlide
       ? {
-          assistantMessageId,
-          originalSlidesByIndex: { [previewSlideIndex]: originalPreviewSlide },
-          mutatedSlideIndices: [],
-          mutationObserved: false,
-          changeCount: 0,
-        }
+        assistantMessageId,
+        originalSlidesByIndex: { [previewSlideIndex]: originalPreviewSlide },
+        mutatedSlideIndices: [],
+        mutationObserved: false,
+        changeCount: 0,
+      }
       : null;
     setMessages((previous) => [
       ...previous,
@@ -2189,9 +2184,9 @@ const Chat = ({
               previous.map((message) =>
                 message.id === assistantMessageId
                   ? {
-                      ...message,
-                      content: `${message.content}${chunk}`,
-                    }
+                    ...message,
+                    content: `${message.content}${chunk}`,
+                  }
                   : message
               )
             );
@@ -2221,7 +2216,7 @@ const Chat = ({
               trace.status === "start" &&
               MUTATING_TOOLS.has(trace.tool) &&
               activeEditPreviewRef.current?.assistantMessageId ===
-                assistantMessageId
+              assistantMessageId
             ) {
               const activePreview = activeEditPreviewRef.current;
               const tracedSlideIndex = readTraceSlideIndex(trace);
@@ -2246,18 +2241,18 @@ const Chat = ({
                 previous.map((message) =>
                   message.id === assistantMessageId
                     ? {
-                        ...message,
-                        editPreview: {
-                          originalSlides: activePreview.mutatedSlideIndices
-                            .map(
-                              (slideIndex) =>
-                                activePreview.originalSlidesByIndex[slideIndex],
-                            )
-                            .filter(Boolean),
-                          slideIndices: activePreview.mutatedSlideIndices,
-                          changeCount: activePreview.changeCount,
-                        },
-                      }
+                      ...message,
+                      editPreview: {
+                        originalSlides: activePreview.mutatedSlideIndices
+                          .map(
+                            (slideIndex) =>
+                              activePreview.originalSlidesByIndex[slideIndex],
+                          )
+                          .filter(Boolean),
+                        slideIndices: activePreview.mutatedSlideIndices,
+                        changeCount: activePreview.changeCount,
+                      },
+                    }
                     : message,
                 ),
               );
@@ -2287,15 +2282,15 @@ const Chat = ({
         previous.map((message) =>
           message.id === assistantMessageId
             ? {
-                ...message,
-                content: response.response,
-                toolCalls: [],
-                activity: (message.activity ?? []).map((activity) => ({
-                  ...activity,
-                  state:
-                    activity.state === "running" ? "success" : activity.state,
-                })),
-              }
+              ...message,
+              content: response.response,
+              toolCalls: [],
+              activity: (message.activity ?? []).map((activity) => ({
+                ...activity,
+                state:
+                  activity.state === "running" ? "success" : activity.state,
+              })),
+            }
             : message
         )
       );
@@ -2359,10 +2354,10 @@ const Chat = ({
           previous.map((message) =>
             message.id === assistantMessageId
               ? {
-                  ...message,
-                  toolCalls: [],
-                  activity: [],
-                }
+                ...message,
+                toolCalls: [],
+                activity: [],
+              }
               : message
           )
         );
@@ -2389,10 +2384,10 @@ const Chat = ({
         previous.map((entry) =>
           entry.id === assistantMessageId
             ? {
-                ...entry,
-                toolCalls: [],
-                activity: [],
-              }
+              ...entry,
+              toolCalls: [],
+              activity: [],
+            }
             : entry
         )
       );
@@ -2456,10 +2451,10 @@ const Chat = ({
         layoutPreview:
           detail.promptKind === "layout" && detail.layout
             ? {
-                layout: detail.layout,
-                layoutId: detail.layoutId,
-                slideIndex: detail.slideIndex,
-              }
+              layout: detail.layout,
+              layoutId: detail.layoutId,
+              slideIndex: detail.slideIndex,
+            }
             : undefined,
       });
     };
@@ -2652,19 +2647,19 @@ const Chat = ({
     !isOutlineVariant && !isHistoryLoading && messages.length === 0;
   const chatSlideReference =
     typeof currentSlide === "number" &&
-    hiddenOverlaySlideReference !== currentSlide
+      hiddenOverlaySlideReference !== currentSlide
       ? `Slide ${currentSlide + 1}`
       : "";
   const chatTargetReference = selectedTemplateV2Target
     ? selectedTemplateV2Target.kind === "multi-component"
       ? selectedTemplateV2Target.targetLabel ||
-        `${selectedTemplateV2Target.components.length} components selected`
+      `${selectedTemplateV2Target.components.length} components selected`
       : selectedTemplateV2Target.targetLabel ||
-        selectedTemplateV2Target.componentLabel ||
-        selectedTemplateV2Target.elementName ||
-        selectedTemplateV2Target.elementType ||
-        selectedTemplateV2Target.componentId ||
-        selectedTemplateV2Target.kind
+      selectedTemplateV2Target.componentLabel ||
+      selectedTemplateV2Target.elementName ||
+      selectedTemplateV2Target.elementType ||
+      selectedTemplateV2Target.componentId ||
+      selectedTemplateV2Target.kind
     : "";
 
   if (!isOutlineVariant) {
@@ -2808,8 +2803,8 @@ const Chat = ({
                                 {(index < visibleActivity.length - 1 ||
                                   Boolean(message.content) ||
                                   Boolean(message.editPreview)) && (
-                                  <span className="ml-[6.5px] h-[13px] w-px bg-[#E6E6E6]" />
-                                )}
+                                    <span className="ml-[6.5px] h-[13px] w-px bg-[#E6E6E6]" />
+                                  )}
                               </React.Fragment>
                             );
                           })}
@@ -2992,74 +2987,74 @@ const Chat = ({
               attachedDocuments.length > 0 ||
               chatLinks.length > 0 ||
               isUploadingPastedImage) && (
-              <div className="mb-2 flex max-w-full flex-wrap items-center gap-1.5">
-                {chatLinks.map((link) => (
-                  <span
-                    key={link.id}
-                    className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-[10px] font-medium text-[#1D4ED8]"
-                  >
-                    <LinkIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{link.url}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setChatLinks((previous) =>
-                          previous.filter((item) => item.id !== link.id),
-                        )
-                      }
-                      aria-label="Remove link"
+                <div className="mb-2 flex max-w-full flex-wrap items-center gap-1.5">
+                  {chatLinks.map((link) => (
+                    <span
+                      key={link.id}
+                      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-[10px] font-medium text-[#1D4ED8]"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                {pastedImages.map((image) => (
-                  <span
-                    key={image.id}
-                    className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-[10px] font-medium text-[#344054]"
-                  >
-                    <ImageIcon className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{image.name}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPastedImages((previous) =>
-                          previous.filter((item) => item.id !== image.id),
-                        )
-                      }
-                      aria-label="Remove pasted image"
+                      <LinkIcon className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{link.url}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setChatLinks((previous) =>
+                            previous.filter((item) => item.id !== link.id),
+                          )
+                        }
+                        aria-label="Remove link"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {pastedImages.map((image) => (
+                    <span
+                      key={image.id}
+                      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-[10px] font-medium text-[#344054]"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                {attachedDocuments.map((document) => (
-                  <span
-                    key={document.id}
-                    className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-[10px] font-medium text-[#344054]"
-                  >
-                    <FileText className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{document.name}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAttachedDocuments((previous) =>
-                          previous.filter((item) => item.id !== document.id),
-                        )
-                      }
-                      aria-label="Remove attached document"
+                      <ImageIcon className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{image.name}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPastedImages((previous) =>
+                            previous.filter((item) => item.id !== image.id),
+                          )
+                        }
+                        aria-label="Remove pasted image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {attachedDocuments.map((document) => (
+                    <span
+                      key={document.id}
+                      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-[10px] font-medium text-[#344054]"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                {isUploadingPastedImage && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#808080]">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Processing
-                  </span>
-                )}
-              </div>
-            )}
+                      <FileText className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{document.name}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachedDocuments((previous) =>
+                            previous.filter((item) => item.id !== document.id),
+                          )
+                        }
+                        aria-label="Remove attached document"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {isUploadingPastedImage && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-[#808080]">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Processing
+                    </span>
+                  )}
+                </div>
+              )}
 
             <textarea
               ref={inputRef}
@@ -3227,9 +3222,9 @@ const Chat = ({
       style={
         showEditorEmptyState
           ? {
-              background:
-                "radial-gradient(ellipse 90% 42% at 66% 18%, rgba(218, 243, 255, 0.78) 0, rgba(230, 242, 255, 0.42) 35%, transparent 72%), radial-gradient(ellipse 85% 38% at 35% 47%, rgba(244, 226, 255, 0.72) 0, rgba(249, 237, 255, 0.34) 40%, transparent 75%), #fff",
-            }
+            background:
+              "radial-gradient(ellipse 90% 42% at 66% 18%, rgba(218, 243, 255, 0.78) 0, rgba(230, 242, 255, 0.42) 35%, transparent 72%), radial-gradient(ellipse 85% 38% at 35% 47%, rgba(244, 226, 255, 0.72) 0, rgba(249, 237, 255, 0.34) 40%, transparent 75%), #fff",
+          }
           : undefined
       }
     >
@@ -3452,7 +3447,7 @@ const Chat = ({
                     <div className="text-[13px] font-normal leading-6 text-[#667085]">
                       {isSending && message.role === "assistant"
                         ? message.activity?.[message.activity.length - 1]
-                            ?.label || "Working on it..."
+                          ?.label || "Working on it..."
                         : ""}
                     </div>
                   )}
@@ -3472,8 +3467,8 @@ const Chat = ({
                         {message.activity.some(
                           (item) => item.state === "running"
                         ) && (
-                          <Loader2 className="h-3 w-3 animate-spin text-[#98A2B3]" />
-                        )}
+                            <Loader2 className="h-3 w-3 animate-spin text-[#98A2B3]" />
+                          )}
                       </button>
 
                       {expandedActivityByMessage[message.id] && (
@@ -3578,81 +3573,81 @@ const Chat = ({
           attachedDocuments.length > 0 ||
           chatLinks.length > 0 ||
           isUploadingPastedImage) && (
-          <div className="mb-2 flex max-w-full flex-wrap items-center gap-1.5">
-            {chatLinks.map((link) => (
-              <span
-                key={link.id}
-                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-xs font-medium text-[#1D4ED8]"
-              >
-                <LinkIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{link.url}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setChatLinks((previous) =>
-                      previous.filter((item) => item.id !== link.id)
-                    )
-                  }
-                  className="rounded-full p-0.5 text-[#2563EB] transition-colors hover:bg-[#DBEAFE]"
-                  aria-label="Remove link"
-                  title="Remove link"
+            <div className="mb-2 flex max-w-full flex-wrap items-center gap-1.5">
+              {chatLinks.map((link) => (
+                <span
+                  key={link.id}
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-1 text-xs font-medium text-[#1D4ED8]"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-            {pastedImages.map((image) => (
-              <span
-                key={image.id}
-                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
-              >
-                <ImageIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{image.name}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPastedImages((previous) =>
-                      previous.filter((item) => item.id !== image.id)
-                    )
-                  }
-                  className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
-                  aria-label="Remove pasted image"
-                  title="Remove pasted image"
+                  <LinkIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{link.url}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setChatLinks((previous) =>
+                        previous.filter((item) => item.id !== link.id)
+                      )
+                    }
+                    className="rounded-full p-0.5 text-[#2563EB] transition-colors hover:bg-[#DBEAFE]"
+                    aria-label="Remove link"
+                    title="Remove link"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {pastedImages.map((image) => (
+                <span
+                  key={image.id}
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-            {attachedDocuments.map((document) => (
-              <span
-                key={document.id}
-                className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
-              >
-                <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{document.name}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAttachedDocuments((previous) =>
-                      previous.filter((item) => item.id !== document.id)
-                    )
-                  }
-                  className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
-                  aria-label="Remove attached document"
-                  title="Remove attached document"
+                  <ImageIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{image.name}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPastedImages((previous) =>
+                        previous.filter((item) => item.id !== image.id)
+                      )
+                    }
+                    className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
+                    aria-label="Remove pasted image"
+                    title="Remove pasted image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {attachedDocuments.map((document) => (
+                <span
+                  key={document.id}
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#344054]"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-            {isUploadingPastedImage && (
-              <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#667085]">
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                Processing attachment
-              </span>
-            )}
-          </div>
-        )}
+                  <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{document.name}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAttachedDocuments((previous) =>
+                        previous.filter((item) => item.id !== document.id)
+                      )
+                    }
+                    className="rounded-full p-0.5 text-[#667085] transition-colors hover:bg-[#E4E7EC]"
+                    aria-label="Remove attached document"
+                    title="Remove attached document"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {isUploadingPastedImage && (
+                <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#EDEEEF] bg-[#F9FAFB] px-2 py-1 text-xs font-medium text-[#667085]">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  Processing attachment
+                </span>
+              )}
+            </div>
+          )}
         <textarea
           ref={inputRef}
           name="chat-input"
@@ -3675,10 +3670,10 @@ const Chat = ({
             isOutlineVariant
               ? "Regenerate this outline"
               : showEditorEmptyState
-              ? "Ask anything.\nType / to get Quick prompts."
-              : isTemplateV2Variant
-              ? "Change slide 2 title"
-              : "Improve slide design"
+                ? "Ask anything.\nType / to get Quick prompts."
+                : isTemplateV2Variant
+                  ? "Change slide 2 title"
+                  : "Improve slide design"
           }
           aria-invalid={Boolean(errorMessage)}
         />
@@ -3733,56 +3728,56 @@ const Chat = ({
                       : "Follow AI is off"
                   }
                 >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 11 11"
-                  fill="none"
-                >
-                  <g clipPath="url(#clip0_6216_326)">
-                    <path
-                      d="M5.50008 10.0837C8.03139 10.0837 10.0834 8.03163 10.0834 5.50033C10.0834 2.96902 8.03139 0.916992 5.50008 0.916992C2.96878 0.916992 0.916748 2.96902 0.916748 5.50033C0.916748 8.03163 2.96878 10.0837 5.50008 10.0837Z"
-                      stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
-                      strokeWidth="0.938667"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M10.0833 5.5H8.25"
-                      stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
-                      strokeWidth="0.938667"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M2.75008 5.5H0.916748"
-                      stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
-                      strokeWidth="0.938667"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M5.5 2.75033V0.916992"
-                      stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
-                      strokeWidth="0.938667"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M5.5 10.0833V8.25"
-                      stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
-                      strokeWidth="0.938667"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_6216_326">
-                      <rect width="11" height="11" fill="white" />
-                    </clipPath>
-                  </defs>
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 11 11"
+                    fill="none"
+                  >
+                    <g clipPath="url(#clip0_6216_326)">
+                      <path
+                        d="M5.50008 10.0837C8.03139 10.0837 10.0834 8.03163 10.0834 5.50033C10.0834 2.96902 8.03139 0.916992 5.50008 0.916992C2.96878 0.916992 0.916748 2.96902 0.916748 5.50033C0.916748 8.03163 2.96878 10.0837 5.50008 10.0837Z"
+                        stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
+                        strokeWidth="0.938667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M10.0833 5.5H8.25"
+                        stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
+                        strokeWidth="0.938667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M2.75008 5.5H0.916748"
+                        stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
+                        strokeWidth="0.938667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M5.5 2.75033V0.916992"
+                        stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
+                        strokeWidth="0.938667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M5.5 10.0833V8.25"
+                        stroke={isFollowAgentEnabled ? "#7A5AF8" : "#000000"}
+                        strokeWidth="0.938667"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                    <defs>
+                      <clipPath id="clip0_6216_326">
+                        <rect width="11" height="11" fill="white" />
+                      </clipPath>
+                    </defs>
+                  </svg>
 
                 </button>
               </ToolTip>
