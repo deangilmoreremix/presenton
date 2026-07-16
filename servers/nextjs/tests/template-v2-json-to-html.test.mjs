@@ -112,7 +112,6 @@ test("renders zero-height horizontal vector lines with a stroke-sized frame", as
     components: [
       {
         position: { x: 0, y: 0 },
-        size: { width: 689, height: 24 },
         elements: [
           {
             type: "vector",

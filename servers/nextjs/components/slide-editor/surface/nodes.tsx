@@ -67,6 +67,7 @@ import {
   isManualPositioned,
   isRawIconElement,
   isStaticSvgIconSource,
+  isVectorLineShapeElement,
   isVectorShapeType,
   isRecord,
   keyForSelection,
@@ -84,6 +85,7 @@ import {
   readArray,
   readBoolean,
   readNumber,
+  readPoint,
   readString,
   ROOT_ELEMENTS_COMPONENT_INDEX,
   STAGE_BOX,
@@ -380,16 +382,6 @@ function componentFromSideTransformPreview({
   ).component;
 }
 
-function singleVectorShapeSelectionForComponent(
-  elements: RawElement[],
-  componentIndex: number,
-): ElementSelection | null {
-  if (elements.length !== 1) return null;
-  return isVectorShapeType(readString(elements[0]?.type))
-    ? { kind: "element", componentIndex, elementPath: [0] }
-    : null;
-}
-
 function setStageCursor(
   event: Konva.KonvaEventObject<MouseEvent>,
   cursor: string,
@@ -404,6 +396,7 @@ export function RawComponentNode({
   isEditMode,
   isMultiSelectedComponent,
   editingKey,
+  vectorEditingKey,
   selectedTableCell,
   selectedKey,
   setNodeRef,
@@ -423,6 +416,7 @@ export function RawComponentNode({
   isEditMode: boolean;
   isMultiSelectedComponent: boolean;
   editingKey: string | null;
+  vectorEditingKey: string | null;
   selectedTableCell: TableCellSelection | null;
   selectedKey: string | null;
   setNodeRef: (key: string, node: Konva.Node | null) => void;
@@ -508,19 +502,37 @@ export function RawComponentNode({
   const elements = readArray(renderedComponent.elements).filter(
     isRecord,
   ) as RawElement[];
-  const singleVectorShapeSelection = useMemo(
-    () => singleVectorShapeSelectionForComponent(elements, componentIndex),
-    [componentIndex, elements],
+  const handleSingleElementComponentDragEnd = useCallback(
+    (elementSelection: ElementSelection, delta: Point) => {
+      if (
+        elementSelection.componentIndex !== componentIndex ||
+        elementSelection.elementPath.length !== 1 ||
+        elementSelection.elementPath[0] !== 0 ||
+        elements.length !== 1 ||
+        (readNumber(component.rotation) ?? 0) !== 0
+      ) {
+        return false;
+      }
+
+      onComponentChange(componentIndex, (current) => {
+        const position = readPoint(current.position);
+        return {
+          ...current,
+          position: {
+            x: position.x + delta.x,
+            y: position.y + delta.y,
+          },
+        };
+      });
+      return true;
+    },
+    [component.rotation, componentIndex, elements, onComponentChange],
   );
   const handleMouseDown = useCallback(
     (event: Konva.KonvaEventObject<MouseEvent>) => {
       if (!isEditMode) return;
       event.cancelBubble = true;
       if (isMultiSelectedComponent && !event.evt.shiftKey) return;
-      if (singleVectorShapeSelection && !event.evt.shiftKey) {
-        onSelect(singleVectorShapeSelection);
-        return;
-      }
       onSelect(selection, { additive: event.evt.shiftKey });
     },
     [
@@ -528,7 +540,6 @@ export function RawComponentNode({
       isMultiSelectedComponent,
       onSelect,
       selection,
-      singleVectorShapeSelection,
     ],
   );
   const handleTouchStart = useCallback(
@@ -536,10 +547,6 @@ export function RawComponentNode({
       if (!isEditMode) return;
       event.cancelBubble = true;
       if (isMultiSelectedComponent) return;
-      if (singleVectorShapeSelection) {
-        onSelect(singleVectorShapeSelection);
-        return;
-      }
       onSelect(selection);
     },
     [
@@ -547,7 +554,6 @@ export function RawComponentNode({
       isMultiSelectedComponent,
       onSelect,
       selection,
-      singleVectorShapeSelection,
     ],
   );
   const handleDragStart = useCallback(
@@ -704,6 +710,7 @@ export function RawComponentNode({
           elementPath={[elementIndex]}
           isEditMode={isEditMode}
           editingKey={editingKey}
+          vectorEditingKey={vectorEditingKey}
           selectedTableCell={selectedTableCell}
           selectedKey={selectedKey}
           setNodeRef={setNodeRef}
@@ -712,6 +719,7 @@ export function RawComponentNode({
           onTableCellEdit={onTableCellEdit}
           onOpenEditor={onOpenElementEditor}
           onElementChange={onElementChange}
+          onElementDragEnd={handleSingleElementComponentDragEnd}
           parentBox={box}
           textConstraintBox={{
             x: 0,
@@ -753,6 +761,7 @@ export const MemoizedRawComponentNode = memo(
       previous.componentIndex !== next.componentIndex ||
       previous.isEditMode !== next.isEditMode ||
       previous.isMultiSelectedComponent !== next.isMultiSelectedComponent ||
+      previous.vectorEditingKey !== next.vectorEditingKey ||
       previous.setNodeRef !== next.setNodeRef ||
       previous.onSelect !== next.onSelect ||
       previous.onTableCellSelect !== next.onTableCellSelect ||
@@ -786,6 +795,7 @@ function RawElementNode({
   elementPath,
   isEditMode,
   editingKey,
+  vectorEditingKey,
   selectedTableCell,
   selectedKey,
   setNodeRef,
@@ -794,6 +804,7 @@ function RawElementNode({
   onTableCellEdit,
   onOpenEditor,
   onElementChange,
+  onElementDragEnd,
   parentBox,
   textConstraintBox,
   renderBox,
@@ -805,6 +816,7 @@ function RawElementNode({
   elementPath: number[];
   isEditMode: boolean;
   editingKey: string | null;
+  vectorEditingKey: string | null;
   selectedTableCell: TableCellSelection | null;
   selectedKey: string | null;
   setNodeRef: (key: string, node: Konva.Node | null) => void;
@@ -824,6 +836,7 @@ function RawElementNode({
     selection: ElementSelection,
     updater: (element: RawElement) => RawElement,
   ) => void;
+  onElementDragEnd?: (selection: ElementSelection, delta: Point) => boolean;
   parentBox: Box;
   textConstraintBox?: Box | null;
   renderBox?: Box | null;
@@ -847,6 +860,8 @@ function RawElementNode({
   const editing = editingKey === key;
   const type = readString(element.type);
   const isVectorShape = isVectorShapeType(type);
+  const isVectorLineShape = isVectorLineShapeElement(element);
+  const vectorPointEditing = vectorEditingKey === key;
   const [vectorDragPreview, setVectorDragPreview] =
     useState<RawElement | null>(null);
   const renderedElement = vectorDragPreview ?? element;
@@ -874,8 +889,14 @@ function RawElementNode({
         }
     : null;
   const centerOrigin = shouldUseCenterOrigin(element);
+  const showVectorPointHandles =
+    isEditMode &&
+    isSelected &&
+    isVectorShape &&
+    !editing &&
+    (vectorPointEditing || isVectorLineShape);
   const vectorShapeDraggable =
-    isEditMode && isSelected && isVectorShape && !editing;
+    isEditMode && isSelected && isVectorShape && !editing && !showVectorPointHandles;
   useEffect(() => {
     if (!isSelected || !isVectorShape) setVectorDragPreview(null);
   }, [isSelected, isVectorShape]);
@@ -912,12 +933,22 @@ function RawElementNode({
       event.cancelBubble = true;
       const node = groupRef.current;
       if (!node) return;
-      const nextPosition = positionFromNodeInParent(node, parentBox, box);
+      const nextPosition = {
+        x: node.x() - (centerOrigin ? box.width / 2 : 0),
+        y: node.y() - (centerOrigin ? box.height / 2 : 0),
+      };
       const delta = {
         x: nextPosition.x - box.x,
         y: nextPosition.y - box.y,
       };
       if (Math.abs(delta.x) < 0.01 && Math.abs(delta.y) < 0.01) return;
+      if (onElementDragEnd?.(selection, delta)) {
+        node.position({
+          x: centerOrigin ? box.x + box.width / 2 : box.x,
+          y: centerOrigin ? box.y + box.height / 2 : box.y,
+        });
+        return;
+      }
       node.position({
         x: centerOrigin ? nextPosition.x + box.width / 2 : nextPosition.x,
         y: centerOrigin ? nextPosition.y + box.height / 2 : nextPosition.y,
@@ -934,7 +965,7 @@ function RawElementNode({
       centerOrigin,
       layoutManaged,
       onElementChange,
-      parentBox,
+      onElementDragEnd,
       selection,
       vectorShapeDraggable,
     ],
@@ -1005,6 +1036,12 @@ function RawElementNode({
       draggable={vectorShapeDraggable}
       onMouseDown={(event) => {
         if (!isEditMode) return;
+        if (isVectorShape) {
+          event.cancelBubble = true;
+          onSelect(selection);
+          if (isVectorLineShape) onOpenEditor(selection);
+          return;
+        }
         if (vectorShapeDraggable) {
           event.cancelBubble = true;
           onSelect(selection);
@@ -1014,6 +1051,12 @@ function RawElementNode({
       }}
       onTouchStart={(event) => {
         if (!isEditMode) return;
+        if (isVectorShape) {
+          event.cancelBubble = true;
+          onSelect(selection);
+          if (isVectorLineShape) onOpenEditor(selection);
+          return;
+        }
         if (vectorShapeDraggable) {
           event.cancelBubble = true;
           onSelect(selection);
@@ -1119,7 +1162,7 @@ function RawElementNode({
           fontRevision={fontRevision}
         />
       )}
-      {isEditMode && isSelected && isVectorShape && !editing ? (
+      {showVectorPointHandles ? (
         <VectorShapeVertexHandles
           element={renderedElement}
           originBox={box}
@@ -1138,6 +1181,7 @@ function RawElementNode({
           elementPath={[...elementPath, index]}
           isEditMode={isEditMode}
           editingKey={editingKey}
+          vectorEditingKey={vectorEditingKey}
           selectedTableCell={selectedTableCell}
           selectedKey={selectedKey}
           setNodeRef={setNodeRef}
@@ -1146,6 +1190,7 @@ function RawElementNode({
           onTableCellEdit={onTableCellEdit}
           onOpenEditor={onOpenEditor}
           onElementChange={onElementChange}
+          onElementDragEnd={onElementDragEnd}
           parentBox={{
             x: parentBox.x + box.x,
             y: parentBox.y + box.y,
@@ -1169,6 +1214,7 @@ export const MemoizedRawElementNode = memo(RawElementNode, (previous, next) => {
     previous.isEditMode !== next.isEditMode ||
     previous.layoutManaged !== next.layoutManaged ||
     previous.fontRevision !== next.fontRevision ||
+    previous.vectorEditingKey !== next.vectorEditingKey ||
     previous.selectedTableCell !== next.selectedTableCell ||
     previous.selectedKey !== next.selectedKey ||
     previous.setNodeRef !== next.setNodeRef ||
@@ -1177,6 +1223,7 @@ export const MemoizedRawElementNode = memo(RawElementNode, (previous, next) => {
     previous.onTableCellEdit !== next.onTableCellEdit ||
     previous.onOpenEditor !== next.onOpenEditor ||
     previous.onElementChange !== next.onElementChange ||
+    previous.onElementDragEnd !== next.onElementDragEnd ||
     !numberPathEqual(previous.elementPath, next.elementPath) ||
     !boxEqual(previous.parentBox, next.parentBox) ||
     !nullableBoxEqual(previous.textConstraintBox, next.textConstraintBox) ||

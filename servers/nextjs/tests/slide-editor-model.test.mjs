@@ -144,6 +144,32 @@ test("keeps open vector shapes at a minimum of two points", async () => {
   assert.equal(removeVectorPointFromElement(line, 0), line);
 });
 
+test("detects two-point open vector lines", async () => {
+  const { isVectorLineShapeElement } = await modelPromise;
+  const points = [
+    { x: 0, y: 0 },
+    { x: 80, y: 0 },
+  ];
+
+  assert.equal(
+    isVectorLineShapeElement({ type: "vector", points, closed: false }),
+    true,
+  );
+  assert.equal(isVectorLineShapeElement({ type: "vector", points }), true);
+  assert.equal(
+    isVectorLineShapeElement({ type: "vector", points, closed: true }),
+    false,
+  );
+  assert.equal(
+    isVectorLineShapeElement({
+      type: "vector",
+      points: [...points, { x: 80, y: 40 }],
+      closed: false,
+    }),
+    false,
+  );
+});
+
 test("translates vector shape points without changing smooth curve settings", async () => {
   const { translateVectorShapeElement } = await modelPromise;
   const curve = { type: "smooth", tension: 0.6, segments: 9 };
@@ -257,14 +283,54 @@ test("samples smooth curves through the original vector points", async () => {
   assert.deepEqual(points[8], { x: 100, y: 0 });
 });
 
+test("diagonal component resize scales vector points", async () => {
+  const { componentBox, resizeComponent } = await modelPromise;
+  const component = {
+    position: { x: 100, y: 50 },
+    elements: [
+      {
+        type: "vector",
+        points: [
+          { x: 0, y: 0 },
+          { x: 40, y: 0 },
+          { x: 40, y: 20 },
+        ],
+        closed: true,
+      },
+    ],
+  };
+
+  const next = resizeComponent(component, {
+    x: 100,
+    y: 50,
+    width: 80,
+    height: 60,
+    scaleX: 2,
+    scaleY: 3,
+    rotation: 0,
+  });
+
+  assert.equal(Object.hasOwn(next, "size"), false);
+  assert.deepEqual(next.elements[0].points, [
+    { x: 0, y: 0 },
+    { x: 80, y: 0 },
+    { x: 80, y: 60 },
+  ]);
+  assert.deepEqual(componentBox(next), {
+    x: 100,
+    y: 50,
+    width: 80,
+    height: 60,
+  });
+});
+
 test("updates a single-vector component boundary after vector shape edits", async () => {
-  const { updateElementInUi } = await modelPromise;
+  const { componentBox, updateElementInUi } = await modelPromise;
   const next = updateElementInUi(
     {
       components: [
         {
           position: { x: 100, y: 50 },
-          size: { width: 40, height: 40 },
           elements: [
             {
               type: "vector",
@@ -291,11 +357,60 @@ test("updates a single-vector component boundary after vector shape edits", asyn
   );
 
   assert.deepEqual(next.components[0].position, { x: 90, y: 55 });
-  assert.deepEqual(next.components[0].size, { width: 70, height: 75 });
+  assert.equal(Object.hasOwn(next.components[0], "size"), false);
+  assert.deepEqual(componentBox(next.components[0]), {
+    x: 90,
+    y: 55,
+    width: 70,
+    height: 75,
+  });
   assert.deepEqual(next.components[0].elements[0].points, [
     { x: 0, y: 0 },
     { x: 70, y: 0 },
     { x: 70, y: 75 },
+  ]);
+});
+
+test("updates a single-vector component boundary after vector shape drag", async () => {
+  const {
+    componentBox,
+    translateVectorShapeElement,
+    updateElementInUi,
+  } = await modelPromise;
+  const next = updateElementInUi(
+    {
+      components: [
+        {
+          position: { x: 100, y: 50 },
+          elements: [
+            {
+              type: "vector",
+              points: [
+                { x: 0, y: 0 },
+                { x: 40, y: 0 },
+                { x: 40, y: 40 },
+              ],
+              closed: true,
+            },
+          ],
+        },
+      ],
+    },
+    { kind: "element", componentIndex: 0, elementPath: [0] },
+    (element) => translateVectorShapeElement(element, { x: 25, y: 10 }),
+  );
+
+  assert.deepEqual(next.components[0].position, { x: 125, y: 60 });
+  assert.deepEqual(componentBox(next.components[0]), {
+    x: 125,
+    y: 60,
+    width: 40,
+    height: 40,
+  });
+  assert.deepEqual(next.components[0].elements[0].points, [
+    { x: 0, y: 0 },
+    { x: 40, y: 0 },
+    { x: 40, y: 40 },
   ]);
 });
 
@@ -318,8 +433,8 @@ test("preserves inserted vector elements", async () => {
   assert.equal(element.closed, true);
 });
 
-test("wraps inserted elements in a padded component frame", async () => {
-  const { insertedElementToComponent } = await modelPromise;
+test("wraps inserted vector elements without component padding", async () => {
+  const { componentBox, insertedElementToComponent } = await modelPromise;
   const component = insertedElementToComponent(
     {
       type: "vector",
@@ -337,14 +452,49 @@ test("wraps inserted elements in a padded component frame", async () => {
     0,
   );
 
-  assert.deepEqual(component.position, { x: 114, y: 114 });
-  assert.deepEqual(component.size, { width: 424, height: 232 });
+  assert.deepEqual(component.position, { x: 134, y: 134 });
+  assert.equal(Object.hasOwn(component, "size"), false);
+  assert.deepEqual(componentBox(component), {
+    x: 134,
+    y: 134,
+    width: 384,
+    height: 192,
+  });
   assert.deepEqual(component.elements[0].points, [
-    { x: 20, y: 20 },
-    { x: 404, y: 20 },
-    { x: 404, y: 212 },
-    { x: 20, y: 212 },
+    { x: 0, y: 0 },
+    { x: 384, y: 0 },
+    { x: 384, y: 192 },
+    { x: 0, y: 192 },
   ]);
+});
+
+test("selects inserted vector lines directly", async () => {
+  const {
+    appendInsertedContent,
+    selectionForInsertedComponent,
+  } = await modelPromise;
+  const ui = appendInsertedContent(
+    { components: [] },
+    [
+      {
+        type: "vector",
+        points: [
+          { x: 134, y: 218 },
+          { x: 569, y: 219 },
+        ],
+        closed: false,
+        stroke: { color: "101323", width: 2 },
+      },
+    ],
+    [],
+    "Line",
+  );
+
+  assert.deepEqual(selectionForInsertedComponent(ui, 0), {
+    kind: "element",
+    componentIndex: 0,
+    elementPath: [0],
+  });
 });
 
 test("normalizes vector shape toolbar curve options", async () => {

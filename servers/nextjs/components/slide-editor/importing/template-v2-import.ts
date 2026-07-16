@@ -611,13 +611,32 @@ function rawComponentFrame(component: UnknownRecord) {
   const y = readNumber(position ?? {}, "y");
   const width = readNumber(size ?? {}, "width");
   const height = readNumber(size ?? {}, "height");
-  if (x == null || y == null || width == null || height == null) return null;
+  if (x == null || y == null) return null;
+  if (width == null || height == null) {
+    const elements = readArray(component, "elements").filter(isRecord);
+    const content = rawElementsContentSize(elements);
+    return {
+      x,
+      y,
+      width: content.width,
+      height: content.height,
+    };
+  }
 
   return {
     x,
     y,
     width: Math.max(1, width),
     height: Math.max(1, height),
+  };
+}
+
+function rawElementsContentSize(elements: UnknownRecord[]) {
+  const frame = rawElementsFrame(elements);
+  if (!frame) return { width: 1, height: 1 };
+  return {
+    width: Math.max(1, frame.x + frame.width),
+    height: Math.max(1, frame.y + frame.height),
   };
 }
 

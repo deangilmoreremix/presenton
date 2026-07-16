@@ -73,7 +73,6 @@ TEMPLATE_LAYOUTS = {
                     "id": "photo_component",
                     "description": "Reusable image component.",
                     "position": {"x": 100, "y": 120},
-                    "size": {"width": 320, "height": 180},
                     "elements": [
                         {
                             "type": "image",

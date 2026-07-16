@@ -255,21 +255,20 @@ export function syncComponentHeightToElement(
     : null;
   if (!component || !element) return sourceUi;
 
-  const componentSize = readSize(component.size, {
-    width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
-  });
   const box = elementBox(element);
   const contentHeight = Math.max(1, box.y + box.height);
-  const height =
-    componentElements.length === 1
-      ? contentHeight
-      : Math.max(componentSize.height, contentHeight);
-  if (Math.abs(height - componentSize.height) < 0.01) return sourceUi;
+  const elementSize = readOptionalSize(element.size);
+  if (!elementSize || Math.abs(contentHeight - elementSize.height) < 0.01) {
+    return sourceUi;
+  }
 
   components[selection.componentIndex] = {
     ...component,
-    size: { ...componentSize, height },
+    elements: componentElements.map((item, index) =>
+      index === selection.elementPath[0] && isRecord(item)
+        ? { ...item, size: { ...elementSize, height: contentHeight } }
+        : item,
+    ),
   };
   return { ...sourceUi, components };
 }
@@ -287,15 +286,13 @@ export function normalizeSingleChartWrapperComponent(
 
   const childBox = elementBox(child);
   const componentPosition = readPoint(component.position);
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     position: {
       x: componentPosition.x + childBox.x,
       y: componentPosition.y + childBox.y,
-    },
-    size: {
-      width: childBox.width,
-      height: childBox.height,
     },
     elements: [
       {
@@ -323,15 +320,13 @@ export function normalizeSingleVectorShapeWrapperComponent(
 
   const childBox = elementBox(child);
   const componentPosition = readPoint(component.position);
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     position: {
       x: componentPosition.x + childBox.x,
       y: componentPosition.y + childBox.y,
-    },
-    size: {
-      width: childBox.width,
-      height: childBox.height,
     },
     elements: [
       translateVectorShapeElement(child, {
@@ -429,10 +424,11 @@ export function resizeComponent(
   next: Box & { scaleX: number; scaleY: number; rotation?: number },
 ) {
   const fontScale = fontScaleFromResize(next.scaleX, next.scaleY);
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     position: { x: next.x, y: next.y },
-    size: { width: next.width, height: next.height },
     rotation: next.rotation ?? readNumber(component.rotation) ?? 0,
     elements: scaleRawElements(
       readArray(component.elements),
@@ -447,10 +443,11 @@ export function resizeComponentFrame(
   component: RawComponent,
   next: Box & { rotation?: number },
 ) {
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     position: { x: next.x, y: next.y },
-    size: { width: next.width, height: next.height },
     rotation: next.rotation ?? readNumber(component.rotation) ?? 0,
   };
 }
@@ -466,6 +463,10 @@ export function scaleRawElements(
     if (!element) return value;
     const box = elementBox(element);
     const explicitSize = readOptionalSize(element.size);
+    const type = readString(element.type);
+    const polygonPoints = isVectorShapeType(type) ? readArray(element.points) : [];
+    const radiusScale = Math.min(Math.abs(scaleX), Math.abs(scaleY));
+    const cornerRadii = readArray(element.corner_radii ?? element.cornerRadii);
     const childInfo = childArrayInfo(element);
     const scaledChildren = childInfo
       ? scaleRawElements(childInfo.items, scaleX, scaleY, fontScale)
@@ -480,6 +481,26 @@ export function scaleRawElements(
               width: Math.max(1, explicitSize.width * scaleX),
               height: Math.max(1, explicitSize.height * scaleY),
             },
+          }
+        : {}),
+      ...(polygonPoints.length > 0
+        ? {
+            points: polygonPoints.map((point) => {
+              const record = asRecord(point);
+              if (!record) return point;
+              return {
+                ...record,
+                x: (readNumber(record.x) ?? 0) * scaleX,
+                y: (readNumber(record.y) ?? 0) * scaleY,
+              };
+            }),
+          }
+        : {}),
+      ...(cornerRadii.length > 0
+        ? {
+            corner_radii: cornerRadii.map((value) =>
+              Math.max(0, (readNumber(value) ?? 0) * radiusScale),
+            ),
           }
         : {}),
       ...(childInfo && scaledChildren
@@ -802,7 +823,7 @@ export function absoluteElementLocalFrame(
   let parentRenderBox: Box = {
     x: 0,
     y: 0,
-    ...readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT }),
+    ...componentContentSize(component),
   };
   let x = 0;
   let y = 0;
@@ -847,7 +868,6 @@ export function renderedLocalBoxForElementSelection(
 export function rootElementsComponent(ui: RawUi): RawComponent {
   return {
     position: { x: 0, y: 0 },
-    size: { width: STAGE_WIDTH, height: STAGE_HEIGHT },
     elements: readArray(ui.elements),
   };
 }
@@ -860,7 +880,7 @@ export function absoluteElementBox(component: RawComponent, path: number[]) {
   let parentRenderBox: Box = {
     x: 0,
     y: 0,
-    ...readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT }),
+    ...componentContentSize(component),
   };
   let x = 0;
   let y = 0;
@@ -895,7 +915,7 @@ export function localElementBox(component: RawComponent, path: number[]) {
   let parentRenderBox: Box = {
     x: 0,
     y: 0,
-    ...readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT }),
+    ...componentContentSize(component),
   };
   for (let depth = 0; depth < path.length; depth += 1) {
     const index = path[depth];
@@ -1000,6 +1020,25 @@ export function selectionForComponentIndexes(indexes: number[]): Selection {
   return { kind: "multi-component", componentIndexes: uniqueIndexes };
 }
 
+export function selectionForInsertedComponent(
+  ui: RawUi,
+  componentIndex: number,
+): Selection {
+  const safeComponentIndex = Math.max(0, componentIndex);
+  const component = asRecord(readArray(ui.components)[safeComponentIndex]);
+  const elements = readArray(component?.elements).filter(isRecord) as RawElement[];
+
+  if (elements.length === 1 && isVectorLineShapeElement(elements[0])) {
+    return {
+      kind: "element",
+      componentIndex: safeComponentIndex,
+      elementPath: [0],
+    };
+  }
+
+  return { kind: "component", componentIndex: safeComponentIndex };
+}
+
 export function componentForClipboardSelection(
   ui: RawUi,
   selection: Selection,
@@ -1054,7 +1093,6 @@ export function rootElementClipboardComponent(element: RawElement, box: Box): Ra
     id: `${normalizeId(label)}_component`,
     description: label,
     position: { x: box.x, y: box.y },
-    size: { width: box.width, height: box.height },
     elements: [
       {
         ...element,
@@ -1264,10 +1302,20 @@ export function rawElementKey(element: RawElement, index: number) {
 }
 
 export function componentBox(component: RawComponent): Box {
+  const position = readPoint(component.position);
+  const size = componentContentSize(component);
   return {
-    ...readPoint(component.position),
-    ...readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT }),
+    x: position.x,
+    y: position.y,
+    width: size.width,
+    height: size.height,
   };
+}
+
+export function componentContentSize(component: RawComponent): Size {
+  const elements = readArray(component.elements);
+  if (elements.length > 0) return childrenBounds(elements);
+  return readSize(component.size, { width: STAGE_WIDTH, height: STAGE_HEIGHT });
 }
 
 function lineDelta(element: RawElement): Size {
@@ -1324,6 +1372,13 @@ export function vectorVertexEntriesForElement(element: RawElement): VectorVertex
       return x != null && y != null ? { index, point: { x, y } } : null;
     })
     .filter((entry): entry is VectorVertexEntry => entry != null);
+}
+
+export function isVectorLineShapeElement(element: RawElement | null | undefined) {
+  if (!element || !isVectorShapeType(readString(element.type))) return false;
+  const vertices = vectorVertexEntriesForElement(element);
+  if (vertices.length !== 2) return false;
+  return !(readBoolean(element.closed) ?? false);
 }
 
 function translatePointArray(value: unknown, delta: Point) {

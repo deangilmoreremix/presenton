@@ -86,10 +86,11 @@ export function resizeComponentElementBounds(
   component: RawComponent,
   next: Box & { scaleX: number; scaleY: number; rotation?: number },
 ) {
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     position: { x: next.x, y: next.y },
-    size: { width: next.width, height: next.height },
     rotation: next.rotation ?? readNumber(component.rotation) ?? 0,
     elements: resizeRawElementBounds(
       readArray(component.elements),

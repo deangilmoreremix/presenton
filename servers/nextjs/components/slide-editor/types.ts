@@ -408,7 +408,6 @@ export type SlideComponent = {
   id: string;
   description: string;
   position?: Position | null;
-  size?: Size | null;
   elements: SlideElement[];
 };
 

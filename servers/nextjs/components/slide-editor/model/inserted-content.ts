@@ -17,8 +17,6 @@ import {
 } from "@/components/slide-editor/model/core";
 import { rawFontToSource } from "@/components/slide-editor/text/template-v2-text";
 
-const INSERTED_ELEMENT_COMPONENT_PADDING = 20;
-
 export function appendInsertedContent(
   sourceUi: RawUi,
   elements: UnknownRecord[],
@@ -51,15 +49,16 @@ export function insertedComponentToRaw(
   const elements = readArray(component.elements)
     .filter(isRecord)
     .map((element) => rawElementFromInsertedElement(element));
+  const { size, ...componentWithoutSize } = component;
+  void size;
   return {
-    ...component,
+    ...componentWithoutSize,
     id: `${normalizeId(
       readString(component.id) ?? label ?? "inserted-component",
     )}_${index + 1}`,
     description:
       readString(component.description) ?? label ?? "Inserted component",
     position: { x: box.x, y: box.y },
-    size: { width: box.width, height: box.height },
     elements,
   };
 }
@@ -70,34 +69,20 @@ export function insertedElementToComponent(
   index: number,
 ) {
   const box = sourceElementBox(element);
-  const frame = paddedBox(box, INSERTED_ELEMENT_COMPONENT_PADDING);
   const rawElement = rawElementFromInsertedElement(element);
   return {
     id: `${normalizeId(label ?? readString(element.type) ?? "inserted")}_${index + 1}`,
     description: label ?? "Inserted element",
-    position: { x: frame.x, y: frame.y },
-    size: { width: frame.width, height: frame.height },
+    position: { x: box.x, y: box.y },
     elements: [
       isVectorShapeType(readString(rawElement.type))
-        ? localizePolygonElement(rawElement, frame)
+        ? localizePolygonElement(rawElement, box)
         : {
             ...rawElement,
-            position: {
-              x: INSERTED_ELEMENT_COMPONENT_PADDING,
-              y: INSERTED_ELEMENT_COMPONENT_PADDING,
-            },
+            position: { x: 0, y: 0 },
             size: { width: box.width, height: box.height },
           },
     ],
-  };
-}
-
-function paddedBox(box: Box, padding: number): Box {
-  return {
-    x: box.x - padding,
-    y: box.y - padding,
-    width: box.width + padding * 2,
-    height: box.height + padding * 2,
   };
 }
 

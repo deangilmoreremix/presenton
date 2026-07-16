@@ -157,7 +157,6 @@ export interface TemplateV2Component {
   id?: string | null;
   description?: string | null;
   position?: TemplateV2Point | null;
-  size?: TemplateV2Size | null;
   elements?: TemplateV2Element[] | null;
   [key: string]: unknown;
 }

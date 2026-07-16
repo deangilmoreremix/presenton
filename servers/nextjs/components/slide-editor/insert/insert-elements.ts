@@ -589,7 +589,6 @@ export function createImageInsertContent(kind?: string): EditorInsertContent {
             id: "image_text",
             description: "Image with heading and supporting text",
             position: { x: 122, y: 128 },
-            size: { width: 986, height: 371 },
             elements: [
               makeImageElement({ x: 0, y: 0, width: 486, height: 371 }),
               makeTextElement({
@@ -622,7 +621,6 @@ export function createImageInsertContent(kind?: string): EditorInsertContent {
             id: "image_grid",
             description: "Two-by-two image grid",
             position: { x: 128, y: 122 },
-            size: { width: 717, height: 454 },
             elements: [
               makeImageElement({
                 x: 0,

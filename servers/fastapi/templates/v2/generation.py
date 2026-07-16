@@ -101,16 +101,6 @@ Convert the provided raw slide elements to components.
 - Use `table` element for table and `chart` element for chart.
 - Use `infographic` element for infographic or metric visuals like `progress_bar`, `gauge`, etc.
 - Use `text-list` element for list of text like bullet points, numbered list, unordered list, etc.
-- Use `polygon` for straight-edged geometry, including lines, rectangles,
-  squares, triangles, pentagons, hexagons, dividers, and arbitrary polygonal
-  accents.
-- A `polygon` uses `points: [{"x": number, "y": number}, ...]` in local
-  coordinates relative to its parent. Do not use `position` or `size` for
-  polygon geometry.
-- Use exactly two points for a line or divider. Use four points for rectangles
-  and squares. Use five or more points for pentagons, hexagons, and similar
-  straight-edged shapes.
-- Use `ellipse` only for genuinely curved oval or circular geometry.
 - Use `container` for flexible alignment and layout.
 - Use `image` for images and icons.
 - Identify icon color from slide image.
@@ -123,6 +113,7 @@ Convert the provided raw slide elements to components.
 
 # Position and Size Rules:
 - Use local coordinates relative to component for elements.
+- Every component must include `position` and `elements`.
 - Don't provide position for elements inside flexible elements like `flex`, `grid`, `container`, etc.
 - If children of `flex` and `grid` are not equally sized, provide `size` for children.
 - Must provide `position` and `size` for elements inside `group` element.
@@ -440,7 +431,7 @@ def _merged_component_variant_signatures(
 
 def _component_duplicate_signature(component: Component) -> tuple[Any, ...]:
     component_data = component.model_dump(mode="json", exclude_none=True)
-    root_size = component_data.get("size")
+    root_size = _component_content_size(component_data)
     return (
         "component",
         ("aspect", _aspect_signature(root_size)),
@@ -506,6 +497,118 @@ def _element_duplicate_signature(
         items.append((key, _normalize_signature_value(value)))
 
     return tuple(items)
+
+
+def _component_content_size(component_data: dict[str, Any]) -> dict[str, float] | None:
+    elements = component_data.get("elements")
+    if not isinstance(elements, list):
+        return None
+    bounds = _merge_bounds(
+        _element_bounds(element)
+        for element in elements
+        if isinstance(element, dict)
+    )
+    if bounds is None:
+        return None
+    return {
+        "width": max(1.0, bounds["x"] + bounds["width"]),
+        "height": max(1.0, bounds["y"] + bounds["height"]),
+    }
+
+
+def _element_bounds(element: dict[str, Any]) -> dict[str, float] | None:
+    element_type = str(element.get("type") or "")
+    if element_type == "vector":
+        points = [
+            point
+            for point in element.get("points", [])
+            if isinstance(point, dict)
+            and _coerce_number(point.get("x")) is not None
+            and _coerce_number(point.get("y")) is not None
+        ]
+        if points:
+            xs = [_coerce_number(point.get("x")) or 0.0 for point in points]
+            ys = [_coerce_number(point.get("y")) or 0.0 for point in points]
+            left = min(xs)
+            top = min(ys)
+            right = max(xs)
+            bottom = max(ys)
+            return {
+                "x": left,
+                "y": top,
+                "width": max(1.0, right - left),
+                "height": max(1.0, bottom - top),
+            }
+
+    position = element.get("position")
+    size = element.get("size")
+    x = _coerce_number(position.get("x")) if isinstance(position, dict) else None
+    y = _coerce_number(position.get("y")) if isinstance(position, dict) else None
+    width = _coerce_number(size.get("width")) if isinstance(size, dict) else None
+    height = _coerce_number(size.get("height")) if isinstance(size, dict) else None
+    own_bounds = (
+        {
+            "x": x or 0.0,
+            "y": y or 0.0,
+            "width": max(1.0, width),
+            "height": max(1.0, height),
+        }
+        if width is not None and height is not None
+        else None
+    )
+    child_bounds = _merge_bounds(
+        _offset_bounds(_element_bounds(child), x or 0.0, y or 0.0)
+        for child in _element_children(element)
+    )
+    return _merge_bounds([own_bounds, child_bounds])
+
+
+def _element_children(element: dict[str, Any]) -> list[dict[str, Any]]:
+    children: list[dict[str, Any]] = []
+    for key in ("children", "elements"):
+        value = element.get(key)
+        if isinstance(value, list):
+            children.extend(child for child in value if isinstance(child, dict))
+    child = element.get("child")
+    if isinstance(child, dict):
+        children.append(child)
+    item = element.get("item")
+    if isinstance(item, dict):
+        children.append(item)
+    return children
+
+
+def _offset_bounds(
+    bounds: dict[str, float] | None,
+    offset_x: float,
+    offset_y: float,
+) -> dict[str, float] | None:
+    if bounds is None:
+        return None
+    return {
+        "x": bounds["x"] + offset_x,
+        "y": bounds["y"] + offset_y,
+        "width": bounds["width"],
+        "height": bounds["height"],
+    }
+
+
+def _merge_bounds(
+    values: Any,
+) -> dict[str, float] | None:
+    bounds = [value for value in values if isinstance(value, dict)]
+    if not bounds:
+        return None
+    left = min(value["x"] for value in bounds)
+    top = min(value["y"] for value in bounds)
+    right = max(value["x"] + value["width"] for value in bounds)
+    bottom = max(value["y"] + value["height"] for value in bounds)
+    return {
+        "x": left,
+        "y": top,
+        "width": max(1.0, right - left),
+        "height": max(1.0, bottom - top),
+    }
 
 
 def _strip_table_text(value: Any) -> Any:
@@ -1162,7 +1265,7 @@ def _model_validation_repair_prompt(
             f"The previous {label} JSON did not match the required schema.",
             "Return a complete corrected replacement JSON object.",
             "For a SlideLayout, return id, description, and the complete components list in the same response.",
-            "Each component must include position, size, and local-coordinate elements.",
+            "Each component must include position and local-coordinate elements. Do not include component size.",
             "Return raw JSON only. Do not include markdown fences, comments, explanations, or text outside the JSON object.",
             "",
             "validation_errors:",

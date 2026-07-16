@@ -98,7 +98,6 @@ def _generated_layout(layout_id: str = "title_slide") -> dict:
                 "id": "title_block",
                 "description": "Reusable prominent title text block.",
                 "position": {"x": 100, "y": 80},
-                "size": {"width": 600, "height": 80},
                 "elements": [
                     {
                         "type": "text",
@@ -643,7 +642,6 @@ def test_merge_similar_components_clusters_by_global_component_index(
     second["components"][0]["description"] = (
         "Reusable grid presenting several business metrics and labels."
     )
-    second["components"][0]["size"] = {"width": 600, "height": 180}
     second["components"][0]["elements"] = [
         {
             "type": "grid",
