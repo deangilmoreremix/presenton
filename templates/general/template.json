@@ -5657,1240 +5657,308 @@
               ]
             },
             {
-              "type": "vector",
-              "fill": {
-                "color": "#9333EA",
-                "opacity": 1
-              },
-              "shadow": {
-                "color": "#000000",
-                "opacity": 0
-              },
-              "points": [
-                {
-                  "x": 1,
-                  "y": 1
-                },
-                {
-                  "x": 895,
-                  "y": 1
-                },
-                {
-                  "x": 895,
-                  "y": 57
-                },
-                {
-                  "x": 1,
-                  "y": 57
-                }
-              ],
-              "closed": true,
-              "corner_radii": [
-                8,
-                8,
-                8,
-                8
-              ]
-            },
-            {
-              "type": "grid",
-              "position": {
-                "x": 25,
-                "y": 17
-              },
-              "size": {
-                "width": 846,
-                "height": 24
-              },
-              "columns": 4,
-              "rows": 1,
-              "column_gap": 47,
-              "row_gap": 0,
-              "align_items": "center",
-              "justify_items": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Revenue",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Growth",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Market Share",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 12,
-                  "min_length": 3
-                }
-              ],
-              "name": "table_header_labels",
-              "max_children": 4,
-              "min_children": 4
-            },
-            {
-              "type": "group",
+              "type": "table",
               "position": {
                 "x": 1,
-                "y": 57
+                "y": 1
               },
               "size": {
                 "width": 894,
-                "height": 228
+                "height": 284
               },
-              "children": [
+              "font": {
+                "size": 16,
+                "family": "Poppins",
+                "color": "#4B5563",
+                "bold": false,
+                "line_height": 1.2
+              },
+              "columns": [
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 0,
-                      "y": 0
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 56
-                    },
-                    {
-                      "x": 0,
-                      "y": 56
+                      "text": "Company"
                     }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    0,
-                    0,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 223.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 447,
-                      "y": 0
-                    },
-                    {
-                      "x": 447,
-                      "y": 56
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 56
+                      "text": "Revenue"
                     }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 0
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 56
-                    },
-                    {
-                      "x": 447,
-                      "y": 56
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 894,
-                      "y": 0
-                    },
-                    {
-                      "x": 894,
-                      "y": 56
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 56
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    0,
-                    0,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company A"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$2.5M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "15%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "25%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 0,
-                      "y": 57
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 113
-                    },
-                    {
-                      "x": 0,
-                      "y": 113
+                      "text": "Growth"
                     }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 223.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 447,
-                      "y": 57
-                    },
-                    {
-                      "x": 447,
-                      "y": 113
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 113
+                      "text": "Market Share"
                     }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 57
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 113
-                    },
-                    {
-                      "x": 447,
-                      "y": 113
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 894,
-                      "y": 57
-                    },
-                    {
-                      "x": 894,
-                      "y": 113
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 113
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
                   ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company B"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$1.8M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "12%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "18%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 0,
-                      "y": 114
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 170
-                    },
-                    {
-                      "x": 0,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 223.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 447,
-                      "y": 114
-                    },
-                    {
-                      "x": 447,
-                      "y": 170
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 114
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 170
-                    },
-                    {
-                      "x": 447,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 894,
-                      "y": 114
-                    },
-                    {
-                      "x": 894,
-                      "y": 170
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company C"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$3.2M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "20%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "32%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 0,
-                      "y": 171
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 227
-                    },
-                    {
-                      "x": 0,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 223.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 447,
-                      "y": 171
-                    },
-                    {
-                      "x": 447,
-                      "y": 227
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 171
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 227
-                    },
-                    {
-                      "x": 447,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 894,
-                      "y": 171
-                    },
-                    {
-                      "x": 894,
-                      "y": 227
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Our Company"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$1.2M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "35%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "12%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
                 }
               ],
-              "name": "table_body_group"
+              "rows": [
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company A"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$2.5M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "15%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "25%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company B"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$1.8M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "12%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "18%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company C"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$3.2M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "20%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "32%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Our Company"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$1.2M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "35%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "12%"
+                      }
+                    ]
+                  }
+                ]
+              ],
+              "decorative": false,
+              "name": "comparison_matrix_table",
+              "min_columns": 4,
+              "max_columns": 4,
+              "min_rows": 4,
+              "max_rows": 4
             }
           ]
         }
@@ -15014,1240 +14082,308 @@
               ]
             },
             {
-              "type": "vector",
-              "fill": {
-                "color": "#9333EA",
-                "opacity": 1
-              },
-              "shadow": {
-                "color": "#000000",
-                "opacity": 0
-              },
-              "points": [
-                {
-                  "x": 1,
-                  "y": 1
-                },
-                {
-                  "x": 895,
-                  "y": 1
-                },
-                {
-                  "x": 895,
-                  "y": 57
-                },
-                {
-                  "x": 1,
-                  "y": 57
-                }
-              ],
-              "closed": true,
-              "corner_radii": [
-                8,
-                8,
-                8,
-                8
-              ]
-            },
-            {
-              "type": "grid",
-              "position": {
-                "x": 25,
-                "y": 17
-              },
-              "size": {
-                "width": 846,
-                "height": 24
-              },
-              "columns": 4,
-              "rows": 1,
-              "column_gap": 47,
-              "row_gap": 0,
-              "align_items": "center",
-              "justify_items": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Revenue",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Growth",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 8,
-                  "min_length": 3
-                },
-                {
-                  "type": "text",
-                  "size": {
-                    "width": 176.75,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#FFFFFF",
-                    "bold": false,
-                    "italic": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Market Share",
-                      "font": {
-                        "size": 16,
-                        "family": "Poppins",
-                        "color": "#FFFFFF",
-                        "bold": false,
-                        "line_height": 1.2
-                      }
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "header_cell_text",
-                  "max_length": 12,
-                  "min_length": 3
-                }
-              ],
-              "name": "table_header_labels",
-              "max_children": 4,
-              "min_children": 4
-            },
-            {
-              "type": "group",
+              "type": "table",
               "position": {
                 "x": 1,
-                "y": 57
+                "y": 1
               },
               "size": {
                 "width": 894,
-                "height": 228
+                "height": 284
               },
-              "children": [
+              "font": {
+                "size": 16,
+                "family": "Poppins",
+                "color": "#4B5563",
+                "bold": false,
+                "line_height": 1.2
+              },
+              "columns": [
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 0,
-                      "y": 0
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 56
-                    },
-                    {
-                      "x": 0,
-                      "y": 56
+                      "text": "Company"
                     }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    0,
-                    0,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 223.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 447,
-                      "y": 0
-                    },
-                    {
-                      "x": 447,
-                      "y": 56
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 56
+                      "text": "Revenue"
                     }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 0
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 56
-                    },
-                    {
-                      "x": 447,
-                      "y": 56
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 0
-                    },
-                    {
-                      "x": 894,
-                      "y": 0
-                    },
-                    {
-                      "x": 894,
-                      "y": 56
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 56
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    0,
-                    0,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company A"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$2.5M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "15%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 15
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "25%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 0,
-                      "y": 57
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 113
-                    },
-                    {
-                      "x": 0,
-                      "y": 113
+                      "text": "Growth"
                     }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
                   ]
                 },
                 {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
+                  "color": {
+                    "color": "#9333EA",
                     "opacity": 1
                   },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
+                  "font": {
+                    "size": 16,
+                    "family": "Poppins",
+                    "color": "#FFFFFF",
+                    "bold": false,
+                    "line_height": 1.2
                   },
-                  "points": [
+                  "alignment": "center",
+                  "runs": [
                     {
-                      "x": 223.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 447,
-                      "y": 57
-                    },
-                    {
-                      "x": 447,
-                      "y": 113
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 113
+                      "text": "Market Share"
                     }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 57
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 113
-                    },
-                    {
-                      "x": 447,
-                      "y": 113
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 57
-                    },
-                    {
-                      "x": 894,
-                      "y": 57
-                    },
-                    {
-                      "x": 894,
-                      "y": 113
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 113
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
                   ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company B"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$1.8M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "12%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 72
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "18%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 0,
-                      "y": 114
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 170
-                    },
-                    {
-                      "x": 0,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 223.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 447,
-                      "y": 114
-                    },
-                    {
-                      "x": 447,
-                      "y": 170
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 114
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 170
-                    },
-                    {
-                      "x": 447,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 114
-                    },
-                    {
-                      "x": 894,
-                      "y": 114
-                    },
-                    {
-                      "x": 894,
-                      "y": 170
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 170
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Company C"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$3.2M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "20%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 129
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "32%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 0,
-                      "y": 171
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 227
-                    },
-                    {
-                      "x": 0,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 223.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 447,
-                      "y": 171
-                    },
-                    {
-                      "x": 447,
-                      "y": 227
-                    },
-                    {
-                      "x": 223.5,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#E5E7EB",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 447,
-                      "y": 171
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 227
-                    },
-                    {
-                      "x": 447,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true
-                },
-                {
-                  "type": "vector",
-                  "fill": {
-                    "color": "#F3F4F6",
-                    "opacity": 1
-                  },
-                  "shadow": {
-                    "color": "#000000",
-                    "opacity": 0
-                  },
-                  "points": [
-                    {
-                      "x": 670.5,
-                      "y": 171
-                    },
-                    {
-                      "x": 894,
-                      "y": 171
-                    },
-                    {
-                      "x": 894,
-                      "y": 227
-                    },
-                    {
-                      "x": 670.5,
-                      "y": 227
-                    }
-                  ],
-                  "closed": true,
-                  "corner_radii": [
-                    8,
-                    8,
-                    8,
-                    8
-                  ]
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 24,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "Our Company"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 247.5,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "$1.2M"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 471,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "35%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
-                },
-                {
-                  "type": "text",
-                  "position": {
-                    "x": 694.5,
-                    "y": 186
-                  },
-                  "size": {
-                    "width": 176.5,
-                    "height": 24
-                  },
-                  "font": {
-                    "size": 16,
-                    "family": "Poppins",
-                    "color": "#4B5563",
-                    "bold": false,
-                    "line_height": 1.2
-                  },
-                  "alignment": {
-                    "horizontal": "center",
-                    "vertical": "middle"
-                  },
-                  "runs": [
-                    {
-                      "text": "12%"
-                    }
-                  ],
-                  "decorative": false,
-                  "name": "table_body_cell_text",
-                  "max_length": 11,
-                  "min_length": 2
                 }
               ],
-              "name": "table_body_group"
+              "rows": [
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company A"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$2.5M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "15%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "25%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company B"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$1.8M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "12%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "18%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Company C"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$3.2M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "20%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "32%"
+                      }
+                    ]
+                  }
+                ],
+                [
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Our Company"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "$1.2M"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#E5E7EB",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "35%"
+                      }
+                    ]
+                  },
+                  {
+                    "color": {
+                      "color": "#F3F4F6",
+                      "opacity": 1
+                    },
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "12%"
+                      }
+                    ]
+                  }
+                ]
+              ],
+              "decorative": false,
+              "name": "comparison_matrix_table",
+              "min_columns": 4,
+              "max_columns": 4,
+              "min_rows": 4,
+              "max_rows": 4
             }
           ]
         },

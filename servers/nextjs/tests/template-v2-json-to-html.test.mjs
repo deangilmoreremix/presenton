@@ -234,6 +234,41 @@ test("renders smooth vector curves through original points", async () => {
   assert.match(html, /<polyline points="0,0 .* 50,100 .* 100,0"/);
 });
 
+test("renders legacy vector shape aliases", async () => {
+  const { templateV2UiToHtml } = await rendererPromise;
+  const html = templateV2UiToHtml({
+    elements: [
+      {
+        type: "rectangle",
+        position: { x: 40, y: 50 },
+        size: { width: 100, height: 60 },
+        fill: { color: "#F4F3FF" },
+        stroke: { color: "#7A5AF8", width: 4 },
+      },
+      {
+        type: "ellipse",
+        position: { x: 80, y: 100 },
+        size: { width: 40, height: 30 },
+        fill: { color: "#112233" },
+      },
+      {
+        type: "line",
+        position: { x: 200, y: 100 },
+        size: { width: -40, height: 20 },
+        stroke: { color: "#222222", width: 5 },
+      },
+    ],
+  });
+
+  assert.ok(html);
+  assert.match(html, /left:40px;top:50px;width:100px;height:60px;/);
+  assert.match(html, /<polygon points="0,0 100,0 100,60 0,60" fill="#F4F3FF" stroke="#7A5AF8" stroke-width="4"/);
+  assert.match(html, /left:80px;top:100px;width:40px;height:30px;/);
+  assert.match(html, /background-color:#112233;.*border-radius:50%/);
+  assert.match(html, /left:160px;top:100px;width:40px;height:20px;/);
+  assert.match(html, /<polyline points="40,0 0,20" fill="none" stroke="#222222" stroke-width="5"/);
+});
+
 test("normalizes camelCase chart kinds before rendering chart config", async () => {
   const { templateV2UiToHtml } = await rendererPromise;
   const html = templateV2UiToHtml({

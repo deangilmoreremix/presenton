@@ -6,10 +6,12 @@ import {
   AreaChart,
   ArrowRight,
   BarChart3,
+  ChartNoAxesGantt,
   ChevronDown,
   Circle,
   Columns2,
   Diamond,
+  Gauge,
   Grid3X3,
   GripVertical,
   Hexagon,
@@ -40,6 +42,7 @@ import {
   createChartInsertElements,
   createElementInsertElements,
   createImageInsertContent,
+  createInfographicInsertElements,
   createTableInsertElements,
   createTextInsertElements,
   type EditorInsertContent,
@@ -200,6 +203,11 @@ const chartTypeItems = [
   { id: "scatter", label: "Scatter Chart", icon: Circle },
   { id: "radar", label: "Radar Chart", icon: PieChart },
   { id: "polar_area", label: "Polar Area", icon: PieChart },
+] satisfies PaletteItem[];
+
+const infographicItems = [
+  { id: "progress_bar", label: "Progress Bar", icon: ChartNoAxesGantt },
+  { id: "gauge", label: "Gauge Chart", icon: Gauge },
 ] satisfies PaletteItem[];
 
 const tableTypeItems = [
@@ -1197,7 +1205,10 @@ function ActionsPanel({
         <InsertPanel
           disabled={editingDisabled}
           title="Charts"
-          groups={[{ label: "Chart Type", items: chartTypeItems }]}
+          groups={[
+            { label: "Chart Type", items: chartTypeItems },
+            { label: "Infographics", items: infographicItems },
+          ]}
           onItemSelect={onChartItemSelect}
         />
       )}
@@ -1379,10 +1390,25 @@ const PresentationActions = (props: PresentationActionsProps) => {
   };
 
   const handleChartItemSelect = (item: PaletteItem) => {
-    if (insertEditorElements(createChartInsertElements(item.id), item.label)) {
+    const chartElements = createChartInsertElements(item.id);
+    if (chartElements.length > 0) {
+      if (insertEditorElements(chartElements, item.label)) {
+        trackEvent(MixpanelEvent.Editor_Insert_Palette_Item_Selected, {
+          presentation_id: props.presentationId,
+          category: "charts",
+          item_id: item.id,
+          item_label: item.label,
+          slide_index: props.currentSlide,
+        });
+      }
+      return;
+    }
+
+    const infographicElements = createInfographicInsertElements(item.id);
+    if (insertEditorElements(infographicElements, item.label)) {
       trackEvent(MixpanelEvent.Editor_Insert_Palette_Item_Selected, {
         presentation_id: props.presentationId,
-        category: "charts",
+        category: "infographics",
         item_id: item.id,
         item_label: item.label,
         slide_index: props.currentSlide,

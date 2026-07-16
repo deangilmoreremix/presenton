@@ -8,6 +8,7 @@ import type {
   ChartType,
   Fill,
   Font,
+  InfographicType,
   Marker,
   SlideElement,
   Stroke,
@@ -16,6 +17,7 @@ import type {
 
 const DEFAULT_CHART_INSERT_POSITION = { x: 128, y: 115 };
 const DEFAULT_CHART_INSERT_SIZE = { width: 717, height: 410 };
+const DEFAULT_INFOGRAPHIC_INSERT_POSITION = { x: 128, y: 170 };
 const DEFAULT_IMAGE_PLACEHOLDER_SRC = "/placeholder.jpg";
 const TEXT_INSERT_HORIZONTAL_PADDING_PX = 8;
 const TEXT_INSERT_VERTICAL_PADDING_PX = 14;
@@ -496,6 +498,52 @@ function makeChartElement(chartType: ChartType): SlideElement {
 export function createChartInsertElements(kind?: string): SlideElement[] {
   const chartType = chartTypeFromPaletteId(kind);
   return chartType ? [makeChartElement(chartType)] : [];
+}
+
+function infographicTypeFromPaletteId(id?: string): InfographicType | null {
+  switch (id) {
+    case "progress_bar":
+    case "progress-bar":
+      return "progress_bar";
+    case "gauge":
+    case "gauge-chart":
+      return "gauge";
+    default:
+      return null;
+  }
+}
+
+function makeInfographicElement(infographicType: InfographicType): SlideElement {
+  if (infographicType === "progress_bar") {
+    return {
+      type: "infographic",
+      position: { ...DEFAULT_INFOGRAPHIC_INSERT_POSITION },
+      size: { width: 420, height: 74 },
+      infographic_type: "progress_bar",
+      min_value: 0,
+      max_value: 100,
+      value: 68,
+      base_color: "E5E7EB",
+      highlight_color: "2563EB",
+    };
+  }
+
+  return {
+    type: "infographic",
+    position: { ...DEFAULT_INFOGRAPHIC_INSERT_POSITION },
+    size: { width: 320, height: 190 },
+    infographic_type: "gauge",
+    min_value: 0,
+    max_value: 100,
+    value: 76,
+    base_color: "E5E7EB",
+    highlight_color: "2563EB",
+  };
+}
+
+export function createInfographicInsertElements(kind?: string): SlideElement[] {
+  const infographicType = infographicTypeFromPaletteId(kind);
+  return infographicType ? [makeInfographicElement(infographicType)] : [];
 }
 
 function makeSimpleTableElement(): SlideElement {

@@ -82,6 +82,9 @@ const ELEMENT_TYPES = new Set([
   "text-list",
   "table",
   "vector",
+  "rectangle",
+  "ellipse",
+  "line",
   "svg",
   "chart",
   "infographic",
@@ -422,6 +425,14 @@ function renderItem(item: JsonRecord, mode: RenderMode): string {
 
   switch (readString(item.type)) {
     case "vector":
+      return renderPolygon(item, mode);
+    case "rectangle":
+      return renderPolygon(item, mode);
+    case "ellipse":
+      return `<div style="${frameStyle(item, mode)}${boxStyle(
+        item
+      )}border-radius:50%"></div>`;
+    case "line":
       return renderPolygon(item, mode);
     case "svg":
       return renderSvg(item, mode);
@@ -1714,7 +1725,11 @@ function readBox(
   const position = readRecord(item.position);
   const size = readRecord(item.size);
   const type = readString(item.type);
-  if (type === "vector") {
+  if (
+    type === "vector" ||
+    type === "line" ||
+    type === "rectangle"
+  ) {
     return polygonBox(item, polygonPoints(item));
   }
   return {
@@ -1741,6 +1756,33 @@ function childrenBounds(
 }
 
 function polygonSourcePoints(item: JsonRecord): Point[] {
+  const type = readString(item.type);
+  if (type === "line") {
+    const position = readRecord(item.position);
+    const size = readRecord(item.size);
+    const x = readNumber(position.x) ?? 0;
+    const y = readNumber(position.y) ?? 0;
+    return [
+      { x, y },
+      {
+        x: x + (readNumber(size.width) ?? 0),
+        y: y + (readNumber(size.height) ?? 0),
+      },
+    ];
+  }
+
+  if (type === "rectangle") {
+    const box = readBox({ ...item, type: "__legacy_rectangle_box" });
+    const width = box.width ?? 1;
+    const height = box.height ?? 1;
+    return [
+      { x: box.x, y: box.y },
+      { x: box.x + width, y: box.y },
+      { x: box.x + width, y: box.y + height },
+      { x: box.x, y: box.y + height },
+    ];
+  }
+
   return readArray(item.points)
     .map(readRecord)
     .map((point) => {
