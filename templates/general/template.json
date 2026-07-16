@@ -5671,6 +5671,7 @@
                 "family": "Poppins",
                 "color": "#4B5563",
                 "bold": false,
+                "italic": false,
                 "line_height": 1.2
               },
               "columns": [
@@ -5684,6 +5685,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -5703,6 +5705,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -5722,6 +5725,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -5741,6 +5745,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -5763,7 +5768,15 @@
                       {
                         "text": "Company A"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5775,7 +5788,15 @@
                       {
                         "text": "$2.5M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5787,7 +5808,15 @@
                       {
                         "text": "15%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5799,7 +5828,15 @@
                       {
                         "text": "25%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -5813,7 +5850,15 @@
                       {
                         "text": "Company B"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5825,7 +5870,15 @@
                       {
                         "text": "$1.8M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5837,7 +5890,15 @@
                       {
                         "text": "12%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5849,7 +5910,15 @@
                       {
                         "text": "18%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -5863,7 +5932,15 @@
                       {
                         "text": "Company C"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5875,7 +5952,15 @@
                       {
                         "text": "$3.2M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5887,7 +5972,15 @@
                       {
                         "text": "20%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5899,7 +5992,15 @@
                       {
                         "text": "32%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -5913,7 +6014,15 @@
                       {
                         "text": "Our Company"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5925,7 +6034,15 @@
                       {
                         "text": "$1.2M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5937,7 +6054,15 @@
                       {
                         "text": "35%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -5949,7 +6074,15 @@
                       {
                         "text": "12%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ]
               ],
@@ -14096,6 +14229,7 @@
                 "family": "Poppins",
                 "color": "#4B5563",
                 "bold": false,
+                "italic": false,
                 "line_height": 1.2
               },
               "columns": [
@@ -14109,6 +14243,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -14128,6 +14263,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -14147,6 +14283,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -14166,6 +14303,7 @@
                     "family": "Poppins",
                     "color": "#FFFFFF",
                     "bold": false,
+                    "italic": false,
                     "line_height": 1.2
                   },
                   "alignment": "center",
@@ -14188,7 +14326,15 @@
                       {
                         "text": "Company A"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14200,7 +14346,15 @@
                       {
                         "text": "$2.5M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14212,7 +14366,15 @@
                       {
                         "text": "15%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14224,7 +14386,15 @@
                       {
                         "text": "25%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -14238,7 +14408,15 @@
                       {
                         "text": "Company B"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14250,7 +14428,15 @@
                       {
                         "text": "$1.8M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14262,7 +14448,15 @@
                       {
                         "text": "12%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14274,7 +14468,15 @@
                       {
                         "text": "18%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -14288,7 +14490,15 @@
                       {
                         "text": "Company C"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14300,7 +14510,15 @@
                       {
                         "text": "$3.2M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14312,7 +14530,15 @@
                       {
                         "text": "20%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14324,7 +14550,15 @@
                       {
                         "text": "32%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ],
                 [
@@ -14338,7 +14572,15 @@
                       {
                         "text": "Our Company"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14350,7 +14592,15 @@
                       {
                         "text": "$1.2M"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14362,7 +14612,15 @@
                       {
                         "text": "35%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   },
                   {
                     "color": {
@@ -14374,7 +14632,15 @@
                       {
                         "text": "12%"
                       }
-                    ]
+                    ],
+                    "font": {
+                      "size": 16,
+                      "family": "Poppins",
+                      "color": "#4B5563",
+                      "bold": false,
+                      "italic": false,
+                      "line_height": 1.2
+                    }
                   }
                 ]
               ],

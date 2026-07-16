@@ -2071,6 +2071,7 @@ function tableCellStyle(
   const background = fillColor
     ? colorWithOpacity(fillColor, readNumber(fill.opacity))
     : "transparent";
+  const forceHeaderBold = header && !tableCellHasExplicitBold(cellValue);
   let style = `${fontStyle(cellFont)}display:flex;align-items:center;justify-content:${horizontalAlign(
     alignment
   )};border:${cssNumber(
@@ -2080,7 +2081,7 @@ function tableCellStyle(
   )};min-height:0;min-width:0;overflow:hidden;padding:4px 6px;text-align:${textAlign(
     alignment
   )};vertical-align:middle;white-space:pre-wrap;word-break:break-word;`;
-  if (header && !readBoolean(cellFont.bold)) style += "font-weight:700;";
+  if (forceHeaderBold && !readBoolean(cellFont.bold)) style += "font-weight:700;";
   style += `background:${escapeCssColor(background)};`;
   return style;
 }
@@ -2105,6 +2106,21 @@ function tableCellFont(cellValue: unknown, tableFont: JsonRecord): JsonRecord {
   };
 }
 
+function tableCellHasExplicitBold(cellValue: unknown): boolean {
+  if (typeof cellValue === "string" || typeof cellValue === "number") {
+    return false;
+  }
+
+  const cell = readRecord(cellValue);
+  const firstRun = readRecord(readArray(cell.runs)[0]);
+  const text = readRecord(cell.text);
+  return (
+    Object.prototype.hasOwnProperty.call(readRecord(cell.font), "bold") ||
+    Object.prototype.hasOwnProperty.call(readRecord(firstRun.font), "bold") ||
+    Object.prototype.hasOwnProperty.call(readRecord(text.font), "bold")
+  );
+}
+
 function cellText(
   cellValue: unknown,
   tableFont: JsonRecord,
@@ -2119,6 +2135,8 @@ function cellText(
   const fillColor = readString(fill.color)
     ? colorWithOpacity(readString(fill.color) ?? "", readNumber(fill.opacity))
     : null;
+  const forceHeaderBold = header && !tableCellHasExplicitBold(cellValue);
+  const headerFontPatch = forceHeaderBold ? { bold: true } : {};
   const directRuns = readArray(cell.runs).map(readRecord);
   if (directRuns.length) {
     const runs = normalizeRunsForHtml(
@@ -2135,7 +2153,7 @@ function cellText(
             ...tableFont,
             ...readRecord(cell.font),
             ...readRecord(run.font),
-            ...(header ? { bold: true } : {}),
+            ...headerFontPatch,
           },
           fillColor,
           header
@@ -2151,7 +2169,7 @@ function cellText(
   if (typeof text === "string") {
     return `<span style="${fontStyle(
       readableTableFont(
-        { ...tableFont, ...readRecord(cell.font), ...(header ? { bold: true } : {}) },
+        { ...tableFont, ...readRecord(cell.font), ...headerFontPatch },
         fillColor,
         header
       )
@@ -2168,7 +2186,7 @@ function cellText(
             ...readRecord(cell.font),
             ...readRecord(textRecord.font),
             ...readRecord(run.font),
-            ...(header ? { bold: true } : {}),
+            ...headerFontPatch,
           },
           fillColor,
           header
@@ -2181,7 +2199,7 @@ function cellText(
   }
   return `<span style="${fontStyle(
     readableTableFont(
-      { ...tableFont, ...readRecord(cell.font), ...(header ? { bold: true } : {}) },
+      { ...tableFont, ...readRecord(cell.font), ...headerFontPatch },
       fillColor,
       header
     )
