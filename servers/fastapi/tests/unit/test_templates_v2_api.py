@@ -645,6 +645,34 @@ def test_list_templates_v2_returns_paginated_summary():
     assert response.items[0].layout_count == 1
     assert response.items[0].thumbnail == "/app_data/images/slide-1.png"
     assert response.items[0].is_default is False
+    assert response.items[0].generation_template == (
+        "template-v2-00000000-0000-0000-0000-000000000001"
+    )
+
+
+def test_get_template_v2_returns_generation_id_and_layout_schema(fake_async_session):
+    template_id = str(uuid.uuid4())
+    template = TemplateV2(
+        id=template_id,
+        name="Customer Brand",
+        description="User-generated customer template",
+        layouts=TEMPLATE_LAYOUTS,
+        assets={"thumbnail": "/app_data/images/customer-template.png"},
+        is_default=False,
+    )
+    fake_async_session._get_results[template_id] = template
+
+    response = asyncio.run(
+        get_template_v2(template_id, sql_session=fake_async_session)
+    )
+
+    assert response.id == template_id
+    assert response.name == "Customer Brand"
+    assert response.is_default is False
+    assert response.generation_template == f"template-v2-{template_id}"
+    assert response.layouts == TEMPLATE_LAYOUTS
+    assert response.layout_schema["layout_count"] == 1
+    assert response.layout_schema["layouts"][0]["layout_id"] == "slide_1"
 
 
 def test_create_template_v2_slide_layouts_returns_generated_layout(
@@ -1039,14 +1067,18 @@ def test_patch_template_v2_slide_layout_rejects_duplicate_layout_ids(
 
 def test_get_template_v2_returns_template(fake_async_session):
     template_id = str(uuid.uuid4())
-    template = TemplateV2(name="Custom", layouts=RAW_LAYOUTS)
+    template = TemplateV2(id=template_id, name="Custom", layouts=RAW_LAYOUTS)
     fake_async_session._get_results[template_id] = template
 
     response = asyncio.run(
         get_template_v2(template_id, sql_session=fake_async_session)
     )
 
-    assert response == template
+    assert response.id == template.id
+    assert response.name == template.name
+    assert response.layouts == template.layouts
+    assert response.generation_template == f"template-v2-{template_id}"
+    assert response.layout_schema["layout_count"] == 1
 
 
 def test_update_template_v2_metadata_updates_name_and_description(fake_async_session):

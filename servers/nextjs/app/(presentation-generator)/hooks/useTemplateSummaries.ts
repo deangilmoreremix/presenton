@@ -9,8 +9,25 @@ import TemplateService, {
 
 export type TemplateTab = "custom" | "default";
 
+function prioritizeDynamicTemplate(templates: TemplateListItem[]) {
+  const dynamicTemplateIndex = templates.findIndex(
+    (template) => template.name.trim().toLowerCase() === "dynamic"
+  );
+
+  if (dynamicTemplateIndex <= 0) {
+    return templates;
+  }
+
+  const orderedTemplates = [...templates];
+  const [dynamicTemplate] = orderedTemplates.splice(dynamicTemplateIndex, 1);
+  orderedTemplates.unshift(dynamicTemplate);
+  return orderedTemplates;
+}
+
 export function splitTemplatesByDefault(templates: TemplateListItem[]) {
-  const defaultTemplates = templates.filter((template) => template.is_default);
+  const defaultTemplates = prioritizeDynamicTemplate(
+    templates.filter((template) => template.is_default)
+  );
   const customTemplates = templates.filter((template) => !template.is_default);
   return { defaultTemplates, customTemplates };
 }

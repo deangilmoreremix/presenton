@@ -55,6 +55,7 @@ from templates.v2.models.layouts import (
     SlideLayout,
     SlideLayouts,
 )
+from templates.v2.schema import get_template_schema
 from utils.asset_directory_utils import resolve_app_path_to_filesystem
 from utils.file_utils import get_original_file_name
 from utils.icon_weights import (
@@ -63,6 +64,7 @@ from utils.icon_weights import (
     IconType,
     extract_icon_type_from_settings,
 )
+from utils.datetime_utils import get_current_utc_datetime
 
 
 TEMPLATES_ROUTER = APIRouter(prefix="/templates", tags=["Templates"])
@@ -198,6 +200,7 @@ class TemplateV2ListItem(BaseModel):
     is_default: bool = False
     created_at: datetime
     updated_at: datetime
+    generation_template: str
 
 
 class TemplateV2ListResponse(BaseModel):
@@ -213,6 +216,7 @@ class TemplateV2Response(TemplateV2ListItem):
     merged_components: Optional[dict[str, Any]] = None
     layouts: Optional[dict[str, Any]] = None
     assets: Optional[dict[str, Any]] = None
+    layout_schema: Optional[dict[str, Any]] = None
 
 
 def _template_v2_task_progress_data(
@@ -845,7 +849,11 @@ def _generate_indexed_slide_layouts(
     ]
 
 
-@TEMPLATES_ROUTER.get("", response_model=TemplateV2ListResponse)
+@TEMPLATES_ROUTER.get(
+    "",
+    response_model=TemplateV2ListResponse,
+    operation_id="templates_list",
+)
 async def list_templates_v2(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -891,6 +899,7 @@ async def list_templates_v2(
                 is_default=is_default,
                 created_at=created_at,
                 updated_at=updated_at,
+                generation_template=f"template-v2-{template_id}",
             )
         )
 
@@ -1421,7 +1430,11 @@ async def update_template_v2_metadata(
     return template
 
 
-@TEMPLATES_ROUTER.get("/{template_id}", response_model=TemplateV2Response)
+@TEMPLATES_ROUTER.get(
+    "/{template_id}",
+    response_model=TemplateV2Response,
+    operation_id="templates_get",
+)
 async def get_template_v2(
     template_id: str = Path(...),
     sql_session: AsyncSession = Depends(get_async_session),
@@ -1429,7 +1442,36 @@ async def get_template_v2(
     template = await sql_session.get(TemplateV2, template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
-    return template
+
+    layout_payload = template.layouts if isinstance(template.layouts, dict) else None
+    layout_schema = None
+    if layout_payload is not None:
+        try:
+            layout_schema = get_template_schema(layout_payload)
+        except ValueError as exc:
+            LOGGER.warning(
+                "Unable to build layout schema for template %s: %s",
+                template.id,
+                exc,
+            )
+
+    return TemplateV2Response(
+        id=template.id,
+        name=template.name,
+        description=template.description,
+        layout_count=_count_layouts(template.layouts),
+        thumbnail=_get_template_thumbnail_from_assets(template.assets),
+        is_default=template.is_default,
+        created_at=template.created_at or get_current_utc_datetime(),
+        updated_at=template.updated_at or get_current_utc_datetime(),
+        generation_template=f"template-v2-{template.id}",
+        raw_layouts=template.raw_layouts,
+        components=template.components,
+        merged_components=template.merged_components,
+        layouts=template.layouts,
+        assets=template.assets,
+        layout_schema=layout_schema,
+    )
 
 
 @TEMPLATES_ROUTER.delete("/{template_id}", status_code=204)

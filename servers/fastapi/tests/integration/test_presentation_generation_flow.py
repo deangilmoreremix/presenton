@@ -68,7 +68,7 @@ def _template_v2_layout_payload() -> dict:
     }
 
 
-def test_generate_presentation_handler_full_flow_uses_mocked_dependencies(fake_async_session):
+def test_generate_presentation_handler_full_flow_uses_mocked_dependencies():
     request = GeneratePresentationRequest(
         content="Create a two-slide deck about renewable energy.",
         n_slides=2,
@@ -77,6 +77,14 @@ def test_generate_presentation_handler_full_flow_uses_mocked_dependencies(fake_a
         template="general",
     )
     presentation_id = uuid.uuid4()
+    template_id = "06e3980c-9dd2-4e44-ad78-518c766a07db"
+    template = TemplateV2(
+        id=template_id,
+        name="General",
+        layouts=_template_v2_layout_payload(),
+        is_default=True,
+    )
+    session = FakeAsyncSession(get_results={template_id: template})
 
     async def fake_outline_stream(*_args, **_kwargs):
         yield '{"slides":[{"content":"## Intro"},{"content":"## Action Plan"}]}'
@@ -100,10 +108,6 @@ def test_generate_presentation_handler_full_flow_uses_mocked_dependencies(fake_a
         presentation_endpoint,
         "generate_ppt_outline",
         side_effect=fake_outline_stream,
-    ), patch.object(
-        presentation_endpoint,
-        "get_layout_by_name",
-        new=AsyncMock(return_value=_mock_layout()),
     ), patch.object(
         presentation_endpoint,
         "generate_presentation_structure",
@@ -147,15 +151,15 @@ def test_generate_presentation_handler_full_flow_uses_mocked_dependencies(fake_a
                 request=request,
                 presentation_id=presentation_id,
                 async_status=None,
-                sql_session=fake_async_session,
+                sql_session=session,
             )
         )
 
     assert response.path.endswith(".pptx")
     assert response.edit_path == f"/presentation?id={presentation_id}"
-    assert len(fake_async_session.added_all) == 2
-    assert all(slide.presentation == presentation_id for slide in fake_async_session.added_all)
-    assert all(slide.ui is None for slide in fake_async_session.added_all)
+    assert len(session.added_all) == 2
+    assert all(slide.presentation == presentation_id for slide in session.added_all)
+    assert all(slide.ui is not None for slide in session.added_all)
 
 
 def test_generate_presentation_handler_uses_template_v2_layout():
@@ -251,6 +255,27 @@ def test_generate_presentation_handler_uses_template_v2_layout():
     assert presentation.fonts == {"Inter": "https://example.com/inter.css"}
     assert slide.layout_group == f"template-v2-{template_id}"
     assert slide.ui["components"][0]["elements"][0]["runs"][0]["text"] == "V2 headline"
+
+
+def test_default_template_name_resolves_bundled_template_v2_without_schema_page():
+    template_id = "06e3980c-9dd2-4e44-ad78-518c766a07db"
+    template = TemplateV2(
+        id=template_id,
+        name="General",
+        layouts=_template_v2_layout_payload(),
+        assets={"fonts": {"Inter": "/app_data/templates/general/inter.ttf"}},
+        is_default=True,
+    )
+    session = FakeAsyncSession(get_results={template_id: template})
+
+    layout_payload, layout_model, fonts, is_template_v2 = _run(
+        presentation_endpoint._resolve_generation_layout("general", session)
+    )
+
+    assert layout_payload["layouts"][0]["id"] == "template-layout-1"
+    assert layout_model.slides[0].id == "template-layout-1"
+    assert fonts == {"Inter": "/app_data/templates/general/inter.ttf"}
+    assert is_template_v2 is True
 
 
 def test_create_presentation_stores_current_version(fake_async_session):

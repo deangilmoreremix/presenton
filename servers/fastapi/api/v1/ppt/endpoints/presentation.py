@@ -86,7 +86,6 @@ from utils.process_slides import (
     process_slide_add_placeholder_assets,
     process_slide_and_fetch_assets,
 )
-from utils.get_layout_by_name import get_layout_by_name
 from utils.icon_weights import DEFAULT_ICON_TYPE, extract_icon_type_from_settings
 from utils.llm_utils import message_content_to_text
 from utils.sse import safe_sse_stream
@@ -98,6 +97,7 @@ from utils.simple_auth import (
 from utils.web_search import get_selected_web_search_provider, get_web_search_route
 from models.presentation_layout import PresentationLayoutModel, SlideLayoutModel
 from templates.v2.schema import get_template_schema
+from templates.default_templates import resolve_default_template_id
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -235,23 +235,36 @@ async def _resolve_generation_layout(
     sql_session: AsyncSession,
 ) -> tuple[dict[str, Any], PresentationLayoutModel, Optional[dict[str, str]], bool]:
     template_v2 = await _resolve_requested_template_v2(template_name, sql_session)
-    if template_v2:
-        layout_payload = _copy_template_v2_layout_payload(template_v2)
-        return (
-            layout_payload,
-            _build_template_v2_structure_layout(template_v2, layout_payload),
-            _extract_template_v2_fonts_from_assets(template_v2.assets),
-            True,
+    if template_v2 is None:
+        bundled_template_id = resolve_default_template_id(template_name)
+        if not bundled_template_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Template not found. Please use a valid template.",
+            )
+        template_v2 = await sql_session.get(TemplateV2, bundled_template_id)
+        if not template_v2:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Bundled template '{template_name}' is not available. "
+                    "Restart the service to import bundled templates."
+                ),
+            )
+        logger.info(
+            "[presentation.generate] resolved bundled template alias "
+            "name=%r template_v2_id=%s",
+            template_name,
+            bundled_template_id,
         )
 
-    if template_name not in DEFAULT_TEMPLATES:
-        raise HTTPException(
-            status_code=400,
-            detail="Template not found. Please use a valid template.",
-        )
-
-    layout_model = await get_layout_by_name(template_name)
-    return layout_model.model_dump(mode="json"), layout_model, None, False
+    layout_payload = _copy_template_v2_layout_payload(template_v2)
+    return (
+        layout_payload,
+        _build_template_v2_structure_layout(template_v2, layout_payload),
+        _extract_template_v2_fonts_from_assets(template_v2.assets),
+        True,
+    )
 
 
 def _is_template_v2_slide(slide: SlideModel) -> bool:

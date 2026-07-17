@@ -233,3 +233,15 @@ def test_bundled_general_template_json_matches_template_v2_shapes():
     assert template.assets["thumbnail"] == (
         f"/app_data/templates/{template_id}/static/thumbnail.png"
     )
+
+
+def test_resolve_default_template_id_maps_public_name_to_json_id():
+    templates_root = Path(__file__).resolve().parents[4] / "templates"
+
+    assert default_templates.resolve_default_template_id(
+        "general", templates_root
+    ) == "06e3980c-9dd2-4e44-ad78-518c766a07db"
+
+
+def test_resolve_default_template_id_rejects_paths(tmp_path):
+    assert default_templates.resolve_default_template_id("../general", tmp_path) is None

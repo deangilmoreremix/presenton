@@ -10,31 +10,22 @@ def test_default_templates_match_supported_builtin_groups():
         "modern",
         "standard",
         "swift",
-        "code",
-        "education",
-        "product-overview",
-        "report",
-        "pitch-deck",
-        "neo-general",
-        "neo-standard",
-        "neo-modern",
-        "neo-swift",
+        "dynamic",
     ]
 
 
-def test_openapi_templates_list_points_to_combined_template_endpoint():
+def test_openapi_exposes_template_v2_catalog_and_schema_detail():
     openapi_spec_path = Path(__file__).resolve().parents[2] / "openai_spec.json"
     spec = json.loads(openapi_spec_path.read_text(encoding="utf-8"))
 
-    templates_path = spec["paths"]["/api/v1/ppt/template/all"]["get"]
-    assert templates_path["operationId"] == "templates_list"
+    list_operation = spec["paths"]["/api/v1/ppt/templates"]["get"]
+    detail_operation = spec["paths"]["/api/v1/ppt/templates/{template_id}"]["get"]
 
-    include_defaults_param = next(
-        p for p in templates_path["parameters"] if p["name"] == "include_defaults"
-    )
-    assert include_defaults_param["schema"]["default"] is True
+    assert list_operation["operationId"] == "templates_list"
+    assert detail_operation["operationId"] == "templates_get"
 
-    success_schema = templates_path["responses"]["200"]["content"]["application/json"][
-        "schema"
-    ]
-    assert success_schema["items"]["$ref"] == "#/components/schemas/TemplateDetail"
+    list_item = spec["components"]["schemas"]["TemplateV2ListItem"]
+    detail = spec["components"]["schemas"]["TemplateV2Response"]
+    assert "generation_template" in list_item["properties"]
+    assert "layout_schema" in detail["properties"]
+    assert "layouts" in detail["properties"]

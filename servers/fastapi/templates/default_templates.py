@@ -53,6 +53,57 @@ def _default_templates_root() -> Path:
     return Path(__file__).resolve().parents[3] / "templates"
 
 
+def resolve_default_template_id(
+    template_name: str,
+    templates_root: Path | None = None,
+) -> str | None:
+    """Resolve a public bundled-template name to its persisted Template V2 ID.
+
+    Bundled templates are stored in directories with stable, user-facing names
+    (for example ``general``), while their JSON payloads use UUIDs as database
+    IDs. API clients still send the public name, so generation must translate it
+    before looking up the imported Template V2 row.
+    """
+    if (
+        not isinstance(template_name, str)
+        or not template_name
+        or template_name in {".", ".."}
+        or "/" in template_name
+        or "\\" in template_name
+    ):
+        return None
+
+    root = templates_root or _default_templates_root()
+    template_json_path = root / template_name / "template.json"
+    if not template_json_path.is_file():
+        return None
+
+    try:
+        raw = json.loads(template_json_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning(
+            "Unable to read bundled template metadata for %s: %s",
+            template_name,
+            exc,
+        )
+        return None
+
+    if not isinstance(raw, dict):
+        return None
+    template_id = raw.get("id")
+    if not isinstance(template_id, str) or not template_id.strip():
+        return template_name
+    template_id = template_id.strip()
+    if "/" in template_id or "\\" in template_id:
+        LOGGER.warning(
+            "Ignoring invalid bundled template ID for %s: %s",
+            template_name,
+            template_id,
+        )
+        return None
+    return template_id
+
+
 def _load_default_template(template_dir: Path) -> TemplateV2:
     template_json_path = template_dir / "template.json"
     raw = json.loads(template_json_path.read_text(encoding="utf-8"))
