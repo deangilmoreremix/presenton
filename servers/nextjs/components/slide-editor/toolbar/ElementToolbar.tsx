@@ -84,7 +84,7 @@ const TOOLBAR_RENDERERS: Partial<
         onChange={(index, element) => onChange(index, element, path)}
       />
     ) : null,
-  image: ({ anchorBox, element, index, onChange, onEditImage, path, scale }) =>
+  image: ({ anchorBox, element, index, onChange, path, scale }) =>
     element.type === "image" ? (
       <ImageToolbar
         element={element}
@@ -92,7 +92,6 @@ const TOOLBAR_RENDERERS: Partial<
         anchorBox={anchorBox}
         scale={scale}
         onChange={(index, element) => onChange(index, element, path)}
-        onUpload={(index) => onEditImage(index, path)}
       />
     ) : null,
   rectangle: ({ anchorBox, componentActions, element, index, onChange, path, scale }) =>

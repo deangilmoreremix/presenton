@@ -37,6 +37,7 @@ import {
   type FloatingToolbarBox,
 } from "@/components/slide-editor/toolbar/FloatingToolbar";
 import { OpacitySwatchIcon } from "@/components/slide-editor/toolbar/OpacitySwatchIcon";
+import { ImagePickerModal } from "@/components/slide-editor/images/ImagePickerModal";
 import { resolveBackendAssetSource } from "@/utils/api";
 
 type ImagePanel = "fit" | "crop" | "radius" | "opacity" | null;
@@ -252,16 +253,15 @@ export function ImageToolbar({
   index,
   scale,
   onChange,
-  onUpload,
 }: {
   anchorBox?: FloatingToolbarBox | null;
   element: ImageSlideElement;
   index: number;
   scale: number;
   onChange: (index: number, element: ImageSlideElement) => void;
-  onUpload: (index: number) => void;
 }) {
   const [openPanel, setOpenPanel] = useState<ImagePanel>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const fit = element.fit ?? "contain";
   const maxRadius = Math.max(
     0.01,
@@ -532,7 +532,7 @@ export function ImageToolbar({
           aria-label="Replace image"
           onClick={() => {
             setOpenPanel(null);
-            onUpload(index);
+            setImagePickerOpen(true);
           }}
           className="rounded-[2px] border-0 bg-transparent p-1 text-[#05070A] hover:bg-[#F4F3FF]"
         >
@@ -731,6 +731,21 @@ export function ImageToolbar({
           />
         </>
       ) : null}
+      <ImagePickerModal
+        open={imagePickerOpen}
+        currentImage={element.data}
+        initialPrompt={element.prompt}
+        onClose={() => setImagePickerOpen(false)}
+        onSelect={(url, prompt) => {
+          update({
+            data: url,
+            focus_x: 50,
+            focus_y: 50,
+            crop_scale: null,
+            ...(prompt ? { prompt } : {}),
+          });
+        }}
+      />
     </>
 
   );
