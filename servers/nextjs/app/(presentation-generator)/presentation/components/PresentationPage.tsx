@@ -129,21 +129,6 @@ const IDLE_LOADING_STATE: LoadingState = {
   extra_info: "",
 };
 
-function useMinWidthQuery(minWidth: number) {
-  const [matches, setMatches] = useState(false);
-
-  useLayoutEffect(() => {
-    if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia(`(min-width: ${minWidth}px)`);
-    const updateMatches = () => setMatches(mediaQuery.matches);
-    updateMatches();
-    mediaQuery.addEventListener("change", updateMatches);
-    return () => mediaQuery.removeEventListener("change", updateMatches);
-  }, [minWidth]);
-
-  return matches;
-}
-
 const PresentationPage: React.FC<PresentationPageProps> = ({
   presentation_id,
 }) => {
@@ -176,7 +161,6 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
     Set<string>
   >(() => new Set());
   const [error, setError] = useState(false);
-  const isLargeEditingViewport = useMinWidthQuery(1280);
   const slidesScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const templateV2EditorLoadedKeyRef = useRef<string | null>(null);
   const router = useRouter();
@@ -190,7 +174,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   const isTemplateV2Presentation =
     hasTemplateV2Layouts(presentationData?.layout) ||
     hasTemplateV2Slides(presentationData?.slides);
-  const editingDisabled = isStreaming === true || !isLargeEditingViewport;
+  const editingDisabled = isStreaming === true;
 
   // Auto-save functionality.
   // Pause while the chat assistant is mutating the deck: the assistant edits
