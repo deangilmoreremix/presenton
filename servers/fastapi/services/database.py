@@ -20,6 +20,7 @@ from models.sql.presentation_layout_code import PresentationLayoutCodeModel
 from models.sql.template import TemplateModel
 from models.sql.webhook_subscription import WebhookSubscription
 from utils.db_utils import get_database_url_and_connect_args
+from utils.get_env import get_app_data_directory_env
 
 
 database_url, connect_args = get_database_url_and_connect_args()
@@ -34,7 +35,13 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 # Container DB (Lives inside the container)
-container_db_url = "sqlite+aiosqlite:////app/container.db"
+# NOTE: Upstream hardcodes "/app/container.db" (the Docker WORKDIR). When running
+# outside Docker, "/app" may not exist/be writable, so allow overriding the path
+# via the CONTAINER_DB_PATH env var and fall back to the app data directory.
+_container_db_path = os.getenv("CONTAINER_DB_PATH") or os.path.join(
+    get_app_data_directory_env() or "/tmp/presenton", "container.db"
+)
+container_db_url = f"sqlite+aiosqlite:///{_container_db_path}"
 container_db_engine: AsyncEngine = create_async_engine(
     container_db_url, connect_args={"check_same_thread": False}
 )
