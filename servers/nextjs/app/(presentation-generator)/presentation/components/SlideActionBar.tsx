@@ -36,6 +36,7 @@ import {
   BLANK_SLIDE_LAYOUT_ID,
   createBlankPresentationSlide,
   getSlideTemplateId,
+  isTemplateV2Slide as isTemplateV2PresentationSlide,
 } from "../../_shared/blank-slide";
 import NewSlide from "./NewSlide";
 import { MAX_NUMBER_OF_SLIDES } from "@/utils/presentationLimits";
@@ -85,8 +86,7 @@ const SlideActionBar = ({
       : 0;
   const slideLayout = typeof slide?.layout === "string" ? slide.layout : "";
   const templateId = useMemo(() => getSlideTemplateId(slide), [slide]);
-  const isTemplateV2Slide = templateId.startsWith("template-v2");
-  const isCustomTemplate = templateId.startsWith("custom-");
+  const isTemplateV2Slide = isTemplateV2PresentationSlide(slide);
   const speakerNote =
     typeof slide?.speaker_note === "string" ? slide.speaker_note.trim() : "";
   const keepVisible =
@@ -154,7 +154,6 @@ const SlideActionBar = ({
       template_id: templateId,
       layout_id: BLANK_SLIDE_LAYOUT_ID,
       source: "blank_action_bar",
-      is_custom_template: isCustomTemplate,
       is_template_v2: isTemplateV2Slide,
     });
   };

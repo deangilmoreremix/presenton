@@ -9,7 +9,11 @@ import {
 } from "@/components/slide-editor/importing/template-v2-import";
 import { TemplateV2KonvaSlide } from "@/components/slide-editor/surface/TemplateV2KonvaSlide";
 import { TemplateV2HtmlSlidePreview } from "./TemplateV2HtmlSlidePreview";
-import { BLANK_TEMPLATE_V2_LAYOUT, isBlankPresentationSlide } from "../_shared/blank-slide";
+import {
+    BLANK_TEMPLATE_V2_LAYOUT,
+    isBlankPresentationSlide,
+    isTemplateV2Slide as isTemplateV2PresentationSlide,
+} from "../_shared/blank-slide";
 import {
     PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
     type BlankSlidePromptEventDetail,
@@ -185,11 +189,8 @@ export const V1ContentRender = ({
 
     const safeSlide = slide ?? {};
 
-    const slideLayoutGroup =
-        typeof safeSlide.layout_group === "string" ? safeSlide.layout_group : "";
-
     const isBlankSlide = isBlankPresentationSlide(safeSlide);
-    const isTemplateV2Slide = slideLayoutGroup.startsWith("template-v2");
+    const isTemplateV2Slide = isTemplateV2PresentationSlide(safeSlide);
 
 
 

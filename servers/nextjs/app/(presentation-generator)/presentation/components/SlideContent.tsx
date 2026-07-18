@@ -1,8 +1,9 @@
-import React, { memo, useEffect } from "react";
+import React, { memo } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import SlideScale from "../../components/PresentationRender";
 import SlideActionBar from "./SlideActionBar";
+import { isTemplateV2Slide } from "../../_shared/blank-slide";
 
 interface SlideContentProps {
   slide: any;
@@ -44,30 +45,8 @@ const SlideContent = ({
   isStreaming = false,
 }: SlideContentProps) => {
   const canEditSlide = !editingDisabled && isStreaming !== true;
-  const slideLayout = typeof slide?.layout === "string" ? slide.layout : "";
 
-  const slideLayoutGroup =
-    typeof slide?.layout_group === "string" ? slide.layout_group : "";
-  const slideLayoutTemplateId =
-    typeof slide?.layout === "string" ? slide.layout.split(":")[0] : "";
-  const slideTemplateId = slideLayoutGroup.startsWith("template-v2")
-    ? slideLayoutGroup
-    : slideLayoutGroup || slideLayoutTemplateId;
-  const isTemplateV2Slide = slideTemplateId.startsWith("template-v2");
-
-  useEffect(() => {
-    if (slideLayout.includes("custom")) {
-      const existingScript = document.querySelector(
-        'script[src*="tailwindcss.com"]'
-      );
-      if (!existingScript) {
-        const script = document.createElement("script");
-        script.src = "https://cdn.tailwindcss.com";
-        script.async = true;
-        document.head.appendChild(script);
-      }
-    }
-  }, [slideLayout, isStreaming]);
+  const isTemplateV2SlideContent = isTemplateV2Slide(slide);
 
   return (
     <div
@@ -80,7 +59,7 @@ const SlideContent = ({
       <div
         data-layout={slide?.layout}
         data-group={slide?.layout_group}
-        className={`group w-full font-syne ${isTemplateV2Slide ? "relative" : ""
+        className={`group w-full font-syne ${isTemplateV2SlideContent ? "relative" : ""
           }`}
       >
         <div className="relative max-xl:mb-6">

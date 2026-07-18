@@ -33,6 +33,8 @@ import { replaceSlidesWithBlankFallback } from "@/store/slices/presentationGener
 import {
   createBlankPresentationSlide,
   getPresentationTemplateId,
+  isTemplateV2Slide,
+  isTemplateV2TemplateId,
 } from "../../_shared/blank-slide";
 import PresentationHeader from "./PresentationHeader";
 import PresentationActions from "./PresentationActions";
@@ -57,13 +59,7 @@ function hasTemplateV2Layouts(layout: unknown): boolean {
 function hasTemplateV2Slides(slides: unknown): boolean {
   return (
     Array.isArray(slides) &&
-    slides.some(
-      (slide) =>
-        slide &&
-        typeof slide === "object" &&
-        typeof (slide as any).layout_group === "string" &&
-        (slide as any).layout_group.startsWith("template-v2")
-    )
+    slides.some((slide) => isTemplateV2Slide(slide))
   );
 }
 
@@ -80,7 +76,7 @@ function collectTemplateV2Ids(value: unknown): string[] {
     ["layout_group", "layout", "template_id", "templateV2Id", "template_v2_id", "id"].forEach(
       (key) => {
         const value = record[key];
-        if (typeof value === "string" && value.startsWith("template-v2")) {
+        if (isTemplateV2TemplateId(value)) {
           ids.add(value);
         }
       }
@@ -176,6 +172,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   );
   const slidesLength = presentationData?.slides?.length ?? 0;
   const isTemplateV2Presentation =
+    presentationData?.version === "v2-standard" ||
     hasTemplateV2Layouts(presentationData?.layout) ||
     hasTemplateV2Slides(presentationData?.slides);
   const editingDisabled = isStreaming === true;
