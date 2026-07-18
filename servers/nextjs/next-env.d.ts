@@ -1,6 +1,10 @@
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
 <<<<<<< ours
+<<<<<<< ours
+=======
+import "./.next-build/types/routes.d.ts";
+>>>>>>> theirs
 =======
 import "./.next-build/types/routes.d.ts";
 >>>>>>> theirs
