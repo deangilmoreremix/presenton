@@ -26,13 +26,13 @@ function SignedOutControls() {
   return (
     <>
       <Link
-        href="/sign-in"
+        href="/auth/login"
         className="rounded-md bg-[#7C51F8] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
       >
         Sign in
       </Link>
       <Link
-        href="/sign-up"
+        href="/auth/signup"
         className="rounded-md border border-[#7C51F8] px-3 py-1.5 text-sm font-medium text-[#7C51F8] hover:bg-[#7C51F8]/5"
       >
         Sign up
