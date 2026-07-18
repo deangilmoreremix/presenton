@@ -54,7 +54,7 @@ MCP_TOOL_NAMES = {
     ),
 }
 
-MCP_INSTRUCTIONS = """Generate presentations with Presenton.
+MCP_INSTRUCTIONS = """Generate presentations with SmartSlides.
 
 Use generate_presentation for the normal synchronous workflow. Use
 generate_presentation_async for background generation, then poll
@@ -111,7 +111,7 @@ def create_openapi_api_client() -> httpx.AsyncClient:
 def create_mcp_server(
     api_client: httpx.AsyncClient,
     *,
-    name: str = "Presenton",
+    name: str = "SmartSlides",
     auth: TokenVerifier | None = None,
 ) -> FastMCP:
     """Create the MCP server with only the public presentation workflow exposed."""
@@ -162,7 +162,7 @@ async def main():
         parser.add_argument(
             "--name",
             type=str,
-            default="Presenton API (OpenAPI)",
+            default="SmartSlides API (OpenAPI)",
             help="Display name for the generated MCP server",
         )
         args = parser.parse_args()

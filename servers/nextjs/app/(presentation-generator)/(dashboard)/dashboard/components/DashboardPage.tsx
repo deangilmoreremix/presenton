@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
 
 const GITHUB_REPOSITORY_URL = "https://github.com/presenton/presenton";
 const DISCORD_INVITE_URL = "https://discord.com/invite/9ZsKKxudNE";
-const APP_UPDATE_URL = "https://presenton.ai/download";
+const APP_UPDATE_URL = "https://smartslides.ai/download";
 
 const actionCardBase =
   "absolute aspect-[16/9] h-[46.238px] w-[82.201px] rounded-[4.474px] border border-white/50 bg-cover bg-center bg-no-repeat shadow-[0_8px_18px_rgba(16,24,40,0.18)] transition-all duration-500 ease-out opacity-100 translate-y-0 scale-100";
@@ -251,8 +251,8 @@ function DashboardHeader() {
             href={APP_UPDATE_URL}
             target="_blank"
             rel="noreferrer"
-            aria-label="Update Presenton"
-            title="Update Presenton"
+            aria-label="Update SmartSlides"
+            title="Update SmartSlides"
             className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#D9D6FE] bg-[#FAFAFF] text-[#7A5AF8] transition-colors hover:bg-[#F3F0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A5AF8] focus-visible:ring-offset-2"
             onClick={() =>
               trackEvent(MixpanelEvent.Navigation, {

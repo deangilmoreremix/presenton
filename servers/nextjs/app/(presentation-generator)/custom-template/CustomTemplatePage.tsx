@@ -117,7 +117,7 @@ function StudioTopBar({ activeStep }: { activeStep: StudioStep }) {
         >
           <img
             src="/logo-with-bg.png"
-            alt="Presenton"
+            alt="SmartSlides"
             className="h-full w-full"
             draggable={false}
           />
@@ -378,7 +378,7 @@ function UploadPanel({
             i
           </span>
           <p>
-            Presenton sends each slide as a screenshot and HTML reference. Use a
+            SmartSlides sends each slide as a screenshot and HTML reference. Use a
             vision-enabled model for accurate layouts. Text-only models may produce
             poor results or fail.
           </p>

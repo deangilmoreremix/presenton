@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="./readme_assets/images/logo.png" alt="Presenton" />
+  <img src="./readme_assets/images/logo.png" alt="SmartSlides" />
 </p>
 
 <p align="center">
-  <a href="https://presenton.ai/download"><strong>Quickstart</strong></a> &middot;
-  <a href="https://docs.presenton.ai/"><strong>Docs</strong></a> &middot;
-  <a href="https://www.youtube.com/@presentonai"><strong>Youtube</strong></a> &middot;
+  <a href="https://smartslides.ai/download"><strong>Quickstart</strong></a> &middot;
+  <a href="https://docs.smartslides.ai/"><strong>Docs</strong></a> &middot;
+  <a href="https://www.youtube.com/@smartslidesai"><strong>Youtube</strong></a> &middot;
   <a href="https://discord.gg/9ZsKKxudNE"><strong>Discord</strong></a>
 </p>
 

@@ -5,11 +5,11 @@ import Header from "@/app/(presentation-generator)/(dashboard)/dashboard/compone
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Presenton | Open Source AI presentation generator",
+  title: "SmartSlides | Open Source AI presentation generator",
   description:
     "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
   alternates: {
-    canonical: "https://presenton.ai/create",
+    canonical: "https://smartslides.ai/create",
   },
   keywords: [
     "presentation generator",
@@ -24,20 +24,20 @@ export const metadata: Metadata = {
     "business presentations",
   ],
   openGraph: {
-    title: "Create Data Presentation | PresentOn",
+    title: "Create Data Presentation | SmartSlides",
     description:
       "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
     type: "website",
-    url: "https://presenton.ai/create",
-    siteName: "PresentOn",
+    url: "https://smartslides.ai/create",
+    siteName: "SmartSlides",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Create Data Presentation | PresentOn",
+    title: "Create Data Presentation | SmartSlides",
     description:
       "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
-    site: "@presenton_ai",
-    creator: "@presenton_ai",
+    site: "@smartslides_ai",
+    creator: "@smartslides_ai",
   },
 };
 

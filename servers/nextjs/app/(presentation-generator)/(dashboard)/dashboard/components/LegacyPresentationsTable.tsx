@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 
 const LEGACY_RELEASE_URL =
-  "https://presenton.ai/download";
+  "https://smartslides.ai/download";
 
 const formatLegacyDate = (value: string) => {
   const date = new Date(value);
@@ -113,14 +113,14 @@ export function LegacyPresentationsTable({
         />
         <p className="text-[#4C4C4C]">
           These presentations were created in an older format and can&apos;t be
-          opened in Presenton 0.9.0-beta. {" "}
+          opened in SmartSlides 0.9.0-beta. {" "}
           <a
             href={LEGACY_RELEASE_URL}
             target="_blank"
             rel="noreferrer"
             className="text-[#C4320A] underline decoration-[#C4320A] underline-offset-2"
           >
-            Download Presenton v0.8.10-beta to access them
+            Download SmartSlides v0.8.10-beta to access them
           </a>
           .
         </p>
