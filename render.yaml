@@ -1,0 +1,85 @@
+# Render Blueprint for SmartSlides (formerly Presenton)
+# Deploy via: Render Dashboard -> New+ -> Blueprint -> select this repo.
+# The container runs FastAPI (:8000) + MCP (:8001) + Next.js (:3000) behind
+# nginx (:80). Only port 80 is host-facing, so PORT must stay 80.
+#
+# IMPORTANT: secret values (API keys) are listed with `sync: false` and left
+# blank on purpose. After the blueprint creates the service, open it in Render
+# and fill them in under Environment. They will NOT be committed to this file.
+
+services:
+  - type: web
+    name: smartslides
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon            # change to your preferred region
+    plan: standard           # heavy image (PyTorch/LibreOffice/Chromium) - free tier won't work
+    healthCheckPath: /docs
+    # nginx listens on 80; tell Render to route public traffic there.
+    envVars:
+      - key: PORT
+        value: "80"
+      # Persistent data directory (mounted disk target) + scratch dir.
+      - key: APP_DATA_DIRECTORY
+        value: /app_data
+      # PUPPETEER_EXECUTABLE_PATH is already baked into the Dockerfile, but set
+      # it explicitly so a stray image rebuild won't surprise us.
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+      - key: MIGRATE_DATABASE_ON_STARTUP
+        value: "true"
+      - key: CAN_CHANGE_KEYS
+        value: "true"
+      - key: DISABLE_ANONYMOUS_TRACKING
+        value: "true"
+
+      # ---- LLM provider (pick one; defaults to OpenAI) ----
+      - key: LLM
+        sync: false           # set to openai / google / anthropic / deepseek / custom / ollama
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
+      - key: CUSTOM_LLM_URL
+        sync: false
+      - key: CUSTOM_LLM_API_KEY
+        sync: false
+      - key: CUSTOM_MODEL
+        sync: false
+
+      # ---- Image provider ----
+      - key: IMAGE_PROVIDER
+        sync: false           # dall-e-3 / gemini_flash / pexels / pixabay / comfyui / openwebui / openai-compat
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: PIXABAY_API_KEY
+        sync: false
+
+      # ---- Optional extras ----
+      - key: WEB_GROUNDING
+        sync: false
+      - key: DATABASE_URL
+        sync: false           # leave empty to use SQLite on the disk
+      - key: AUTH_USERNAME
+        sync: false
+      - key: AUTH_PASSWORD
+        sync: false
+
+    # Persistent disk: without this, every deploy wipes presentations, the
+    # SQLite DB, uploads, and generated images.
+    disk:
+      name: smartslides-data
+      mountPath: /app_data
+      sizeGB: 10
