@@ -349,7 +349,7 @@ export const useTemplateCreation = ({
         if (layouts.length === 0) return;
 
         const response = await fetch(
-            getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}/layouts`),
+            getApiUrl(`/api/v1/ppt/template/${encodeURIComponent(templateId)}/layouts`),
             {
                 method: "PATCH",
                 headers: getHeader(),
@@ -367,7 +367,7 @@ export const useTemplateCreation = ({
         templateId: string,
         index: number
     ): Promise<CreatedTemplateV2Layout> => {
-        const response = await fetch(getApiUrl("/api/v1/ppt/templates/layouts/create"), {
+        const response = await fetch(getApiUrl("/api/v1/ppt/template/layouts/create"), {
             method: "POST",
             headers: getHeader(),
             body: JSON.stringify({
@@ -441,7 +441,7 @@ export const useTemplateCreation = ({
     const generateTemplateV2Blocks = useCallback(async (
         templateId: string
     ): Promise<void> => {
-        const response = await fetch(getApiUrl("/api/v1/ppt/templates/generate-blocks"), {
+        const response = await fetch(getApiUrl("/api/v1/ppt/template/generate-blocks"), {
             method: "POST",
             headers: getHeader(),
             body: JSON.stringify({
@@ -494,7 +494,7 @@ export const useTemplateCreation = ({
                 uploaded_font_count: Object.keys(previewData.fonts ?? {}).length,
             });
 
-            const initResponse = await fetch(getApiUrl("/api/v1/ppt/templates/init"), {
+            const initResponse = await fetch(getApiUrl("/api/v1/ppt/template/init"), {
                 method: "POST",
                 headers: getHeader(),
                 body: JSON.stringify({

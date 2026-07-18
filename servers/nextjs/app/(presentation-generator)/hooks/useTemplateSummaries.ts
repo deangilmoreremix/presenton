@@ -69,8 +69,14 @@ export function useTemplateSummaries({
     };
 
     const loadTemplateSummaries = async () => {
-      const response = await TemplateService.getTemplateSummaries();
-      return filterTemplatesWithLayouts(response.items ?? []);
+      const [defaultResponse, customResponse] = await Promise.all([
+        TemplateService.getTemplateSummaries(true),
+        TemplateService.getTemplateSummaries(false),
+      ]);
+      return [
+        ...filterTemplatesWithLayouts(defaultResponse.items ?? []),
+        ...filterTemplatesWithLayouts(customResponse.items ?? []),
+      ];
     };
 
     const loadInitialTemplates = async () => {

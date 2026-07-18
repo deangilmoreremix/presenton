@@ -18,11 +18,18 @@ def test_openapi_exposes_template_catalog_and_schema_detail():
     openapi_spec_path = Path(__file__).resolve().parents[2] / "openai_spec.json"
     spec = json.loads(openapi_spec_path.read_text(encoding="utf-8"))
 
-    list_operation = spec["paths"]["/api/v1/ppt/template"]["get"]
+    list_operation = spec["paths"]["/api/v1/ppt/template/all"]["get"]
     detail_operation = spec["paths"]["/api/v1/ppt/template/{template_id}"]["get"]
 
     assert list_operation["operationId"] == "template_list"
     assert detail_operation["operationId"] == "template_get"
+    default_filter = next(
+        parameter
+        for parameter in list_operation["parameters"]
+        if parameter["name"] == "default"
+    )
+    assert default_filter["in"] == "query"
+    assert {"type": "boolean"} in default_filter["schema"]["anyOf"]
 
     list_item = spec["components"]["schemas"]["TemplateListItem"]
     detail = spec["components"]["schemas"]["TemplateResponse"]

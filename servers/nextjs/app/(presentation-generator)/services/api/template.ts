@@ -83,7 +83,7 @@ class TemplateService {
 
     static async getCustomTemplateSummaries() {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/template/all`),);
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/all?page_size=100&default=false`),);
             return await ApiResponseHandler.handleResponse(response, "Failed to get custom template summaries");
         } catch (error) {
             console.error("Failed to get custom template summaries", error);
@@ -101,9 +101,13 @@ class TemplateService {
         }
     }
 
-    static async getTemplateSummaries(): Promise<TemplateListResponse> {
+    static async getTemplateSummaries(isDefault?: boolean): Promise<TemplateListResponse> {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/templates?page_size=100`));
+            const params = new URLSearchParams({ page_size: "100" });
+            if (typeof isDefault === "boolean") {
+                params.set("default", String(isDefault));
+            }
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/all?${params.toString()}`));
             return await ApiResponseHandler.handleResponse(response, "Failed to get Templates summaries");
         } catch (error) {
             console.error("Failed to get Templates summaries", error);
@@ -113,7 +117,7 @@ class TemplateService {
 
     static async getTemplateDetails(templateId: string): Promise<TemplateDetailsResponse> {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`));
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/${encodeURIComponent(templateId)}`));
             return await ApiResponseHandler.handleResponse(response, "Failed to get template details");
         } catch (error) {
             console.error("Failed to get Templates v1 details", error);
@@ -123,7 +127,7 @@ class TemplateService {
 
     static async createTemplate(payload: CreateTemplatePayload): Promise<AsyncTaskResponse> {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/async`), {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/async`), {
                 method: "POST",
                 headers: getHeader(),
                 body: JSON.stringify(payload),
@@ -156,7 +160,7 @@ class TemplateService {
 
     static async deleteTemplate(templateId: string) {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`), {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/${encodeURIComponent(templateId)}`), {
                 method: "DELETE",
                 headers: getHeader(),
             });
@@ -172,7 +176,7 @@ class TemplateService {
         payload: UpdateTemplateMetadataPayload,
     ) {
         try {
-            const response = await fetch(getApiUrl(`/api/v1/ppt/templates/${encodeURIComponent(templateId)}`), {
+            const response = await fetch(getApiUrl(`/api/v1/ppt/template/${encodeURIComponent(templateId)}`), {
                 method: "PATCH",
                 headers: getHeader(),
                 body: JSON.stringify(payload),

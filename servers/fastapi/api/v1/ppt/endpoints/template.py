@@ -6,7 +6,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from functools import partial
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 from urllib.parse import unquote, urlparse
 
 from fastapi import (
@@ -844,17 +844,23 @@ def _generate_indexed_slide_layouts(
 
 
 @TEMPLATE_ROUTER.get(
-    "",
+    "/all",
     response_model=TemplateListResponse,
     operation_id="template_list",
 )
 async def list_templates(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    default: Annotated[
+        Optional[bool],
+        Query(
+            description="Only include default templates when true, custom templates when false.",
+        ),
+    ] = None,
     sql_session: AsyncSession = Depends(get_async_session),
 ):
     offset = (page - 1) * page_size
-    result = await sql_session.execute(
+    query = (
         select(
             TemplateV2.id,
             TemplateV2.name,
@@ -867,6 +873,10 @@ async def list_templates(
         )
         .order_by(TemplateV2.created_at.desc())
     )
+    if default is not None:
+        query = query.where(TemplateV2.is_default == default)
+
+    result = await sql_session.execute(query)
 
     items: list[TemplateListItem] = []
     for (
@@ -879,6 +889,9 @@ async def list_templates(
         created_at,
         updated_at,
     ) in result.all():
+        if default is not None and bool(is_default) != default:
+            continue
+
         layout_count = _count_layouts(layouts)
         if layout_count == 0:
             continue

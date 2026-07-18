@@ -190,39 +190,43 @@ class _RowsResult:
 
 
 class _ListSession:
+    def __init__(self, rows=None):
+        self.rows = rows
+
     async def scalar(self, *_args, **_kwargs):
         return 1
 
     async def execute(self, *_args, **_kwargs):
         now = datetime(2026, 6, 8, tzinfo=timezone.utc)
+        rows = self.rows or [
+            (
+                "00000000-0000-0000-0000-000000000000",
+                "Generating Template",
+                "Still generating",
+                {"layouts": []},
+                {},
+                False,
+                now,
+                now,
+            ),
+            (
+                "00000000-0000-0000-0000-000000000001",
+                "Quarterly Review",
+                "Board deck template",
+                TEMPLATE_LAYOUTS,
+                {
+                    "slide_image_urls": [
+                        "/app_data/images/slide-1.png",
+                        "/app_data/images/slide-2.png",
+                    ]
+                },
+                False,
+                now,
+                now,
+            ),
+        ]
         return _RowsResult(
-            [
-                (
-                    "00000000-0000-0000-0000-000000000000",
-                    "Generating Template",
-                    "Still generating",
-                    {"layouts": []},
-                    {},
-                    False,
-                    now,
-                    now,
-                ),
-                (
-                    "00000000-0000-0000-0000-000000000001",
-                    "Quarterly Review",
-                    "Board deck template",
-                    TEMPLATE_LAYOUTS,
-                    {
-                        "slide_image_urls": [
-                            "/app_data/images/slide-1.png",
-                            "/app_data/images/slide-2.png",
-                        ]
-                    },
-                    False,
-                    now,
-                    now,
-                )
-            ]
+            rows
         )
 
 
@@ -645,6 +649,56 @@ def test_list_templates_returns_paginated_summary():
     assert response.items[0].layout_count == 1
     assert response.items[0].thumbnail == "/app_data/images/slide-1.png"
     assert response.items[0].is_default is False
+
+
+def test_list_templates_filters_by_default_flag():
+    now = datetime(2026, 6, 8, tzinfo=timezone.utc)
+    rows = [
+        (
+            "default-template",
+            "Dynamic",
+            "Built-in template",
+            TEMPLATE_LAYOUTS,
+            {},
+            True,
+            now,
+            now,
+        ),
+        (
+            "custom-template",
+            "Quarterly Review",
+            "Board deck template",
+            TEMPLATE_LAYOUTS,
+            {},
+            False,
+            now,
+            now,
+        ),
+    ]
+
+    default_response = asyncio.run(
+        list_templates(
+            page=1,
+            page_size=20,
+            default=True,
+            sql_session=_ListSession(rows=rows),
+        )
+    )
+    custom_response = asyncio.run(
+        list_templates(
+            page=1,
+            page_size=20,
+            default=False,
+            sql_session=_ListSession(rows=rows),
+        )
+    )
+
+    assert [item.id for item in default_response.items] == ["default-template"]
+    assert default_response.total == 1
+    assert default_response.items[0].is_default is True
+    assert [item.id for item in custom_response.items] == ["custom-template"]
+    assert custom_response.total == 1
+    assert custom_response.items[0].is_default is False
 
 
 def test_get_template_returns_layouts_components_and_fonts(fake_async_session):
