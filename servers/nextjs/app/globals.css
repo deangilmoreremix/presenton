@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "@clerk/themes/shadcn.css";
 
 body {
   font-family: var(--font-syne), var(--font-unbounded), var(--font-inter),
