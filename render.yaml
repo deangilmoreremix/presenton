@@ -1,0 +1,99 @@
+# render.yaml — Deploy SmartSlides (Docker) on Render
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This deploys the whole app as ONE Docker web service built from the existing
+# Dockerfile. Inside the container, start.js launches FastAPI (8000), the MCP
+# server (8001) and Next.js (3000), all fronted by nginx on port 80.
+#
+# HOW TO USE
+#   1. Push this repo (with this file at the repo root) to GitHub/GitLab.
+#   2. In Render: New + -> "Blueprint" -> pick this repo.
+#   3. Render reads this file, creates the service + disk.
+#   4. Fill in the secret env vars (marked sync:false) in the dashboard.
+#   5. Deploy. First build is slow (PyTorch, docling, LibreOffice, Chromium).
+
+services:
+  - type: web
+    name: smartslides
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # nginx inside the container listens on port 80.
+    plan: standard        # >= "standard" recommended: image is heavy (torch + LibreOffice + Chromium)
+    region: oregon        # change to your preferred region
+    healthCheckPath: /docs
+    autoDeploy: true
+
+    # Persistent storage for presentations, DB, uploads, fonts, images.
+    # Without this, all generated data is lost on every deploy/restart.
+    disk:
+      name: smartslides-data
+      mountPath: /app_data
+      sizeGB: 10
+
+    envVars:
+      # --- App runtime ---
+      # nginx is hardcoded to port 80; tell Render to route to 80.
+      - key: PORT
+        value: "80"
+      - key: APP_DATA_DIRECTORY
+        value: /app_data
+      - key: TEMP_DIRECTORY
+        value: /tmp/presenton
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+
+      # If false, users cannot change API keys in the UI (keys come from env).
+      # Set to "true" if you want the in-app Settings page to manage keys.
+      - key: CAN_CHANGE_KEYS
+        value: "false"
+
+      # --- LLM provider (choose one) ---
+      # openai | google | anthropic | ollama | custom
+      - key: LLM
+        value: openai
+
+      # OpenAI
+      - key: OPENAI_API_KEY
+        sync: false          # set this in the Render dashboard (secret)
+      - key: OPENAI_MODEL
+        value: gpt-4.1
+
+      # Google Gemini (only if LLM=google)
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        value: models/gemini-2.0-flash
+
+      # Anthropic (only if LLM=anthropic)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-3-5-sonnet-20241022
+
+      # Custom / OpenAI-compatible endpoint (only if LLM=custom)
+      - key: CUSTOM_LLM_URL
+        sync: false
+      - key: CUSTOM_LLM_API_KEY
+        sync: false
+      - key: CUSTOM_MODEL
+        sync: false
+
+      # --- Image generation provider ---
+      # dall-e-3 | gemini_flash | pexels | pixabay
+      - key: IMAGE_PROVIDER
+        value: dall-e-3
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: PIXABAY_API_KEY
+        sync: false
+
+      # --- Optional feature flags ---
+      - key: WEB_GROUNDING
+        value: "false"
+      - key: DISABLE_ANONYMOUS_TELEMETRY
+        value: "true"
+
+      # --- Optional external database (defaults to SQLite on the disk) ---
+      # - key: DATABASE_URL
+      #   sync: false
