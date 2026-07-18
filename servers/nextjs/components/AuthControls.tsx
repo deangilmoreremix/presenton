@@ -44,5 +44,9 @@ function SignedOutControls() {
 function UserButtonAfterAuth() {
   const { isSignedIn } = useUser();
   if (!isSignedIn) return null;
-  return <UserButton afterSignOutUrl="/" />;
+  return (
+    <UserButton>
+      <UserButton.Action label="signOut" />
+    </UserButton>
+  );
 }

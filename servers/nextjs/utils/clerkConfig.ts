@@ -7,8 +7,8 @@ export function isClerkEnabled(): boolean {
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     return true;
   }
-  if (typeof window !== "undefined" && (window as Record<string, unknown>).env) {
-    const env = (window as Record<string, unknown>).env as Record<string, string>;
+  if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).env) {
+    const env = (window as unknown as Record<string, unknown>).env as Record<string, string>;
     if (env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return true;
   }
   return false;
@@ -19,7 +19,7 @@ export function getClerkPublishableKey(): string | undefined {
     return process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   }
   if (typeof window !== "undefined") {
-    const env = (window as Record<string, unknown>).env as Record<string, string> | undefined;
+    const env = (window as unknown as Record<string, unknown>).env as Record<string, string> | undefined;
     return env?.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   }
   return undefined;
