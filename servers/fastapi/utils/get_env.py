@@ -398,3 +398,39 @@ def get_openai_compat_image_api_key_env():
 
 def get_openai_compat_image_model_env():
     return os.getenv("OPENAI_COMPAT_IMAGE_MODEL")
+
+
+# ---------------------------------------------------------------------------
+# Clerk authentication
+# ---------------------------------------------------------------------------
+def get_clerk_secret_key_env():
+    return os.getenv("CLERK_SECRET_KEY")
+
+
+def get_clerk_publishable_key_env():
+    return os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
+
+
+def get_clerk_domain_env() -> str | None:
+    """Derive the Clerk frontend API domain from the publishable key.
+
+    Publishable keys look like `pk_test_<base64>.<domain>` where <domain> is
+    e.g. `example.clerk.accounts.dev`. Falls back to CLERK_DOMAIN if set.
+    """
+    explicit = (os.getenv("CLERK_DOMAIN") or "").strip()
+    if explicit:
+        return explicit
+
+    pk = get_clerk_publishable_key_env()
+    if not pk:
+        return None
+    try:
+        # Split off the optional "pk_test_" / "pk_live_" prefix, then take the
+        # part after the first dot.
+        body = pk.split("_", 2)[-1] if "_" in pk else pk
+        if "." in body:
+            return body.split(".", 1)[1]
+    except Exception:
+        return None
+    return None
+

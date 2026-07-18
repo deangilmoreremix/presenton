@@ -77,6 +77,14 @@ services:
       - key: AUTH_PASSWORD
         sync: false
 
+      # ---- Clerk authentication (optional; leave blank to use built-in basic auth) ----
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false           # set to your pk_test_... / pk_live_... to enable Clerk
+      - key: CLERK_SECRET_KEY
+        sync: false           # set to your sk_test_... / sk_live_... (server only)
+      - key: CLERK_DOMAIN
+        sync: false           # optional: e.g. smartslides.clerk.accounts.dev
+
     # Persistent disk: without this, every deploy wipes presentations, the
     # SQLite DB, uploads, and generated images.
     disk:

@@ -4,6 +4,7 @@ import {
   readUserConfigFile,
   updateUserConfigFile,
 } from "@/lib/user-config-store";
+import { getClerkUserIdOrNull } from "@/utils/clerkServer";
 
 const canChangeKeys = process.env.CAN_CHANGE_KEYS !== "false";
 const AUTH_FIELDS = new Set([
@@ -26,8 +27,20 @@ function stripAuthFieldsFromIncoming(config: Record<string, unknown>) {
   );
 }
 
-function getUserConfigPath() {
-  return process.env.USER_CONFIG_PATH;
+function getUserConfigPath(): string | undefined {
+  const base = process.env.USER_CONFIG_PATH;
+  if (!base) return undefined;
+
+  // When Clerk is the auth provider, scope each user's config to its own file
+  // so "bring your own keys" is actually isolated per account.
+  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    const userId = getClerkUserIdOrNull();
+    if (userId) {
+      const dir = base.replace(/\/[^/]+\.json$/, "") || base;
+      return `${dir}/user_configs/${userId}.json`;
+    }
+  }
+  return base;
 }
 
 async function readConfigBody(request: Request): Promise<Record<string, unknown>> {

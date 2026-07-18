@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthDisabled } from "@/utils/auth";
+import { isClerkEnabled } from "@/utils/clerkConfig";
 
 /**
  * API-only: session required for all /api/* except auth, telemetry, public
@@ -136,6 +137,20 @@ export async function proxy(request: NextRequest) {
     return continueRequest(request);
   }
 
+  // When Clerk is enabled, gate /api access on a valid Clerk session. The
+  // browser forwards the Clerk JWT as a Bearer token (see utils/api.ts), but
+  // we also accept the session cookie for first-party same-origin requests.
+  if (isClerkEnabled()) {
+    const clerkUserId = await getClerkUserId(request);
+    if (clerkUserId) {
+      return continueRequest(request);
+    }
+    return NextResponse.json(
+      { detail: "Unauthorized" },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   if (request.method === "OPTIONS" || isApiAuthExempt(pathname)) {
     return continueRequest(request);
   }
@@ -156,6 +171,16 @@ export async function proxy(request: NextRequest) {
   );
 }
 
+async function getClerkUserId(request: NextRequest): Promise<string | null> {
+  try {
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId } = await auth();
+    return userId;
+  } catch {
+    return null;
+  }
+}
+
 export const config = {
-  matcher: ["/api/:path*", "/app_data/:path*", "/static/:path*", "/pdf-maker"],
+  matcher: ["/api/:path*", "/app_data/:path*", "/static/:path*", "/pdf-maker", "/__clerk/:path*"],
 };

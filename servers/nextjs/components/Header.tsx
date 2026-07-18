@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Layout, Plus } from "lucide-react";
+import AuthControls from "@/components/AuthControls";
 
 const Header: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const Header: React.FC = () => {
               <Layout className="w-5 h-5" />
               <span className="text-sm font-medium font-inter">Templates</span>
             </Link>
+            <AuthControls />
           </nav>
         </div>
       </div>

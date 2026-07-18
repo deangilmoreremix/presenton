@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { getApiUrl } from "@/utils/api";
 import { isAuthDisabled } from "@/utils/auth";
+import { isClerkEnabled } from "@/utils/clerkConfig";
 import { formatFastApiDetail, UNAUTHORIZED_DETAIL } from "@/utils/authErrors";
 import {
   PRESENTON_SPLASH_MIN_DURATION_MS,
@@ -284,6 +285,17 @@ export default function AuthGate() {
     !hasMetSplashDuration
   ) {
     return <PresentonSplashLoader message="Preparing your workspace..." />;
+  }
+
+  if (isClerkEnabled()) {
+    const { SignIn } = require("@clerk/nextjs");
+    return (
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#E1E1E5] bg-white p-7 shadow-xl sm:p-10">
+          <SignIn appearance={{ variables: { colorPrimary: "#7C51F8" } }} />
+        </div>
+      </main>
+    );
   }
 
   return (

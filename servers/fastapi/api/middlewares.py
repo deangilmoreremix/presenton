@@ -9,6 +9,7 @@ from utils.simple_auth import (
     get_session_token_from_request,
     verify_credentials,
 )
+from utils.clerk_auth import get_clerk_user_id_from_request, is_clerk_enabled
 from utils.user_config import update_env_with_user_config
 
 
@@ -52,6 +53,17 @@ class SessionAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
+
+        # When Clerk is the auth provider, a valid Clerk session (cookie or
+        # bearer) authenticates the request. Per-user config is keyed by the
+        # Clerk user id downstream.
+        if is_clerk_enabled():
+            clerk_user_id = get_clerk_user_id_from_request(request)
+            if clerk_user_id:
+                request.state.auth_username = clerk_user_id
+                request.state.clerk_user_id = clerk_user_id
+                return await call_next(request)
+            # Clerk is enabled but no valid session: fall through to 401.
 
         if (
             request.method == "OPTIONS"

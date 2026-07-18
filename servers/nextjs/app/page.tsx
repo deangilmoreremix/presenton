@@ -3,8 +3,22 @@ import Home from "@/components/Home";
 import { ConfigurationInitializer } from "./ConfigurationInitializer";
 import { isAuthDisabled } from "@/utils/auth";
 import { getServerAuthStatus } from "@/utils/serverAuth";
+import { isClerkEnabled } from "@/utils/clerkConfig";
 
 const page = async () => {
+    if (isClerkEnabled()) {
+        const { auth } = await import("@clerk/nextjs/server");
+        const { userId } = await auth();
+        if (!userId) {
+            return <AuthGate />;
+        }
+        return (
+            <ConfigurationInitializer>
+                <Home />
+            </ConfigurationInitializer>
+        );
+    }
+
     if (isAuthDisabled()) {
         return (
             <ConfigurationInitializer>

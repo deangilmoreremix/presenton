@@ -5,6 +5,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
 import { Toaster } from "@/components/ui/sonner";
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/themes";
 const inter = localFont({
   src: [
     {
@@ -92,14 +94,18 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${syne.variable} ${manrope.variable} ${unbounded.variable} antialiased`}
       >
-        <Providers>
-          <MixpanelInitializer>
+        <ClerkProvider
+          appearance={{ theme: shadcn, variables: { colorPrimary: "#7C51F8" } }}
+        >
+          <Providers>
+            <MixpanelInitializer>
 
-            {children}
+              {children}
 
-          </MixpanelInitializer>
-        </Providers>
-        <Toaster position="top-center" />
+            </MixpanelInitializer>
+          </Providers>
+          <Toaster position="top-center" />
+        </ClerkProvider>
       </body>
     </html>
   );
