@@ -838,9 +838,10 @@ function adaptVector(raw: UnknownRecord): SlideElement | null {
   if (!hasVisiblePaint(fill, stroke, base.opacity)) return null;
   if (points.length < 2) return null;
 
-  const { position, size, ...pointBase } = base;
+  const { position, size, decorative, ...pointBase } = base;
   void position;
   void size;
+  void decorative;
 
   return {
     ...pointBase,

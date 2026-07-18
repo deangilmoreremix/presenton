@@ -267,8 +267,10 @@ export type VectorCurve = {
 
 export type VectorShape = "polygon" | "ellipse";
 
-export type VectorElement = ElementBase & {
+export type VectorElement = Omit<ElementBase, "decorative" | "name"> & {
   type: "vector";
+  decorative?: never;
+  name?: never;
   shape?: VectorShape | null;
   points: Position[];
   closed?: boolean | null;

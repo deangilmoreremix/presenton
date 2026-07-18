@@ -137,7 +137,7 @@ def test_image_element_accepts_flip_flags():
         )
 
 
-@pytest.mark.parametrize("element_type", ["line", "rectangle", "ellipse"])
+@pytest.mark.parametrize("element_type", ["line", "rectangle", "ellipse", "circle"])
 def test_legacy_geometry_is_not_adapted_to_vectors(element_type: str):
     with pytest.raises(ValidationError):
         RawSlideLayout.model_validate(
