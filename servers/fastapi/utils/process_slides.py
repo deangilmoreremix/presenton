@@ -19,12 +19,9 @@ from utils.image_generation_error import image_generation_warning
 IMAGE_PROMPT_KEYS = ("__image_prompt__", "image_prompt", "prompt")
 ICON_QUERY_KEYS = ("__icon_query__", "icon_query", "query")
 TEMPLATE_ASSET_MARKER_KEYS = ("image_url", "icon_url", "image_prompt", "icon_query")
-CUSTOM_TEMPLATE_PREFIX = "custom-"
 
 
 def _uses_template_asset_fields(slide: SlideModel) -> bool:
-    if slide.layout_group.startswith(CUSTOM_TEMPLATE_PREFIX):
-        return True
     if isinstance(slide.ui, dict):
         return True
     if isinstance(slide.content, dict):

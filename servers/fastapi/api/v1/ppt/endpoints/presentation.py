@@ -128,7 +128,7 @@ def _requested_slide_count(request: GeneratePresentationRequest) -> int:
 
 
 def _template_reference(template_id: str) -> str:
-    return f"{CUSTOM_TEMPLATE_PREFIX}{template_id}"
+    return template_id
 
 
 def _extract_template_id(value: Optional[str]) -> Optional[str]:

@@ -155,7 +155,7 @@ def test_process_slide_fetches_every_template_image_and_icon(monkeypatch):
     )
     slide = SlideModel(
         presentation=uuid.uuid4(),
-        layout_group="custom-template",
+        layout_group="template-id",
         layout="layout-1",
         index=0,
         content={
@@ -218,10 +218,11 @@ def test_process_slide_fetches_template_raw_schema_icon_query(monkeypatch):
     image_generation_service.generate_image = AsyncMock()
     slide = SlideModel(
         presentation=uuid.uuid4(),
-        layout_group="custom-template",
+        layout_group="template-id",
         layout="layout-1",
         index=0,
         content={"status_icon": {"query": "growth chart"}},
+        ui={},
         properties=None,
     )
 
@@ -245,10 +246,11 @@ def test_process_slide_fetches_template_raw_schema_icon_query(monkeypatch):
 def test_process_slide_adds_template_raw_schema_icon_placeholder():
     slide = SlideModel(
         presentation=uuid.uuid4(),
-        layout_group="custom-template",
+        layout_group="template-id",
         layout="layout-1",
         index=0,
         content={"status_icon": {"query": "growth chart"}},
+        ui={},
         properties=None,
     )
 
@@ -309,7 +311,7 @@ def test_process_template_edit_reuses_assets_with_clean_url_fields(monkeypatch):
 def test_template_placeholders_use_clean_url_fields():
     slide = SlideModel(
         presentation=uuid.uuid4(),
-        layout_group="custom-template-id",
+        layout_group="template-id",
         layout="layout-1",
         index=0,
         content={

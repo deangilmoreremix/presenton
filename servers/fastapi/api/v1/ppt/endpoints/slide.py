@@ -20,7 +20,6 @@ from utils.process_slides import process_old_and_new_slides_and_fetch_assets
 
 SLIDE_ROUTER = APIRouter(prefix="/slide", tags=["Slide"])
 LOGGER = logging.getLogger(__name__)
-CUSTOM_TEMPLATE_PREFIX = "custom-"
 
 
 def _is_template_layout_payload(layout: object) -> bool:
@@ -76,7 +75,6 @@ async def edit_slide(
         use_template_asset_fields=(
             _is_template_layout_payload(presentation.layout)
             or isinstance(slide.ui, dict)
-            or slide.layout_group.startswith(CUSTOM_TEMPLATE_PREFIX)
         ),
         allow_image_fallback=True,
         image_warnings=image_warnings,

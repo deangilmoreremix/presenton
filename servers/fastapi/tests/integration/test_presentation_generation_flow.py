@@ -251,11 +251,11 @@ def test_generate_presentation_handler_uses_template_layout():
         **_template_layout_payload(),
         "icon_type": "bold",
         "icon_weight": "bold",
-        "name": f"custom-{template_id}",
+        "name": template_id,
         "template_id": template_id,
     }
     assert presentation.fonts == {"Inter": "https://example.com/inter.css"}
-    assert slide.layout_group == f"custom-{template_id}"
+    assert slide.layout_group == template_id
     assert slide.ui["components"][0]["elements"][0]["runs"][0]["text"] == "V2 headline"
 
 
@@ -275,7 +275,7 @@ def test_default_template_name_resolves_bundled_template_without_schema_page():
     )
 
     assert layout_payload["layouts"][0]["id"] == "template-layout-1"
-    assert layout_payload["name"] == f"custom-{template_id}"
+    assert layout_payload["name"] == template_id
     assert layout_payload["template_id"] == template_id
     assert layout_model.slides[0].id == "template-layout-1"
     assert fonts == {"Inter": "/app_data/templates/general/inter.ttf"}
@@ -559,13 +559,13 @@ def test_prepare_presentation_accepts_template_layout_id():
         **template_layouts,
         "icon_type": "bold",
         "icon_weight": "bold",
-        "name": f"custom-{template_id}",
+        "name": template_id,
         "template_id": template_id,
     }
     assert presentation.structure == {"slides": [0]}
     assert presentation.fonts == {"Inter": "https://example.com/inter.css"}
     structure_layout = generate_structure.await_args.kwargs["presentation_layout"]
-    assert structure_layout.name == f"custom-{template_id}"
+    assert structure_layout.name == template_id
     assert structure_layout.slides[0].id == "template-layout-1"
 
 
@@ -637,7 +637,7 @@ def test_get_presentation_preserves_template_detail_payload():
     slides = [
         SlideModel(
             presentation=presentation_id,
-            layout_group=f"custom-{template.id}",
+            layout_group=template.id,
             layout="slide_1",
             index=0,
             content={},
@@ -886,7 +886,7 @@ def test_edit_presentation_hydrates_template_slide_ui():
     )
     slide = SlideModel(
         presentation=presentation_id,
-        layout_group=f"custom-{template_id}",
+        layout_group=template_id,
         layout="template-layout-1",
         index=0,
         content={"hero": {"headline": "Old headline"}},
@@ -941,7 +941,7 @@ def test_derive_presentation_hydrates_template_slide_ui():
     )
     slide = SlideModel(
         presentation=presentation_id,
-        layout_group=f"custom-{template_id}",
+        layout_group=template_id,
         layout="template-layout-1",
         index=0,
         content={"hero": {"headline": "Old headline"}},
