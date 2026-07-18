@@ -88,8 +88,44 @@ async function loadShapeToolbar() {
   return import(pathToFileURL(outfile).href);
 }
 
+async function loadInsertElements() {
+  const outDir = await mkdtemp(path.join(tmpdir(), "insert-elements-test-"));
+  const outfile = path.join(outDir, "insert-elements.mjs");
+
+  await build({
+    entryPoints: [
+      path.join(
+        projectRoot,
+        "components",
+        "slide-editor",
+        "insert",
+        "insert-elements.ts",
+      ),
+    ],
+    outfile,
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    sourcemap: false,
+    logLevel: "silent",
+    plugins: [
+      {
+        name: "next-alias",
+        setup(builder) {
+          builder.onResolve({ filter: /^@\// }, (args) => ({
+            path: resolveNextAlias(args.path),
+          }));
+        },
+      },
+    ],
+  });
+
+  return import(pathToFileURL(outfile).href);
+}
+
 const modelPromise = loadModel();
 const shapeToolbarPromise = loadShapeToolbar();
+const insertElementsPromise = loadInsertElements();
 
 test("adds and removes vector shape points", async () => {
   const {
@@ -158,6 +194,10 @@ test("detects two-point open vector lines", async () => {
   assert.equal(isVectorLineElement({ type: "vector", points }), true);
   assert.equal(
     isVectorLineElement({ type: "vector", points, closed: true }),
+    false,
+  );
+  assert.equal(
+    isVectorLineElement({ type: "vector", shape: "ellipse", points }),
     false,
   );
   assert.equal(
@@ -235,6 +275,174 @@ test("merges vector frame edits into point geometry", async () => {
   assert.equal(Object.hasOwn(merged, "size"), false);
 });
 
+test("anchors vector frame resizes from left and top handles", async () => {
+  const {
+    anchoredFramePositionForResize,
+    polygonElementFromFrame,
+    polygonRenderBox,
+  } = await modelPromise;
+  const current = {
+    type: "vector",
+    points: [
+      { x: 100, y: 80 },
+      { x: 140, y: 80 },
+      { x: 140, y: 110 },
+      { x: 100, y: 110 },
+    ],
+    closed: true,
+  };
+  const box = polygonRenderBox(current);
+  const bounds = { width: 500, height: 400 };
+
+  const leftPosition = anchoredFramePositionForResize(
+    box,
+    { width: 70, height: 30 },
+    "middle-left",
+    { x: 100, y: 80 },
+    bounds,
+  );
+  const leftResized = polygonElementFromFrame(
+    current,
+    leftPosition,
+    70 / 40,
+    1,
+  );
+
+  assert.deepEqual(leftPosition, { x: 70, y: 80 });
+  assert.deepEqual(polygonRenderBox(leftResized), {
+    x: 70,
+    y: 80,
+    width: 70,
+    height: 30,
+  });
+
+  const topPosition = anchoredFramePositionForResize(
+    box,
+    { width: 40, height: 55 },
+    "top-center",
+    { x: 100, y: 80 },
+    bounds,
+  );
+  const topResized = polygonElementFromFrame(
+    current,
+    topPosition,
+    1,
+    55 / 30,
+  );
+
+  assert.deepEqual(topPosition, { x: 100, y: 55 });
+  assert.deepEqual(polygonRenderBox(topResized), {
+    x: 100,
+    y: 55,
+    width: 40,
+    height: 55,
+  });
+});
+
+test("single-vector wrapper left and top resizes move the component origin", async () => {
+  const {
+    anchoredFramePositionForResize,
+    anchoredFramePositionForResizeUnclamped,
+    componentBox,
+    polygonElementFromFrame,
+    polygonRenderBox,
+    updateElementInUi,
+  } = await modelPromise;
+  const component = {
+    position: { x: 100, y: 50 },
+    elements: [
+      {
+        type: "vector",
+        points: [
+          { x: 0, y: 0 },
+          { x: 40, y: 0 },
+          { x: 40, y: 30 },
+          { x: 0, y: 30 },
+        ],
+        closed: true,
+      },
+    ],
+  };
+  const selection = { kind: "element", componentIndex: 0, elementPath: [0] };
+  const current = component.elements[0];
+  const box = polygonRenderBox(current);
+
+  assert.deepEqual(
+    anchoredFramePositionForResize(
+      box,
+      { width: 70, height: 30 },
+      "middle-left",
+      { x: 0, y: 0 },
+      { width: 40, height: 30 },
+    ),
+    { x: 0, y: 0 },
+  );
+
+  const leftPosition = anchoredFramePositionForResizeUnclamped(
+    box,
+    { width: 70, height: 30 },
+    "middle-left",
+    { x: 0, y: 0 },
+  );
+  const leftResized = polygonElementFromFrame(
+    current,
+    leftPosition,
+    70 / 40,
+    1,
+  );
+  const leftUi = updateElementInUi(
+    { components: [component] },
+    selection,
+    () => leftResized,
+  );
+
+  assert.deepEqual(leftPosition, { x: -30, y: 0 });
+  assert.deepEqual(componentBox(leftUi.components[0]), {
+    x: 70,
+    y: 50,
+    width: 70,
+    height: 30,
+  });
+  assert.deepEqual(polygonRenderBox(leftUi.components[0].elements[0]), {
+    x: 0,
+    y: 0,
+    width: 70,
+    height: 30,
+  });
+
+  const topPosition = anchoredFramePositionForResizeUnclamped(
+    box,
+    { width: 40, height: 55 },
+    "top-center",
+    { x: 0, y: 0 },
+  );
+  const topResized = polygonElementFromFrame(
+    current,
+    topPosition,
+    1,
+    55 / 30,
+  );
+  const topUi = updateElementInUi(
+    { components: [component] },
+    selection,
+    () => topResized,
+  );
+
+  assert.deepEqual(topPosition, { x: 0, y: -25 });
+  assert.deepEqual(componentBox(topUi.components[0]), {
+    x: 100,
+    y: 25,
+    width: 40,
+    height: 55,
+  });
+  assert.deepEqual(polygonRenderBox(topUi.components[0].elements[0]), {
+    x: 0,
+    y: 0,
+    width: 40,
+    height: 55,
+  });
+});
+
 test("merges vector rotation without shifting points", async () => {
   const { mergeEditorToolbarElement } = await modelPromise;
   const current = {
@@ -302,9 +510,15 @@ test("toolbar merge removes nullable vector style fields", async () => {
 test("toolbar merge removes nullable shape style fields", async () => {
   const { mergeEditorToolbarElement } = await modelPromise;
   const current = {
-    type: "rectangle",
-    position: { x: 10, y: 20 },
-    size: { width: 50, height: 20 },
+    type: "vector",
+    shape: "polygon",
+    points: [
+      { x: 10, y: 20 },
+      { x: 60, y: 20 },
+      { x: 60, y: 40 },
+      { x: 10, y: 40 },
+    ],
+    closed: true,
     fill: { color: "#FFFFFF", opacity: 1 },
     stroke: { color: "#111111", width: 2 },
     shadow: { color: "#000000", blur: 8, opacity: 0.2 },
@@ -314,8 +528,7 @@ test("toolbar merge removes nullable shape style fields", async () => {
     current,
     {
       ...current,
-      position: { x: 10, y: 20 },
-      size: { width: 50, height: 20 },
+      points: current.points,
       fill: null,
       stroke: null,
       shadow: null,
@@ -496,6 +709,34 @@ test("preserves inserted vector elements", async () => {
   assert.equal(element.closed, true);
 });
 
+test("creates circle and ellipse sidebar presets as four-point ellipse vectors", async () => {
+  const { createElementInsertElements } = await insertElementsPromise;
+
+  const [circle] = createElementInsertElements("vector-circle");
+  assert.equal(circle.type, "vector");
+  assert.equal(circle.shape, "ellipse");
+  assert.equal(circle.closed, true);
+  assert.equal(Object.hasOwn(circle, "curve"), false);
+  assert.deepEqual(circle.points, [
+    { x: 244, y: 134 },
+    { x: 354, y: 244 },
+    { x: 244, y: 354 },
+    { x: 134, y: 244 },
+  ]);
+
+  const [ellipse] = createElementInsertElements("vector-ellipse");
+  assert.equal(ellipse.type, "vector");
+  assert.equal(ellipse.shape, "ellipse");
+  assert.equal(ellipse.closed, true);
+  assert.equal(Object.hasOwn(ellipse, "curve"), false);
+  assert.deepEqual(ellipse.points, [
+    { x: 307, y: 134 },
+    { x: 480, y: 233 },
+    { x: 307, y: 332 },
+    { x: 134, y: 233 },
+  ]);
+});
+
 test("wraps inserted vector elements without component padding", async () => {
   const { componentBox, insertedElementToComponent } = await modelPromise;
   const component = insertedElementToComponent(
@@ -546,7 +787,7 @@ test("selects inserted vector lines directly", async () => {
           { x: 569, y: 219 },
         ],
         closed: false,
-        stroke: { color: "101323", width: 2 },
+        stroke: { color: "7A5AF8", width: 2 },
       },
     ],
     [],

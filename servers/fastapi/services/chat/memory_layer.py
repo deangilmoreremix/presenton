@@ -434,10 +434,10 @@ class PresentationChatMemoryLayer:
             ),
             "speaker_note": slide.speaker_note,
         }
+        ui = self._slide_ui_layout(slide)
         if include_full_content:
             response["content"] = slide.content
-            response["ui"] = slide.ui
-        ui = self._slide_ui_layout(slide)
+            response["ui"] = ui if ui is not None else slide.ui
         if ui is not None:
             response["ui_summary"] = await self.get_slide_ui_elements(
                 index=slide.index,
