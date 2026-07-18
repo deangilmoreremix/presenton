@@ -265,11 +265,9 @@ const Header = ({
         <Announcement />
         <Wrapper className="flex items-center justify-between py-1">
           <Link href="/dashboard" className="min-w-[162px]">
-            <img
-              className="h-16"
-              src="/logo-white.png"
-              alt="Presentation logo"
-            />
+            <span className="text-2xl font-bold tracking-tight text-white py-4 inline-block">
+              SmartSlides
+            </span>
           </Link>
 
           {/* Desktop Menu */}

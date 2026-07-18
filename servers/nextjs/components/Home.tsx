@@ -147,7 +147,9 @@ export default function Home() {
         {/* Branding Header */}
         <div className="text-center mb-2 mt-4 flex-shrink-0">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <img src="/Logo.png" alt="Presenton Logo" className="h-12" />
+            <span className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              SmartSlides
+            </span>
           </div>
           <p className="text-gray-600 text-sm">
             Open-source AI presentation generator

@@ -112,11 +112,9 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 text-center">
             {/* Logo/Branding */}
             <div className="mb-6">
-              <img
-                src="/Logo.png"
-                alt="PresentOn"
-                className="h-12 mx-auto mb-4 opacity-90"
-              />
+              <span className="block text-3xl font-bold tracking-tight mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                SmartSlides
+              </span>
               <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto rounded-full"></div>
             </div>
 

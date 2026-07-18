@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Outline Presentation",
   description: "Customize and organize your presentation outline. Drag and drop slides, add charts, and generate your presentation with ease.",
   alternates: {
-    canonical: "https://presenton.ai/create"
+    canonical: "https://smartslides.ai/create"
   },
   keywords: [
     "presentation generator",
