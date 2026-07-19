@@ -8792,8 +8792,8 @@
   ],
   "layouts": [
     {
-      "id": "two_column_profile_layout_1311",
-      "description": "A clean two column presentation layout with a large rounded image card and a structured text panel with attribution card.",
+      "id": "left_image_right_profile_card_1311",
+      "description": "A clean split presentation layout with a large rounded image card and a structured text panel with attribution card.",
       "components": [
         {
           "id": "background_canvas",
@@ -9225,8 +9225,8 @@
       ]
     },
     {
-      "id": "two_column_overview_7327",
-      "description": "A clean two-column presentation layout with a large rounded visual card on the left and stacked headline copy on the right.",
+      "id": "left_image_right_title_description_7327",
+      "description": "A clean split presentation layout with a large rounded visual card on the left and stacked headline copy on the right.",
       "components": [
         {
           "id": "slide_background",
@@ -9458,8 +9458,8 @@
       ]
     },
     {
-      "id": "asymmetric_services_layout_2087",
-      "description": "A clean asymmetric slide with a large title, four service feature blocks, decorative accents, and a rounded image panel on the right.",
+      "id": "title_services_right_image_2087",
+      "description": "A clean asymmetric slide with a large title, service feature blocks, decorative accents, and a rounded image panel on the right.",
       "components": [
         {
           "id": "background_accents",
@@ -10259,8 +10259,8 @@
       ]
     },
     {
-      "id": "asymmetric_problem_layout_3503",
-      "description": "A clean two-column presentation layout with a large visual panel on the left and explanatory feature blocks on the right.",
+      "id": "left_image_right_feature_blocks_3503",
+      "description": "A clean split presentation layout with a large visual panel on the left and explanatory feature blocks on the right.",
       "components": [
         {
           "id": "slide_background",
@@ -10869,7 +10869,7 @@
       ]
     },
     {
-      "id": "split_chart_sidebar_layout_8545",
+      "id": "header_chart_right_info_cards_8545",
       "description": "A clean presentation layout with a top-left header, large chart panel, and stacked rounded information cards in a right sidebar.",
       "components": [
         {
@@ -11559,8 +11559,8 @@
       ]
     },
     {
-      "id": "centered_metrics_layout_2114",
-      "description": "A clean centered slide with decorative side panels, a prominent title, and three evenly spaced metric cards across the middle.",
+      "id": "center_title_metric_cards_2114",
+      "description": "A clean centered slide with decorative side panels, a prominent title, and evenly spaced metric cards across the middle.",
       "components": [
         {
           "id": "decorative_background",
@@ -12215,7 +12215,7 @@
       ]
     },
     {
-      "id": "split_visual_metrics_4254",
+      "id": "left_image_right_metrics_4254",
       "description": "A clean split layout with a large visual card on the left and headline, body copy, and metrics on the right.",
       "components": [
         {
@@ -12674,8 +12674,8 @@
       ]
     },
     {
-      "id": "sectioned_summary_layout_7307",
-      "description": "A clean presentation layout with a large title, supporting image, four numbered text sections, and a decorative footer accent.",
+      "id": "title_image_text_sections_7307",
+      "description": "A clean presentation layout with a large title, supporting image, structured text sections, and a decorative footer accent.",
       "components": [
         {
           "id": "background_canvas",
@@ -13362,7 +13362,7 @@
       ]
     },
     {
-      "id": "centered_quote_hero_9120",
+      "id": "center_quote_image_background_9120",
       "description": "A full-bleed photographic hero slide with dark overlay, decorative corner circles, and centered quote content stack.",
       "components": [
         {
@@ -13779,7 +13779,7 @@
       ]
     },
     {
-      "id": "centered_table_layout_3129",
+      "id": "center_title_comparison_table_3129",
       "description": "A centered presentation layout with subtle side accents, prominent heading, rounded comparison card, and explanatory note beneath.",
       "components": [
         {
@@ -14477,8 +14477,8 @@
       ]
     },
     {
-      "id": "two_column_index_layout_2601",
-      "description": "A clean contents slide with centered heading, small decorative accent, and two balanced columns of numbered navigation rows.",
+      "id": "center_title_index_columns_2601",
+      "description": "A clean contents slide with centered heading, small decorative accent, and balanced columns of navigation rows.",
       "components": [
         {
           "id": "background_canvas",
@@ -16535,8 +16535,8 @@
       ]
     },
     {
-      "id": "team_profile_grid_2803",
-      "description": "A clean two-column presentation layout with introductory copy on the left and a four-card profile grid on the right.",
+      "id": "left_intro_right_team_grid_2803",
+      "description": "A clean split presentation layout with introductory copy on the left and a profile card grid on the right.",
       "components": [
         {
           "id": "background_canvas",

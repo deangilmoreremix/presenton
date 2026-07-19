@@ -7836,8 +7836,8 @@
   ],
   "layouts": [
     {
-      "id": "split_cover_layout_7212",
-      "description": "A two-column cover layout with a large visual panel on the left and stacked introduction content on the right.",
+      "id": "left_image_right_cover_text_7212",
+      "description": "A split cover layout with a large visual panel on the left and stacked introduction content on the right.",
       "components": [
         {
           "id": "canvas_background",
@@ -8187,8 +8187,8 @@
       ]
     },
     {
-      "id": "split_chart_text_5880",
-      "description": "A clean two-column slide with a line chart on the left and stacked editorial text on the right.",
+      "id": "left_chart_right_title_description_5880",
+      "description": "A clean split slide with a line chart on the left and stacked editorial text on the right.",
       "components": [
         {
           "id": "plain_background",
@@ -8367,8 +8367,8 @@
       ]
     },
     {
-      "id": "split_visual_details_2189",
-      "description": "A two-column slide layout with a large visual panel on the left and a structured text column on the right.",
+      "id": "left_image_right_details_2189",
+      "description": "A split slide layout with a large visual panel on the left and a structured text column on the right.",
       "components": [
         {
           "id": "plain_background",
@@ -8762,8 +8762,8 @@
       ]
     },
     {
-      "id": "split_visual_card_layout_6875",
-      "description": "A split hero slide with a large left visual, oversized heading on the right, and a four-column strategy panel overlaying the center.",
+      "id": "left_image_right_title_strategy_cards_6875",
+      "description": "A split hero slide with a large left visual, oversized heading on the right, and a strategy card panel overlaying the center.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -9388,8 +9388,8 @@
       ]
     },
     {
-      "id": "split_text_panel_4909",
-      "description": "A clean two-column layout with a small top divider, stacked text list on the left, and large headline with note card on the right.",
+      "id": "left_text_list_right_title_note_4909",
+      "description": "A clean split layout with a small top divider, stacked text list on the left, and large headline with note card on the right.",
       "components": [
         {
           "id": "page_background",
@@ -9738,7 +9738,7 @@
       ]
     },
     {
-      "id": "hero_card_layout_1475",
+      "id": "title_image_background_center_card_1475",
       "description": "A clean presentation slide with a top title band, full-width muted image backdrop, and centered rectangular information card.",
       "components": [
         {
@@ -10124,8 +10124,8 @@
       ]
     },
     {
-      "id": "centered_card_row_2395",
-      "description": "A clean white slide with a centered oversized heading, decorative top rule, and three evenly spaced vertical cards.",
+      "id": "center_title_cards_2395",
+      "description": "A clean white slide with a centered oversized heading, decorative top rule, and evenly spaced vertical cards.",
       "components": [
         {
           "id": "plain_canvas",
@@ -10818,8 +10818,8 @@
       ]
     },
     {
-      "id": "two_column_metrics_7973",
-      "description": "A clean presentation layout with a large header and a two-column grid of uniform metric cards beneath it.",
+      "id": "title_metric_card_grid_7973",
+      "description": "A clean presentation layout with a large header and a uniform grid of metric cards beneath it.",
       "components": [
         {
           "id": "background_canvas",
@@ -12138,8 +12138,8 @@
       ]
     },
     {
-      "id": "side_image_timeline_6170",
-      "description": "A three-column journey slide with a timeline list on the left, tall central image, and headline copy on the right.",
+      "id": "left_timeline_center_image_right_title_6170",
+      "description": "A journey slide with a timeline list on the left, tall central image, and headline copy on the right.",
       "components": [
         {
           "id": "white_background",
@@ -12790,8 +12790,8 @@
       ]
     },
     {
-      "id": "header_with_index_grid_3810",
-      "description": "A clean presentation slide with a large header area above a two-column grid of bordered rows with numbered badges.",
+      "id": "title_index_grid_3810",
+      "description": "A clean presentation slide with a large header area above a grid of bordered rows with index badges.",
       "components": [
         {
           "id": "white_backdrop",
@@ -14462,8 +14462,8 @@
       ]
     },
     {
-      "id": "top_header_metric_cards_2015",
-      "description": "A white presentation slide with a large serif headline, supporting paragraph, and four evenly spaced metric cards below.",
+      "id": "title_description_metric_cards_2015",
+      "description": "A white presentation slide with a large serif headline, supporting paragraph, and evenly spaced metric cards below.",
       "components": [
         {
           "id": "slide_background",

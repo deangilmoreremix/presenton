@@ -14863,7 +14863,7 @@
   ],
   "layouts": [
     {
-      "id": "split_cover_layout_8271",
+      "id": "cover_title_left_image_right_8271",
       "description": "Dark presentation cover layout with left-aligned typography, lower-left caption, and a tall rectangular image panel on the right.",
       "components": [
         {
@@ -15138,8 +15138,8 @@
       ]
     },
     {
-      "id": "four_column_overview_3481",
-      "description": "Dark full-slide background with four vertical content columns, large numeric labels, headings, bottom summaries, and thin dividers.",
+      "id": "content_column_overview_3481",
+      "description": "Dark full-slide background with vertical content columns, label accents, headings, bottom summaries, and thin dividers.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -15770,7 +15770,7 @@
       ]
     },
     {
-      "id": "centered_title_with_indicator_9624",
+      "id": "center_title_description_indicator_9624",
       "description": "A full-bleed dark background layout with centered headline, supporting copy, and a small row of circular indicators near the bottom.",
       "components": [
         {
@@ -16029,8 +16029,8 @@
       ]
     },
     {
-      "id": "image_top_text_bottom_7836",
-      "description": "A dark full-bleed slide with a rounded wide image above a two-column text area near the bottom.",
+      "id": "top_image_bottom_text_columns_7836",
+      "description": "A dark full-bleed slide with a rounded wide image above a column-based text area near the bottom.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -16194,8 +16194,8 @@
       ]
     },
     {
-      "id": "dark_three_card_layout_5364",
-      "description": "A dark full-bleed slide with a large upper-left heading and three evenly spaced dark cards across the lower section.",
+      "id": "title_cards_bottom_5364",
+      "description": "A dark full-bleed slide with a large upper-left heading and evenly spaced dark cards across the lower section.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -16772,8 +16772,8 @@
       ]
     },
     {
-      "id": "three_zone_visual_layout_2105",
-      "description": "Dark full-bleed layout with a left text stack, centered visual asset, and three stacked explanatory text blocks on the right.",
+      "id": "left_text_center_image_right_text_2105",
+      "description": "Dark full-bleed layout with a left text stack, centered visual asset, and stacked explanatory text blocks on the right.",
       "components": [
         {
           "id": "full_bleed_backdrop",
@@ -17219,8 +17219,8 @@
       ]
     },
     {
-      "id": "left_title_right_grid_2044",
-      "description": "A dark full-bleed layout with a large title area on the left and a rounded right panel containing four text cards.",
+      "id": "left_title_right_card_grid_2044",
+      "description": "A dark full-bleed layout with a large title area on the left and a rounded right panel containing text cards.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -17803,8 +17803,8 @@
       ]
     },
     {
-      "id": "center_visual_with_callouts_5621",
-      "description": "A dark full-bleed slide with centered layered heading, central overlapping-circle visual, and four surrounding text callout blocks.",
+      "id": "center_visual_callouts_5621",
+      "description": "A dark full-bleed slide with centered layered heading, central overlapping-circle visual, and surrounding text callout blocks.",
       "components": [
         {
           "id": "full_bleed_backdrop",
@@ -18403,8 +18403,8 @@
       ]
     },
     {
-      "id": "centered_title_three_cards_2592",
-      "description": "A dark full-bleed slide with a centered title block above three evenly spaced vertical cards in the lower half.",
+      "id": "center_title_cards_2592",
+      "description": "A dark full-bleed slide with a centered title block above evenly spaced vertical cards in the lower half.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -18954,8 +18954,8 @@
       ]
     },
     {
-      "id": "image_text_split_layout_4153",
-      "description": "Dark full-bleed background with large title, rounded photo panel, and two stacked text callouts on the right.",
+      "id": "title_image_right_callouts_4153",
+      "description": "Dark full-bleed background with large title, rounded photo panel, and stacked text callouts on the right.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -19292,8 +19292,8 @@
       ]
     },
     {
-      "id": "split_comparison_layout_4102",
-      "description": "Two balanced comparison panels over a dark textured background with large headings, rounded images, and short captions near the bottom.",
+      "id": "image_comparison_panels_4102",
+      "description": "Balanced comparison panels over a dark textured background with large headings, rounded images, and short captions near the bottom.",
       "components": [
         {
           "id": "background_layer",
@@ -19568,7 +19568,7 @@
       ]
     },
     {
-      "id": "asymmetric_dashboard_layout_2580",
+      "id": "title_chart_right_info_panel_2580",
       "description": "Dark full-bleed slide with a large upper-left header, lower-left trend visualization, and stacked translucent information panel on the right.",
       "components": [
         {
@@ -19969,8 +19969,8 @@
       ]
     },
     {
-      "id": "dark_stepped_cards_1046",
-      "description": "Dark full-bleed slide with an upper-left headline block and three translucent cards arranged in a stepped horizontal sequence.",
+      "id": "title_stepped_cards_1046",
+      "description": "Dark full-bleed slide with an upper-left headline block and translucent cards arranged in a stepped horizontal sequence.",
       "components": [
         {
           "id": "full_bleed_backdrop",
@@ -20427,7 +20427,7 @@
       ]
     },
     {
-      "id": "split_panel_visual_layout_1475",
+      "id": "left_title_right_chart_panel_1475",
       "description": "Dark full-bleed presentation layout with a large left text block and a translucent chart card aligned on the right.",
       "components": [
         {
@@ -20675,8 +20675,8 @@
       ]
     },
     {
-      "id": "dark_chart_slide_4067",
-      "description": "Dark presentation slide with a two-column heading area above a wide chart and fixed textured background accents.",
+      "id": "title_chart_layout_4067",
+      "description": "Dark presentation slide with a column-based heading area above a wide chart and fixed textured background accents.",
       "components": [
         {
           "id": "full_bleed_backdrop_copy_copy",
@@ -20900,8 +20900,8 @@
       ]
     },
     {
-      "id": "centered_review_cards_1880",
-      "description": "Dark presentation slide with a centered top title and three evenly spaced review cards over a fixed atmospheric background.",
+      "id": "center_title_review_cards_1880",
+      "description": "Dark presentation slide with a centered top title and evenly spaced review cards over a fixed atmospheric background.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -21589,7 +21589,7 @@
       ]
     },
     {
-      "id": "large_title_image_layout_3101",
+      "id": "large_title_bottom_image_3101",
       "description": "A dark presentation layout with a large upper-left headline and a wide rounded image panel spanning the lower center.",
       "components": [
         {
@@ -21721,8 +21721,8 @@
       ]
     },
     {
-      "id": "split_text_media_layout_6461",
-      "description": "Dark split-screen layout with a large left text block and three stacked media-and-text rows on the right.",
+      "id": "left_title_right_media_rows_6461",
+      "description": "Dark split-screen layout with a large left text block and stacked media-and-text rows on the right.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -22262,8 +22262,8 @@
       ]
     },
     {
-      "id": "centered_grid_columns_2104",
-      "description": "Dark full-slide layout with a centered headline above five evenly spaced vertical image-and-text columns over a textured lower background.",
+      "id": "center_title_image_columns_2104",
+      "description": "Dark full-slide layout with a centered headline above evenly spaced vertical image-and-text columns over a textured lower background.",
       "components": [
         {
           "id": "full_bleed_backdrop",
@@ -22996,8 +22996,8 @@
       ]
     },
     {
-      "id": "centered_callout_pyramid_6308",
-      "description": "Dark full-bleed slide with a centered tiered visual and three surrounding text callouts connected by short horizontal rules.",
+      "id": "center_pyramid_callouts_6308",
+      "description": "Dark full-bleed slide with a centered tiered visual and surrounding text callouts connected by short horizontal rules.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -23399,8 +23399,8 @@
       ]
     },
     {
-      "id": "centered_cards_layout_4771",
-      "description": "Dark full-slide background with a centered headline area and three equal rounded cards arranged across the lower half.",
+      "id": "center_title_cards_4771",
+      "description": "Dark full-slide background with a centered headline area and equal rounded cards arranged across the lower half.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -24094,7 +24094,7 @@
       ]
     },
     {
-      "id": "two_column_text_layout_3504",
+      "id": "left_title_right_text_sections_3504",
       "description": "Dark full-bleed background with a large left title area and stacked right text sections separated by thin dividers.",
       "components": [
         {
@@ -24684,7 +24684,7 @@
       ]
     },
     {
-      "id": "centered_closing_slide_1992",
+      "id": "closing_title_description_1992",
       "description": "A dark full-bleed slide with a warm textured lower glow and a centered headline with supporting text.",
       "components": [
         {
@@ -24845,7 +24845,7 @@
       ]
     },
     {
-      "id": "dark_staggered_layout_8296",
+      "id": "title_staggered_cards_right_image_8296",
       "description": "Dark presentation layout with large headline, staggered feature cards on the left, and a rounded portrait image panel on the right.",
       "components": [
         {
@@ -25430,7 +25430,7 @@
       ]
     },
     {
-      "id": "left_text_overlay_4828",
+      "id": "left_title_description_overlay_4828",
       "description": "A dark full-bleed background with a warm textured lower gradient and a large left-aligned title with supporting paragraph.",
       "components": [
         {
@@ -25589,8 +25589,8 @@
       ]
     },
     {
-      "id": "dark_metrics_layout_2098",
-      "description": "A dark presentation slide with a large upper title and three evenly spaced metric callouts along the lower edge.",
+      "id": "title_metric_callouts_2098",
+      "description": "A dark presentation slide with a large upper title and evenly spaced metric callouts along the lower edge.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -26175,8 +26175,8 @@
       ]
     },
     {
-      "id": "staggered_three_card_layout_4818",
-      "description": "Dark presentation layout with an upper-left heading area and three bottom-aligned vertical cards increasing in height from left to right.",
+      "id": "title_staggered_cards_4818",
+      "description": "Dark presentation layout with an upper-left heading area and bottom-aligned vertical cards increasing in height from left to right.",
       "components": [
         {
           "id": "full_bleed_backdrop",
@@ -26671,7 +26671,7 @@
       ]
     },
     {
-      "id": "split_metric_layout_4802",
+      "id": "left_title_right_metric_rows_4802",
       "description": "A dark presentation layout with a large left headline and a right column of stacked metric rows over a textured bottom accent.",
       "components": [
         {
@@ -27232,8 +27232,8 @@
       ]
     },
     {
-      "id": "centered_metrics_layout_3569",
-      "description": "Dark full-slide layout with a centered heading and three evenly spaced rounded metric cards across the lower half.",
+      "id": "center_title_metric_cards_3569",
+      "description": "Dark full-slide layout with a centered heading and evenly spaced rounded metric cards across the lower half.",
       "components": [
         {
           "id": "full_background",
@@ -27729,7 +27729,7 @@
       ]
     },
     {
-      "id": "split_chart_table_layout_1700",
+      "id": "title_donut_chart_right_table_1700",
       "description": "Dark presentation layout with a large title, donut chart on the left, and a structured comparison panel on the right.",
       "components": [
         {
@@ -28748,8 +28748,8 @@
       ]
     },
     {
-      "id": "dual_chart_panels_3982",
-      "description": "Dark presentation slide with centered title and two matching bar chart cards over a subtle textured lower background.",
+      "id": "center_title_chart_panels_3982",
+      "description": "Dark presentation slide with centered title and matching bar chart cards over a subtle textured lower background.",
       "components": [
         {
           "id": "full_bleed_background",
@@ -29024,8 +29024,8 @@
       ]
     },
     {
-      "id": "split_chart_list_6203",
-      "description": "Dark two-column layout with a large title, chart panel on the left, and stacked text sections on the right.",
+      "id": "title_left_chart_right_list_6203",
+      "description": "Dark split layout with a large title, chart panel on the left, and stacked text sections on the right.",
       "components": [
         {
           "id": "full_bleed_backdrop",

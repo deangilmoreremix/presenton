@@ -9244,7 +9244,7 @@
   ],
   "layouts": [
     {
-      "id": "split_cover_layout_2459",
+      "id": "left_cover_text_right_image_2459",
       "description": "A minimalist cover slide with left-aligned text, right-side image block, small geometric accents, badge, and footer divider.",
       "components": [
         {
@@ -9835,8 +9835,8 @@
       ]
     },
     {
-      "id": "wide_infographic_row_2844",
-      "description": "A clean white slide with a top title and note, four centered icon cards, and a thin footer rule.",
+      "id": "title_note_icon_cards_2844",
+      "description": "A clean white slide with a top title and note, centered icon cards, and a thin footer rule.",
       "components": [
         {
           "id": "background_canvas",
@@ -10694,8 +10694,8 @@
       ]
     },
     {
-      "id": "card_grid_slide_3936",
-      "description": "A clean slide layout with a large upper-left header, four aligned cards, a wide middle color band, and footer rule accents.",
+      "id": "title_cards_color_band_3936",
+      "description": "A clean slide layout with a large upper-left header, aligned cards, a wide middle color band, and footer rule accents.",
       "components": [
         {
           "id": "background_layers",
@@ -11729,8 +11729,8 @@
       ]
     },
     {
-      "id": "asymmetric_cards_layout_2981",
-      "description": "A clean team introduction slide with left text, three visual cards aligned across the top, and a minimal footer rule.",
+      "id": "left_intro_image_cards_2981",
+      "description": "A clean team introduction slide with left text, visual cards aligned across the top, and a minimal footer rule.",
       "components": [
         {
           "id": "canvas_decorations",
@@ -12427,8 +12427,8 @@
       ]
     },
     {
-      "id": "two_column_layout_2710",
-      "description": "A clean two-column slide with left text area, stacked cards on the right, subtle divider, and footer rule decorations.",
+      "id": "left_title_right_stacked_cards_2710",
+      "description": "A clean split slide with left text area, stacked cards on the right, subtle divider, and footer rule decorations.",
       "components": [
         {
           "id": "decorative_backdrop",
@@ -13319,8 +13319,8 @@
       ]
     },
     {
-      "id": "split_text_layout_1377",
-      "description": "A clean two-column slide layout with a large left heading, stacked right text sections, decorative accents, and footer rule.",
+      "id": "left_title_right_text_sections_1377",
+      "description": "A clean split slide layout with a large left heading, stacked right text sections, decorative accents, and footer rule.",
       "components": [
         {
           "id": "background_canvas",
@@ -14014,8 +14014,8 @@
       ]
     },
     {
-      "id": "two_column_index_layout_6248",
-      "description": "A minimalist table-of-contents slide with a large header, two-column numbered entry grid, and slim footer rule with corner accents.",
+      "id": "title_index_grid_6248",
+      "description": "A minimalist table-of-contents slide with a large header, entry grid, and slim footer rule with corner accents.",
       "components": [
         {
           "id": "canvas_background",
@@ -15720,7 +15720,7 @@
       ]
     },
     {
-      "id": "header_table_footer_6574",
+      "id": "title_table_panel_6574",
       "description": "A clean slide with a large title header, central rounded table panel, and minimal footer rule with corner markers.",
       "components": [
         {
@@ -16860,8 +16860,8 @@
       ]
     },
     {
-      "id": "centered_timeline_layout_9667",
-      "description": "Centered title with highlighted subtitle, four evenly spaced milestone cards along a horizontal timeline, and a minimal footer rule.",
+      "id": "center_title_timeline_cards_9667",
+      "description": "Centered title with highlighted subtitle, evenly spaced milestone cards along a horizontal timeline, and a minimal footer rule.",
       "components": [
         {
           "id": "decorative_frame",
