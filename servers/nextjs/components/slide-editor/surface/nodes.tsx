@@ -922,7 +922,7 @@ function RawElementNode({
       onElementChange(selection, (current) => ({
         ...translateVectorElement(current, delta),
         ...(layoutManaged || isManualPositioned(current)
-          ? { __presenton_manual_position: true }
+          ? { __smart_slides_manual_position: true }
           : {}),
       }));
     },
@@ -950,7 +950,7 @@ function RawElementNode({
       onElementChange(selection, (current) => ({
         ...updateVectorVertexPoint(current, index, point),
         ...(layoutManaged || isManualPositioned(current)
-          ? { __presenton_manual_position: true }
+          ? { __smart_slides_manual_position: true }
           : {}),
       }));
     },
@@ -962,7 +962,7 @@ function RawElementNode({
       onElementChange(selection, (current) => ({
         ...insertVectorPointInElement(current, afterIndex, point),
         ...(layoutManaged || isManualPositioned(current)
-          ? { __presenton_manual_position: true }
+          ? { __smart_slides_manual_position: true }
           : {}),
       }));
     },
@@ -974,7 +974,7 @@ function RawElementNode({
       onElementChange(selection, (current) => ({
         ...removeVectorPointFromElement(current, index),
         ...(layoutManaged || isManualPositioned(current)
-          ? { __presenton_manual_position: true }
+          ? { __smart_slides_manual_position: true }
           : {}),
       }));
     },
