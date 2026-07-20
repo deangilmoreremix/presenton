@@ -3,7 +3,7 @@
 This module lets the FastAPI service trust Clerk sessions issued by the
 Next.js frontend. It is feature-flagged on the presence of CLERK_SECRET_KEY:
 when that env var is unset the backend ignores Clerk entirely and falls back
-to the built-in simple_auth (basic auth / presenton_session cookie).
+to the built-in simple_auth (basic auth / smart-slides_session cookie).
 
 Verification strategy:
   * Clerk publishes its signing keys as a JWKS document at

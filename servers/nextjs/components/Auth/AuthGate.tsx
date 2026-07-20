@@ -7,9 +7,9 @@ import { isAuthDisabled } from "@/utils/auth";
 import { isClerkEnabled } from "@/utils/clerkConfig";
 import { formatFastApiDetail, UNAUTHORIZED_DETAIL } from "@/utils/authErrors";
 import {
-  PRESENTON_SPLASH_MIN_DURATION_MS,
-  PresentonSplashLoader,
-} from "@/components/ui/presenton-splash-loader";
+  SMART_SLIDES_SPLASH_MIN_DURATION_MS,
+  SmartSlidesSplashLoader,
+} from "@/components/ui/smart-slides-splash-loader";
 import { notify } from "@/components/ui/sonner";
 import { sanitizeAnalyticsError } from "@/utils/analytics";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
@@ -40,7 +40,7 @@ export default function AuthGate() {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setHasMetSplashDuration(true);
-    }, PRESENTON_SPLASH_MIN_DURATION_MS);
+    }, SMART_SLIDES_SPLASH_MIN_DURATION_MS);
 
     return () => window.clearTimeout(timeout);
   }, []);
@@ -284,7 +284,7 @@ export default function AuthGate() {
     status.authenticated ||
     !hasMetSplashDuration
   ) {
-    return <PresentonSplashLoader message="Preparing your workspace..." />;
+    return <SmartSlidesSplashLoader message="Preparing your workspace..." />;
   }
 
   if (isClerkEnabled()) {

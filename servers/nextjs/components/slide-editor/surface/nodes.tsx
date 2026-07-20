@@ -1077,7 +1077,7 @@ function RawElementNode({
           ...geometry,
           rotation: node.rotation(),
           ...(layoutManaged || isManualPositioned(current)
-            ? { __presenton_manual_position: true }
+            ? { __smart_slides_manual_position: true }
             : {}),
         };
       });

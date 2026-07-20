@@ -65,7 +65,7 @@ function resolveExportBrowserConfig(): { browser: Browser; buildId: string } {
 const EXPORT_BROWSER_CONFIG = resolveExportBrowserConfig();
 const EXPORT_BROWSER = EXPORT_BROWSER_CONFIG.browser;
 const EXPORT_BROWSER_BUILD_ID = EXPORT_BROWSER_CONFIG.buildId;
-const BUNDLED_CHROMIUM_MANIFEST = "presenton-runtime.json";
+const BUNDLED_CHROMIUM_MANIFEST = "smart-slides-runtime.json";
 
 type BundledChromiumManifest = {
   browser?: string;

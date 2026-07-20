@@ -5,7 +5,7 @@ const path = require("path");
 
 const packageJson = require("../package.json");
 
-const APP_DIRECTORY_NAME = packageJson.productName || "Presenton Open Source";
+const APP_DIRECTORY_NAME = packageJson.productName || "SmartSlides Open Source";
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const includePuppeteer = args.has("--include-puppeteer");
@@ -82,7 +82,7 @@ function appUserDataDirs() {
 
 function appTempDirs(userDataDirs) {
   return unique([
-    ...tempRootDirs().map((tempRoot) => path.join(tempRoot, "presenton")),
+    ...tempRootDirs().map((tempRoot) => path.join(tempRoot, "smart-slides")),
     ...userDataDirs.map((userDataDir) => path.join(userDataDir, "temp")),
   ]);
 }
@@ -132,7 +132,7 @@ function main() {
   if (args.has("--help") || args.has("-h")) {
     console.log(`Usage: node scripts/cleanup-installed-app-cache.cjs [--dry-run] [--include-puppeteer] [--verbose]
 
-Removes Presenton installed-app cache leftovers without touching user settings or exports.
+Removes SmartSlides installed-app cache leftovers without touching user settings or exports.
 
 Options:
   --dry-run             Show what would be removed without deleting anything

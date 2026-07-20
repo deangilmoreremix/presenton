@@ -1,6 +1,6 @@
 # macOS Development & Distribution
 
-Guides for building and signing the Presenton Electron app on macOS.
+Guides for building and signing the SmartSlides Electron app on macOS.
 
 | Guide | Description |
 |-------|-------------|
@@ -35,11 +35,11 @@ Output is written to `electron/dist/`. The default macOS target is a DMG built v
 For public releases outside the Mac App Store, use the signed and notarized direct distribution flow:
 
 ```bash
-export APPLE_KEYCHAIN_PROFILE="presenton-notary"
+export APPLE_KEYCHAIN_PROFILE="smart-slides-notary"
 npm run build:all:mac:signed
 ```
 
-That assumes the release Mac already has a **Developer ID Application** certificate and a stored `notarytool` profile named `presenton-notary`. See [Direct distribution](./direct-distribution.md) for the exact one-time setup and verification commands.
+That assumes the release Mac already has a **Developer ID Application** certificate and a stored `notarytool` profile named `smart-slides-notary`. See [Direct distribution](./direct-distribution.md) for the exact one-time setup and verification commands.
 
 **Build for the Mac App Store**
 

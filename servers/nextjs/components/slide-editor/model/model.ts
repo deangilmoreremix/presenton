@@ -1722,7 +1722,7 @@ export function elementBox(element: RawElement): Box {
 }
 
 export function isManualPositioned(element: RawElement) {
-  return element.__presenton_manual_position === true;
+  return element.__smart_slides_manual_position === true;
 }
 
 export function elementSize(element: RawElement, fallback?: Size): Size {
@@ -1885,7 +1885,7 @@ export function preserveInlineEditFrame(element: RawElement, frame?: Box | null)
       width: frame.width,
       height: frame.height,
     },
-    __presenton_manual_position: true,
+    __smart_slides_manual_position: true,
   };
 }
 
@@ -2069,7 +2069,7 @@ export function mergeEditorToolbarElement(
       Math.abs(nextSize.width - currentBox.width) > 0.01 ||
       Math.abs(nextSize.height - currentBox.height) > 0.01
     ) {
-      next.__presenton_manual_position = true;
+      next.__smart_slides_manual_position = true;
     }
     return applyEditorStyleRemovals(next, editor);
   }
@@ -2118,7 +2118,7 @@ export function mergeEditorToolbarElement(
     Math.abs(nextSize.width - elementSize(current).width) > 0.01 ||
     Math.abs(nextSize.height - elementSize(current).height) > 0.01
   ) {
-    merged.__presenton_manual_position = true;
+    merged.__smart_slides_manual_position = true;
   }
   return applyEditorStyleRemovals(merged, editor);
 }

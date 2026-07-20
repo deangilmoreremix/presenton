@@ -296,7 +296,7 @@ test("merges vector frame edits into point geometry", async () => {
   assert.equal(merged.rotation, 30);
   assert.deepEqual(merged.corner_radii, [4, 4, 4, 4]);
   assert.deepEqual(merged.stroke, { color: "#222222", width: 3 });
-  assert.equal(merged.__presenton_manual_position, true);
+  assert.equal(merged.__smart_slides_manual_position, true);
   assert.equal(Object.hasOwn(merged, "position"), false);
   assert.equal(Object.hasOwn(merged, "size"), false);
 });

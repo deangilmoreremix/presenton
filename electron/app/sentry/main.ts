@@ -47,7 +47,7 @@ function getRelease(): string {
     return process.env.SENTRY_RELEASE;
   }
 
-  return `presenton-electron@${app.getVersion()}`;
+  return `smart-slides-electron@${app.getVersion()}`;
 }
 
 export function initMainSentry(): void {
@@ -117,7 +117,7 @@ export function setMainSentryRuntimeContext(context: MainSentryRuntimeContext): 
     if (context.cacheRecoveryMode) {
       Sentry.setTag("cache_recovery.mode", context.cacheRecoveryMode);
     }
-    Sentry.setContext("presenton", {
+    Sentry.setContext("smart-slides", {
       profileHash: context.profileHash,
       cacheRecoveryStatus: context.cacheRecoveryStatus,
       cacheRecoveryMode: context.cacheRecoveryMode,
@@ -138,7 +138,7 @@ export function captureMainException(
   try {
     Sentry.withScope((scope) => {
       if (context) {
-        scope.setContext("presenton", context);
+        scope.setContext("smart-slides", context);
       }
       Sentry.captureException(error);
     });

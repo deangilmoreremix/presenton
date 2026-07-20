@@ -14,7 +14,7 @@ import { ArrowDownUp, ArrowUp } from "lucide-react";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { usePathname } from "next/navigation";
 
-const GITHUB_REPOSITORY_URL = "https://github.com/presenton/presenton";
+const GITHUB_REPOSITORY_URL = "https://github.com/smart-slides/smart-slides";
 const DISCORD_INVITE_URL = "https://discord.com/invite/9ZsKKxudNE";
 const APP_UPDATE_URL = "https://smartslides.ai/download";
 

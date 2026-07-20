@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     siteName: "SmartSlides",
     images: [
       {
-        url: "https://smartslides.ai/presenton-feature-graphics.png",
+        url: "https://smartslides.ai/smart-slides-feature-graphics.png",
         width: 1200,
         height: 630,
         alt: "SmartSlides Logo",
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     title: "SmartSlides - Open Source AI presentation generator",
     description:
       "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
-    images: ["https://smartslides.ai/presenton-feature-graphics.png"],
+    images: ["https://smartslides.ai/smart-slides-feature-graphics.png"],
   },
 };
 
@@ -89,7 +89,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="preload" href="/Presenton_Splash.png" as="image" />
+        <link rel="preload" href="/SmartSlides_Splash.png" as="image" />
       </head>
       <body
         className={`${inter.variable} ${syne.variable} ${manrope.variable} ${unbounded.variable} antialiased`}

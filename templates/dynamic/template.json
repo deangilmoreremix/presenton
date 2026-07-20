@@ -3174,7 +3174,7 @@
               "max_length": 20,
               "min_length": 10,
               "text": "HEADING FOR SOLUTION",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             },
             {
               "type": "text",
@@ -3915,7 +3915,7 @@
               "max_length": 43,
               "min_length": 22,
               "text": "COMPANIES AVERAGE 12\nDISCONNECTED HR AND IT",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -4120,7 +4120,7 @@
               "max_length": 27,
               "min_length": 14,
               "text": "LOREM IPSUM DOLOR SIT AMET",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -11936,7 +11936,7 @@
               "name": "main_title",
               "max_length": 15,
               "min_length": 8,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ],
           "rotation": 0
@@ -13823,7 +13823,7 @@
               "name": "upper_heading",
               "max_length": 17,
               "min_length": 8,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -13878,7 +13878,7 @@
               "name": "supporting_heading",
               "max_length": 102,
               "min_length": 51,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -13912,7 +13912,7 @@
               "decorative": false,
               "name": "overlap_circle_visual",
               "is_icon": false,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14021,7 +14021,7 @@
               "name": "upper_left_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14130,7 +14130,7 @@
               "name": "lower_left_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14239,7 +14239,7 @@
               "name": "upper_right_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14348,7 +14348,7 @@
               "name": "lower_right_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14381,7 +14381,7 @@
               "decorative": true,
               "name": "card_panel",
               "is_icon": false,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14414,7 +14414,7 @@
               "decorative": false,
               "name": "badge_wreath",
               "is_icon": true,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14471,7 +14471,7 @@
               "name": "card_title",
               "max_length": 7,
               "min_length": 4,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14526,7 +14526,7 @@
               "name": "card_body",
               "max_length": 109,
               "min_length": 55,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14668,7 +14668,7 @@
                 "x": 0,
                 "y": 0
               },
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -14810,7 +14810,7 @@
                 "x": 0,
                 "y": 0
               },
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -16274,7 +16274,7 @@
               "max_length": 43,
               "min_length": 22,
               "text": "COMPANIES AVERAGE 12\nDISCONNECTED HR AND IT",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -17907,7 +17907,7 @@
               "name": "upper_heading",
               "max_length": 17,
               "min_length": 8,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -17956,7 +17956,7 @@
               "name": "supporting_heading",
               "max_length": 102,
               "min_length": 51,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -17984,7 +17984,7 @@
               "decorative": false,
               "name": "overlap_circle_visual",
               "is_icon": false,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18087,7 +18087,7 @@
               "name": "upper_left_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18190,7 +18190,7 @@
               "name": "lower_left_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18293,7 +18293,7 @@
               "name": "upper_right_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18396,7 +18396,7 @@
               "name": "lower_right_callout",
               "max_children": 2,
               "min_children": 2,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -18483,7 +18483,7 @@
               "max_length": 20,
               "min_length": 10,
               "text": "HEADING FOR SOLUTION",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             },
             {
               "type": "text",
@@ -18548,7 +18548,7 @@
               "decorative": true,
               "name": "card_panel",
               "is_icon": false,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18575,7 +18575,7 @@
               "decorative": false,
               "name": "badge_wreath",
               "is_icon": true,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18626,7 +18626,7 @@
               "name": "card_title",
               "max_length": 7,
               "min_length": 4,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18675,7 +18675,7 @@
               "name": "card_body",
               "max_length": 109,
               "min_length": 55,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18811,7 +18811,7 @@
                 "x": 0,
                 "y": 0
               },
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },
@@ -18947,7 +18947,7 @@
                 "x": 0,
                 "y": 0
               },
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         }
@@ -25695,7 +25695,7 @@
               "name": "main_title",
               "max_length": 15,
               "min_length": 8,
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ],
           "rotation": 0
@@ -26790,7 +26790,7 @@
               "max_length": 27,
               "min_length": 14,
               "text": "LOREM IPSUM DOLOR SIT AMET",
-              "__presenton_manual_position": true
+              "__smart_slides_manual_position": true
             }
           ]
         },

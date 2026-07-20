@@ -1,13 +1,13 @@
 services:
   production:
-    platform: ${PRESENTON_DOCKER_PLATFORM:-linux/amd64}
-    # image: ghcr.io/presenton/presenton:latest
+    platform: ${SMART_SLIDES_DOCKER_PLATFORM:-linux/amd64}
+    # image: ghcr.io/smart-slides/smart-slides:latest
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      # Set PRESENTON_HTTP_HOST_PORT to change the host port.
-      - "${PRESENTON_HTTP_HOST_PORT:-5001}:80"
+      # Set SMART_SLIDES_HTTP_HOST_PORT to change the host port.
+      - "${SMART_SLIDES_HTTP_HOST_PORT:-5001}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
@@ -16,7 +16,7 @@ services:
       - ./servers/fastapi/utils/internal_http.py:/app/servers/fastapi/utils/internal_http.py:ro
     environment:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PRESENTON_HOST_HTTP_PORT=${PRESENTON_HOST_HTTP_PORT:-5001}
+      - SMART_SLIDES_HOST_HTTP_PORT=${SMART_SLIDES_HOST_HTTP_PORT:-5001}
       - MIGRATE_DATABASE_ON_STARTUP=true
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS:-}
       - LLM=${LLM:-}
@@ -115,8 +115,8 @@ services:
       - RESET_AUTH=${RESET_AUTH:-}
 
   production-gpu:
-    platform: ${PRESENTON_DOCKER_PLATFORM:-linux/amd64}
-    # image: ghcr.io/presenton/presenton:latest
+    platform: ${SMART_SLIDES_DOCKER_PLATFORM:-linux/amd64}
+    # image: ghcr.io/smart-slides/smart-slides:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -128,15 +128,15 @@ services:
               count: 1
               capabilities: [gpu]
     ports:
-      # Set PRESENTON_HTTP_HOST_PORT to change the host port.
-      - "${PRESENTON_HTTP_HOST_PORT:-5001}:80"
+      # Set SMART_SLIDES_HTTP_HOST_PORT to change the host port.
+      - "${SMART_SLIDES_HTTP_HOST_PORT:-5001}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
       - ./app_data:/app_data
     environment:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PRESENTON_HOST_HTTP_PORT=${PRESENTON_HOST_HTTP_PORT:-5000}
+      - SMART_SLIDES_HOST_HTTP_PORT=${SMART_SLIDES_HOST_HTTP_PORT:-5000}
       - MIGRATE_DATABASE_ON_STARTUP=true
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS:-}
       - LLM=${LLM:-}
@@ -235,23 +235,24 @@ services:
       - RESET_AUTH=${RESET_AUTH:-}
 
   development:
-    platform: ${PRESENTON_DOCKER_PLATFORM:-linux/amd64}
+    platform: ${SMART_SLIDES_DOCKER_PLATFORM:-linux/amd64}
     build:
       context: .
       dockerfile: Dockerfile.dev
     ports:
-      - "${PRESENTON_HTTP_HOST_PORT:-5001}:80"
+      - "${SMART_SLIDES_HTTP_HOST_PORT:-5001}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
       - .:/app
-      - presenton_root_node_modules:/app/node_modules
-      - presenton_document_extraction_liteparse:/app/document-extraction-liteparse
+      - smart-slides_root_node_modules:/app/node_modules
+      - smart-slides_document_extraction_liteparse:/app/document-extraction-liteparse
       - ./app_data:/app_data
     environment:
       # Bundled PPTX/PDF export (Puppeteer); matches CI and production image.
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PRESENTON_HOST_HTTP_PORT=${PRESENTON_HOST_HTTP_PORT:-5001}
+      - SMART_SLIDES_HOST_HTTP_PORT=${SMART_SLIDES_HOST_HTTP_PORT:-5001}
+      - DISABLE_AUTH=true
       # Ollama is not baked into the image; set START_OLLAMA=true for runtime install, or use OLLAMA_URL.
       - START_OLLAMA=${START_OLLAMA:-false}
       - MIGRATE_DATABASE_ON_STARTUP=true
@@ -351,7 +352,7 @@ services:
       - RESET_AUTH=${RESET_AUTH:-}
 
   development-gpu:
-    platform: ${PRESENTON_DOCKER_PLATFORM:-linux/amd64}
+    platform: ${SMART_SLIDES_DOCKER_PLATFORM:-linux/amd64}
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -363,17 +364,17 @@ services:
               count: 1
               capabilities: [gpu]
     ports:
-      - "${PRESENTON_HTTP_HOST_PORT:-5001}:80"
+      - "${SMART_SLIDES_HTTP_HOST_PORT:-5001}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
       - .:/app
-      - presenton_root_node_modules:/app/node_modules
-      - presenton_document_extraction_liteparse:/app/document-extraction-liteparse
+      - smart-slides_root_node_modules:/app/node_modules
+      - smart-slides_document_extraction_liteparse:/app/document-extraction-liteparse
       - ./app_data:/app_data
     environment:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - PRESENTON_HOST_HTTP_PORT=${PRESENTON_HOST_HTTP_PORT:-5000}
+      - SMART_SLIDES_HOST_HTTP_PORT=${SMART_SLIDES_HOST_HTTP_PORT:-5000}
       - START_OLLAMA=${START_OLLAMA:-false}
       - MIGRATE_DATABASE_ON_STARTUP=true
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS:-}
@@ -472,5 +473,5 @@ services:
       - RESET_AUTH=${RESET_AUTH:-}
 
 volumes:
-  presenton_root_node_modules:
-  presenton_document_extraction_liteparse:
+  smart-slides_root_node_modules:
+  smart-slides_document_extraction_liteparse:

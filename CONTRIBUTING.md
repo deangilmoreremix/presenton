@@ -1,15 +1,15 @@
-# Contributing to Presenton
+# Contributing to SmartSlides
 
 Welcome! 🚀  
-Thanks for helping improve **Presenton — the open-source AI presentation generator.**
+Thanks for helping improve **SmartSlides — the open-source AI presentation generator.**
 
 ## Quick Links
 
-- **GitHub:** https://github.com/presenton/presenton
-- **Docs:** https://docs.presenton.ai
-- **Website:** https://presenton.ai
+- **GitHub:** https://github.com/smart-slides/smart-slides
+- **Docs:** https://docs.smartslides.ai
+- **Website:** https://smartslides.ai
 - **Discord:** https://discord.gg/9ZsKKxudNE
-- **X:** https://x.com/presentonai
+- **X:** https://x.com/smartslidesai
 
 ---
 
@@ -181,5 +181,5 @@ CODE_OF_CONDUCT.md
 
 ---
 
-Thanks for helping make **Presenton better for everyone.**
+Thanks for helping make **SmartSlides better for everyone.**
 ```

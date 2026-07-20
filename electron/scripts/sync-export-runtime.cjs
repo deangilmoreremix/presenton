@@ -14,10 +14,10 @@ const targetPyDir = path.join(targetRoot, "py");
 const targetIndex = path.join(targetRoot, "index.js");
 const versionManifestPath = path.join(
   targetRoot,
-  "presenton-export-version.json",
+  "smart-slides-export-version.json",
 );
 const cacheDir = path.join(electronRoot, ".cache", "export-runtime");
-const exportRepoBase = "https://github.com/presenton/presenton-export/releases/download";
+const exportRepoBase = "https://github.com/smart-slides/smart-slides-export/releases/download";
 const exportVersion = packageJson.exportVersion || "v0.1.0";
 
 const cliArgs = new Set(process.argv.slice(2));
@@ -33,7 +33,7 @@ async function getTargetVersion() {
     return requestedVersion;
   }
 
-  const apiUrl = "https://api.github.com/repos/presenton/presenton-export/releases/latest";
+  const apiUrl = "https://api.github.com/repos/smart-slides/smart-slides-export/releases/latest";
   const latest = await requestJson(apiUrl);
   if (!latest.tag_name) {
     throw new Error(`Could not resolve latest release tag from ${apiUrl}`);
@@ -257,7 +257,7 @@ function requestJson(url, redirects = 5) {
       url,
       {
         headers: {
-          "User-Agent": "presenton-export-runtime-sync",
+          "User-Agent": "smart-slides-export-runtime-sync",
           Accept: "application/vnd.github+json",
         },
       },
@@ -306,7 +306,7 @@ function downloadFile(url, outputPath, redirects = 5) {
       url,
       {
         headers: {
-          "User-Agent": "presenton-export-runtime-sync",
+          "User-Agent": "smart-slides-export-runtime-sync",
           Accept: "application/octet-stream",
         },
       },

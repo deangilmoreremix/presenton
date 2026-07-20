@@ -46,9 +46,9 @@ def is_disable_auth_enabled():
     return _is_truthy(get_disable_auth_env())
 
 
-def is_presenton_electron_desktop():
-    """True when running inside the Presenton Electron desktop app."""
-    return _is_truthy(os.getenv("PRESENTON_ELECTRON"))
+def is_smart_slides_electron_desktop():
+    """True when running inside the SmartSlides Electron desktop app."""
+    return _is_truthy(os.getenv("SMART_SLIDES_ELECTRON"))
 
 
 def get_llm_provider_env():

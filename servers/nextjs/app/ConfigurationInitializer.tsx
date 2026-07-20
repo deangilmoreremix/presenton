@@ -10,9 +10,9 @@ import { LLMConfig } from '@/types/llm_config';
 import { getApiUrl } from '@/utils/api';
 import { notify } from '@/components/ui/sonner';
 import {
-  PRESENTON_SPLASH_MIN_DURATION_MS,
-  PresentonSplashLoader,
-} from '@/components/ui/presenton-splash-loader';
+  SMART_SLIDES_SPLASH_MIN_DURATION_MS,
+  SmartSlidesSplashLoader,
+} from '@/components/ui/smart-slides-splash-loader';
 
 export function ConfigurationInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
@@ -42,7 +42,7 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
 
     const timeout = window.setTimeout(() => {
       setHasMetSplashDuration(true);
-    }, PRESENTON_SPLASH_MIN_DURATION_MS);
+    }, SMART_SLIDES_SPLASH_MIN_DURATION_MS);
 
     return () => window.clearTimeout(timeout);
   }, [shouldShowStartupSplash]);
@@ -206,7 +206,7 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
 
   if (isLoading || !hasMetSplashDuration) {
     return (
-      <PresentonSplashLoader message="Loading configuration and checking model availability..." />
+      <SmartSlidesSplashLoader message="Loading configuration and checking model availability..." />
     );
   }
 

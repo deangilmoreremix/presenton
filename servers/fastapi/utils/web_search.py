@@ -118,7 +118,7 @@ async def search_web(query: str, max_results: int | None = None) -> list[WebSear
     try:
         async with aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=15),
-            headers={"User-Agent": "Presenton/1.0"},
+            headers={"User-Agent": "SmartSlides/1.0"},
         ) as session:
             if provider == WebSearchProvider.SEARXNG:
                 results = await _search_searxng(session, query, limit)

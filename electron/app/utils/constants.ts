@@ -17,7 +17,7 @@ export const nextjsDir = isDev
   ? path.resolve(baseDir, "..", "servers", "nextjs")
   : path.join(resourceBaseDir, "resources/nextjs");
 
-const appDirectoryName = "Presenton Open Source";
+const appDirectoryName = "SmartSlides Open Source";
 
 export type ElectronAppPaths = {
   userDataDir: string;
@@ -137,7 +137,7 @@ function getTempRoot(): string {
 
 function getAppDataBaseDir(tempRoot: string): string {
   const home = getHomeDir();
-  const fallback = path.join(tempRoot, "presenton-app-data");
+  const fallback = path.join(tempRoot, "smart-slides-app-data");
 
   if (process.platform === "win32") {
     return firstWritableDirectory(
@@ -221,7 +221,7 @@ function setElectronPath(name: string, dir: string): void {
   try {
     app.setPath(name, dir);
   } catch (error) {
-    console.warn(`[Presenton] Failed to set Electron path ${name}=${dir}`, error);
+    console.warn(`[SmartSlides] Failed to set Electron path ${name}=${dir}`, error);
   }
 }
 
@@ -229,7 +229,7 @@ function appendDiskCacheSwitch(cacheDir: string): void {
   try {
     app.commandLine.appendSwitch("disk-cache-dir", cacheDir);
   } catch (error) {
-    console.warn("[Presenton] Failed to configure Chromium disk cache path", error);
+    console.warn("[SmartSlides] Failed to configure Chromium disk cache path", error);
   }
 }
 
@@ -244,7 +244,7 @@ export function initializeAppPaths(): ElectronAppPaths {
     unique([
       electronPathCandidate("userData"),
       path.join(appDataBaseDir, appDirectoryName),
-      path.join(tempRoot, "presenton-user-data"),
+      path.join(tempRoot, "smart-slides-user-data"),
     ]),
     "user data"
   );
@@ -255,7 +255,7 @@ export function initializeAppPaths(): ElectronAppPaths {
       )
     : userDataDir;
   const tempDir = firstWritableDirectory(
-    unique([path.join(tempRoot, "presenton"), path.join(userDataDir, "temp")]),
+    unique([path.join(tempRoot, "smart-slides"), path.join(userDataDir, "temp")]),
     "temporary"
   );
   const logsDir = firstWritableDirectory(

@@ -1,6 +1,6 @@
 # Multi-Arch Docker Release
 
-This document describes how to publish `presenton` as a multi-architecture image to GitHub Container Registry (`ghcr.io`).
+This document describes how to publish `smart-slides` as a multi-architecture image to GitHub Container Registry (`ghcr.io`).
 
 The flow is:
 
@@ -14,7 +14,7 @@ The flow is:
 After a successful local production build, the image should exist as:
 
 ```text
-presenton-3-production:latest
+smart-slides-3-production:latest
 ```
 
 ## Release Tags
@@ -22,10 +22,10 @@ presenton-3-production:latest
 This example uses version `v0.9.0-beta`:
 
 ```text
-ghcr.io/presenton/presenton:v0.9.0-beta-arm64
-ghcr.io/presenton/presenton:v0.9.0-beta-amd64
-ghcr.io/presenton/presenton:v0.9.0-beta
-ghcr.io/presenton/presenton:latest
+ghcr.io/smart-slides/smart-slides:v0.9.0-beta-arm64
+ghcr.io/smart-slides/smart-slides:v0.9.0-beta-amd64
+ghcr.io/smart-slides/smart-slides:v0.9.0-beta
+ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ## 1. Push the ARM64 Image From macOS
@@ -33,10 +33,10 @@ ghcr.io/presenton/presenton:latest
 Run this on the Mac machine that built the ARM64 image:
 
 ```bash
-docker tag presenton-3-production:latest \
-  ghcr.io/presenton/presenton:v0.9.0-beta-arm64
+docker tag smart-slides-3-production:latest \
+  ghcr.io/smart-slides/smart-slides:v0.9.0-beta-arm64
 
-docker push ghcr.io/presenton/presenton:v0.9.0-beta-arm64
+docker push ghcr.io/smart-slides/smart-slides:v0.9.0-beta-arm64
 ```
 
 ## 2. Push the AMD64 Image From Linux
@@ -44,10 +44,10 @@ docker push ghcr.io/presenton/presenton:v0.9.0-beta-arm64
 Run this on the Linux machine that built the AMD64 image:
 
 ```bash
-docker tag presenton-3-production:latest \
-  ghcr.io/presenton/presenton:v0.9.0-beta-amd64
+docker tag smart-slides-3-production:latest \
+  ghcr.io/smart-slides/smart-slides:v0.9.0-beta-amd64
 
-docker push ghcr.io/presenton/presenton:v0.9.0-beta-amd64
+docker push ghcr.io/smart-slides/smart-slides:v0.9.0-beta-amd64
 ```
 
 ## 3. Create the Multi-Arch Manifest
@@ -56,25 +56,25 @@ After both architecture-specific images are pushed, run this on either machine:
 
 ```bash
 docker buildx imagetools create \
-  -t ghcr.io/presenton/presenton:v0.9.0-beta \
-  ghcr.io/presenton/presenton:v0.9.0-beta-amd64 \
-  ghcr.io/presenton/presenton:v0.9.0-beta-arm64
+  -t ghcr.io/smart-slides/smart-slides:v0.9.0-beta \
+  ghcr.io/smart-slides/smart-slides:v0.9.0-beta-amd64 \
+  ghcr.io/smart-slides/smart-slides:v0.9.0-beta-arm64
 ```
 
 ## 4. Promote the Release to `latest`
 
 ```bash
 docker buildx imagetools create \
-  -t ghcr.io/presenton/presenton:latest \
-  ghcr.io/presenton/presenton:v0.9.0-beta
+  -t ghcr.io/smart-slides/smart-slides:latest \
+  ghcr.io/smart-slides/smart-slides:v0.9.0-beta
 ```
 
 ## 5. Verify the Published Manifests
 
 ```bash
-docker buildx imagetools inspect ghcr.io/presenton/presenton:v0.9.0-beta
+docker buildx imagetools inspect ghcr.io/smart-slides/smart-slides:v0.9.0-beta
 
-docker buildx imagetools inspect ghcr.io/presenton/presenton:latest
+docker buildx imagetools inspect ghcr.io/smart-slides/smart-slides:latest
 ```
 
 Both manifests should include:

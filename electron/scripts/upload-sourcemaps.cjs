@@ -72,7 +72,7 @@ if (sourceMaps.length === 0) {
 }
 
 const release =
-  process.env.SENTRY_RELEASE || `presenton-electron@${packageJson.version}`;
+  process.env.SENTRY_RELEASE || `smart-slides-electron@${packageJson.version}`;
 const urlPrefix = process.env.SENTRY_URL_PREFIX || "app:///app_dist";
 const sentryCli = resolveSentryCli();
 

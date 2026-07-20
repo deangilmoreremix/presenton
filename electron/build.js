@@ -7,12 +7,12 @@ const {
   normalizeBundledMacChromiumForPackaging,
 } = require("./scripts/prepare-export-chromium.cjs")
 
-const APP_ID = "com.presenton.presenton"
+const APP_ID = "com.smart-slides.smart-slides"
 const TEAM_ID = "S6W5C54KL6"
-const macTarget = process.env.PRESENTON_MAC_TARGET
+const macTarget = process.env.SMART_SLIDES_MAC_TARGET
 const isMasBuild = macTarget === "mas" || macTarget === "mas-dev"
 const isDirectMacBuild = !isMasBuild && (process.platform === "darwin" || !!macTarget)
-const requireDirectMacSigning = process.env.PRESENTON_REQUIRE_MAC_SIGNING === "1"
+const requireDirectMacSigning = process.env.SMART_SLIDES_REQUIRE_MAC_SIGNING === "1"
 const masDevProvisioningProfile = resolveProvisioningProfileForTarget({
   target: "mas-dev",
   label: "MAS development",
@@ -31,7 +31,7 @@ const masProvisioningProfile = resolveProvisioningProfileForTarget({
   ],
 })
 const masDevIdentity =
-  process.env.PRESENTON_MAS_DEV_IDENTITY || process.env.CSC_NAME || ""
+  process.env.SMART_SLIDES_MAS_DEV_IDENTITY || process.env.CSC_NAME || ""
 const masSigningIdentities = resolveMasSigningIdentitiesForTarget()
 const masIdentityQualifier = masSigningIdentities.qualifier
 const masAppSigningIdentity = masSigningIdentities.appIdentity
@@ -43,16 +43,16 @@ const appStoreBundleVersion =
     ? getAppStoreBundleVersion(appStoreBundleShortVersion)
     : undefined
 const macDistributionIdentity =
-  process.env.PRESENTON_MAC_SIGN_IDENTITY ||
+  process.env.SMART_SLIDES_MAC_SIGN_IDENTITY ||
   process.env.CSC_NAME ||
   undefined
 const shouldNotarizeDirectMacBuild =
-  isDirectMacBuild && process.env.PRESENTON_SKIP_NOTARIZATION !== "1"
+  isDirectMacBuild && process.env.SMART_SLIDES_SKIP_NOTARIZATION !== "1"
 const shouldSignDirectMacDmg = isDirectMacBuild && requireDirectMacSigning
 const masSigningExtraArgs =
-  process.env.PRESENTON_CODESIGN_TIMESTAMP === "1" ? [] : ["--timestamp=none"]
+  process.env.SMART_SLIDES_CODESIGN_TIMESTAMP === "1" ? [] : ["--timestamp=none"]
 const codesignTimestampRetries = Number.parseInt(
-  process.env.PRESENTON_CODESIGN_TIMESTAMP_RETRIES || "4",
+  process.env.SMART_SLIDES_CODESIGN_TIMESTAMP_RETRIES || "4",
   10
 )
 const untimestampedNestedResourceExtensions = new Set([
@@ -91,25 +91,25 @@ const untimestampedNestedResourceExtensions = new Set([
   ".zip",
 ])
 function getAppStoreBundleShortVersion() {
-  const configuredVersion = process.env.PRESENTON_APP_STORE_VERSION
+  const configuredVersion = process.env.SMART_SLIDES_APP_STORE_VERSION
   if (configuredVersion) {
-    validateAppStoreVersion(configuredVersion, "PRESENTON_APP_STORE_VERSION")
+    validateAppStoreVersion(configuredVersion, "SMART_SLIDES_APP_STORE_VERSION")
     return configuredVersion
   }
 
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(packageMetadata.version)
   if (!match) {
     throw new Error(
-      `Cannot derive an App Store version from package version "${packageMetadata.version}". Set PRESENTON_APP_STORE_VERSION to three period-separated integers, for example 1.0.0.`
+      `Cannot derive an App Store version from package version "${packageMetadata.version}". Set SMART_SLIDES_APP_STORE_VERSION to three period-separated integers, for example 1.0.0.`
     )
   }
   return `${match[1]}.${match[2]}.${match[3]}`
 }
 
 function getAppStoreBundleVersion(bundleShortVersion) {
-  const configuredBuild = process.env.PRESENTON_APP_STORE_BUILD
+  const configuredBuild = process.env.SMART_SLIDES_APP_STORE_BUILD
   if (configuredBuild) {
-    validateAppStoreBuild(configuredBuild, "PRESENTON_APP_STORE_BUILD")
+    validateAppStoreBuild(configuredBuild, "SMART_SLIDES_APP_STORE_BUILD")
     return configuredBuild
   }
   return bundleShortVersion
@@ -236,7 +236,7 @@ async function signDirectMacApp(signOptions) {
 
 function installCodesignTimestampRetry() {
   const osxSignUtil = require("@electron/osx-sign/dist/cjs/util.js")
-  if (osxSignUtil.execFileAsync.__presentonTimestampRetryInstalled) {
+  if (osxSignUtil.execFileAsync.__smartSlidesTimestampRetryInstalled) {
     return
   }
 
@@ -267,7 +267,7 @@ function installCodesignTimestampRetry() {
     }
   }
 
-  execFileAsyncWithTimestampRetry.__presentonTimestampRetryInstalled = true
+  execFileAsyncWithTimestampRetry.__smartSlidesTimestampRetryInstalled = true
   osxSignUtil.execFileAsync = execFileAsyncWithTimestampRetry
 }
 
@@ -323,13 +323,13 @@ function resolveMasSigningIdentitiesForTarget() {
 function resolveMasSigningIdentities() {
   const identities = getAppleSigningIdentities()
   const explicitIdentity =
-    process.env.PRESENTON_MAS_DISTRIBUTION_IDENTITY ||
-    process.env.PRESENTON_MAS_IDENTITY
+    process.env.SMART_SLIDES_MAS_DISTRIBUTION_IDENTITY ||
+    process.env.SMART_SLIDES_MAS_IDENTITY
 
   const qualifier = explicitIdentity
     ? validateMasIdentityQualifier(
       explicitIdentity,
-      "PRESENTON_MAS_DISTRIBUTION_IDENTITY/PRESENTON_MAS_IDENTITY",
+      "SMART_SLIDES_MAS_DISTRIBUTION_IDENTITY/SMART_SLIDES_MAS_IDENTITY",
       identities
     )
     : process.env.CSC_NAME
@@ -479,15 +479,15 @@ function buildMissingMasIdentityError(qualifier, identities, status) {
   )
 }
 
-function assertCodesignCanUseIdentity(identity) {
+  function assertCodesignCanUseIdentity(identity) {
   if (!identity || macTarget !== "mas" || process.platform !== "darwin") {
     return
   }
 
-  const tempDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "presenton-codesign-"))
+  const tempDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "smart-slides-codesign-"))
   const tempFile = path.join(tempDir, "preflight")
   try {
-    fs.writeFileSync(tempFile, "Presenton MAS signing preflight\n")
+    fs.writeFileSync(tempFile, "SmartSlides MAS signing preflight\n")
     execFileSync(
       "codesign",
       ["--force", "--sign", identity, "--timestamp=none", tempFile],
@@ -569,7 +569,7 @@ function resolveDeveloperIdApplicationIdentity() {
     throw new Error(
       [
         "Missing Developer ID Application signing identity.",
-        "Install the certificate in Keychain Access or set PRESENTON_MAC_SIGN_IDENTITY to its exact name.",
+        "Install the certificate in Keychain Access or set SMART_SLIDES_MAC_SIGN_IDENTITY to its exact name.",
         "",
         buildAvailableDeveloperIdIdentityList(identities),
       ].join("\n")
@@ -590,7 +590,7 @@ function buildAvailableDeveloperIdIdentityList(identities) {
 function assertDirectMacNotarizationCredentials() {
   if (!shouldNotarizeDirectMacBuild) {
     throw new Error(
-      "PRESENTON_SKIP_NOTARIZATION=1 is not allowed when PRESENTON_REQUIRE_MAC_SIGNING=1."
+      "SMART_SLIDES_SKIP_NOTARIZATION=1 is not allowed when SMART_SLIDES_REQUIRE_MAC_SIGNING=1."
     )
   }
 
@@ -620,10 +620,10 @@ function assertDirectMacNotarizationCredentials() {
 }
 
 function assertCodesignCanUseDirectIdentity(identity) {
-  const tempDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "presenton-codesign-"))
+  const tempDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "smart-slides-codesign-"))
   const tempFile = path.join(tempDir, "preflight")
   try {
-    fs.writeFileSync(tempFile, "Presenton direct macOS signing preflight\n")
+    fs.writeFileSync(tempFile, "SmartSlides direct macOS signing preflight\n")
     execFileSync(
       "codesign",
       ["--force", "--sign", identity, "--options", "runtime", tempFile],
@@ -859,14 +859,14 @@ function findDirectoriesNamed(root, name) {
 
 const config = {
   appId: APP_ID,
-  productName: "Presenton",
+  productName: "SmartSlides",
   asar: true,
   asarUnpack: [
     "resources/**",
     // LiteParse runs from FastAPI via Electron-as-Node and needs real package dirs.
     "node_modules/**",
   ],
-  copyright: "Copyright © 2026 Presenton",
+  copyright: "Copyright © 2026 SmartSlides",
   directories: {
     output: "dist",
     buildResources: "build",
@@ -884,7 +884,7 @@ const config = {
   ],
   afterPack,
   mac: {
-    artifactName: "Presenton-${version}.${ext}",
+    artifactName: "SmartSlides-${version}.${ext}",
     target: [macTarget || "dmg"],
     category: "public.app-category.productivity",
     hardenedRuntime: !isMasBuild,
@@ -923,7 +923,7 @@ const config = {
     additionalArguments: masSigningExtraArgs,
   },
   linux: {
-    artifactName: "Presenton-${version}.${ext}",
+    artifactName: "SmartSlides-${version}.${ext}",
     target: ["AppImage", "deb"],
     icon: "build/icons",
     category: "Office",
@@ -934,8 +934,8 @@ const config = {
   win: {
     target: ["nsis", "appx"],
     icon: "build/icon.ico",
-    artifactName: "Presenton-${version}.${ext}",
-    executableName: "Presenton",
+    artifactName: "SmartSlides-${version}.${ext}",
+    executableName: "SmartSlides",
   },
   nsis: {
     oneClick: false,
@@ -947,19 +947,19 @@ const config = {
     installerHeaderIcon: "build/icon.ico",
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: "Presenton",
-    uninstallDisplayName: "Presenton",
+    shortcutName: "SmartSlides",
+    uninstallDisplayName: "SmartSlides",
   },
   dmg: {
     sign: shouldSignDirectMacDmg,
     size: "2300m",
   },
   appx: {
-    identityName: "PresentonAI.Presenton",
+    identityName: "SmartSlidesAI.SmartSlides",
     publisher: "CN=8A2C57B5-F1C6-473A-93EE-2E9B72134341",
-    displayName: "Presenton",
-    publisherDisplayName: "Presenton Inc.",
-    applicationId: "PresentonAI.Presenton",
+    displayName: "SmartSlides",
+    publisherDisplayName: "SmartSlides Inc.",
+    applicationId: "SmartSlidesAI.SmartSlides",
     
   },
 }
@@ -972,7 +972,7 @@ const targets =
 
 assertSourceBundleResourcesReady()
 
-if (macTarget === "mas" && process.env.PRESENTON_SKIP_CODESIGN_PREFLIGHT !== "1") {
+if (macTarget === "mas" && process.env.SMART_SLIDES_SKIP_CODESIGN_PREFLIGHT !== "1") {
   assertCodesignCanUseIdentity(masAppSigningIdentity)
 }
 

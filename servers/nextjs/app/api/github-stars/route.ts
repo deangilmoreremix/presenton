@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const GITHUB_REPOSITORY_API_URL =
-  "https://api.github.com/repos/presenton/presenton";
+  "https://api.github.com/repos/smart-slides/smart-slides";
 
 type GitHubRepositoryResponse = {
   stargazers_count?: unknown;
@@ -14,7 +14,7 @@ export async function GET() {
     const response = await fetch(GITHUB_REPOSITORY_API_URL, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "presenton-dashboard",
+        "User-Agent": "smart-slides-dashboard",
       },
       next: { revalidate },
     });

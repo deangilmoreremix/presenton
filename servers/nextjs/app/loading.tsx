@@ -1,5 +1,5 @@
-import { PresentonSplashLoader } from "@/components/ui/presenton-splash-loader";
+import { SmartSlidesSplashLoader } from "@/components/ui/smart-slides-splash-loader";
 
 export default function Loading() {
-  return <PresentonSplashLoader message="Preparing your workspace..." />;
+  return <SmartSlidesSplashLoader message="Preparing your workspace..." />;
 }

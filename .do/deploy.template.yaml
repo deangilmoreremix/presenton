@@ -1,12 +1,12 @@
 spec:
-  name: presenton
+  name: smart-slides
   region: nyc
   services:
-    - name: presenton
+    - name: smart-slides
       image:
         registry_type: GHCR
         registry: ghcr.io
-        repository: presenton/presenton
+        repository: smart-slides/smart-slides
         tag: latest
       http_port: 80
       instance_count: 1

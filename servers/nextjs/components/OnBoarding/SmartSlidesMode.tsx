@@ -49,7 +49,7 @@ const WEB_SEARCH_PROVIDER_OPTIONS = [
     WEB_SEARCH_PROVIDERS.brave,
 ];
 
-const PresentonMode = ({
+const SmartSlidesMode = ({
     providerStep,
     setStep,
     setProviderStep,
@@ -876,7 +876,7 @@ const PresentonMode = ({
                 <div className="space-y-4">
                     {selectedWebProvider.value === "auto" && (
                         <div className="rounded-lg border border-[#D9D6FE] bg-[#F4F3FF] p-3 text-xs leading-5 text-[#5146E5]">
-                            Presenton will use model-native web grounding when available. If the selected text model does not support it, web search stays off until you choose an external provider.
+                            SmartSlides will use model-native web grounding when available. If the selected text model does not support it, web search stays off until you choose an external provider.
                         </div>
                     )}
 
@@ -1029,7 +1029,7 @@ const PresentonMode = ({
                     {providerStep === 1
                         ? "Start with ChatGPT, run a local model, or connect another AI provider."
                         : providerStep === 2
-                            ? "Choose how Presenton creates visuals, or continue without image generation."
+                            ? "Choose how SmartSlides creates visuals, or continue without image generation."
                             : "Add current web context to presentations, or continue with web search disabled."}
                 </p>
             </div>
@@ -1754,4 +1754,4 @@ const PresentonMode = ({
     )
 }
 
-export default PresentonMode
+export default SmartSlidesMode

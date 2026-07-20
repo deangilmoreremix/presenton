@@ -9,7 +9,7 @@ ARG CHROMIUM_SNAPSHOT=20260625T180000Z
 
 # LiteParse (Node + @llamaindex/liteparse) for document extraction; OCR via Tesseract.
 ENV APP_DATA_DIRECTORY=/app_data \
-    TEMP_DIRECTORY=/tmp/presenton \
+    TEMP_DIRECTORY=/tmp/smart-slides \
     UV_SYSTEM_PYTHON=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -17,9 +17,9 @@ ENV APP_DATA_DIRECTORY=/app_data \
     EXPORT_PACKAGE_ROOT=/app/presentation-export \
     EXPORT_RUNTIME_DIR=/app/presentation-export \
     BUILT_PYTHON_MODULE_PATH=/app/presentation-export/py/convert-linux-current \
-    PRESENTON_APP_ROOT=/app \
+    SMART_SLIDES_APP_ROOT=/app \
     HF_HOME=/root/.cache/huggingface \
-    PRESENTON_FASTEMBED_ICON_CACHE_DIR=/root/.cache/presenton/fastembed-icons \
+    SMART_SLIDES_FASTEMBED_ICON_CACHE_DIR=/root/.cache/smart-slides/fastembed-icons \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99snapshot \
@@ -61,7 +61,7 @@ RUN mkdir -p /app/document-extraction-liteparse \
 COPY electron/resources/document-extraction/liteparse_runner.mjs /app/document-extraction-liteparse/liteparse_runner.mjs
 
 COPY scripts/sync-presentation-export.cjs /app/scripts/sync-presentation-export.cjs
-COPY scripts/presenton-terminal-banner.mjs /app/scripts/presenton-terminal-banner.mjs
+COPY scripts/smart-slides-terminal-banner.mjs /app/scripts/smart-slides-terminal-banner.mjs
 COPY scripts/user-config-env.cjs /app/scripts/user-config-env.cjs
 RUN rm -rf /app/presentation-export \
     && EXPORT_RUNTIME_ARCH="${TARGETARCH}" node /app/scripts/sync-presentation-export.cjs --force \

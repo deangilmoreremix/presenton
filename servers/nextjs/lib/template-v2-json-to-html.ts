@@ -796,7 +796,7 @@ function renderChart(item: JsonRecord, mode: RenderMode): string {
 
   return `<div style="${frameStyle(item, mode)}${transformStyle(
     item
-  )}overflow:hidden"><canvas data-presenton-chart="true" data-chart-config="${escapeAttribute(
+  )}overflow:hidden"><canvas data-smart-slides-chart="true" data-chart-config="${escapeAttribute(
     JSON.stringify(config)
   )}" width="${cssNumber(Math.round(width))}" height="${cssNumber(
     Math.round(height)
@@ -975,7 +975,7 @@ function chartConfig(item: JsonRecord, height: number): JsonRecord {
           },
         },
         tooltip: { enabled: false },
-        presentonDataLabels: {
+        smartSlidesDataLabels: {
           enabled: dataLabels,
           color: textColor,
           fontFamily: CHART_FONT_FAMILY,
@@ -1092,7 +1092,7 @@ function chartDatasets(chartKind: ChartKind, data: NormalizedChartData): JsonRec
       borderSkipped: barChart ? (stackedBarChart ? "start" : false) : undefined,
       fill: chartKind === "area",
       maxBarThickness: 62,
-      presentonBarRadius:
+      smartSlidesBarRadius:
         barChart && !stackedBarChart
           ? { horizontal: isHorizontalChart(chartKind), radius: 7 }
           : undefined,
@@ -1356,7 +1356,7 @@ function chartScales({
             family: CHART_FONT_FAMILY,
             size: Math.max(8, fontSize - 1),
           },
-          presentonFormat: true,
+          smartSlidesFormat: true,
         },
       },
     };
@@ -1411,7 +1411,7 @@ function chartScales({
         size: Math.max(8, fontSize - 2),
         weight: 600,
       },
-      presentonFormat: true,
+      smartSlidesFormat: true,
     },
     title: {
       color: axisColor,
@@ -1707,9 +1707,9 @@ var compactNumberSuffixes=["","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc"
 function formatScaledCompactNumber(value){var abs=Math.abs(value);var decimals=abs>=100?0:abs>=10?1:2;return Number(value.toFixed(decimals)).toString()}
 function formatValue(value){if(!Number.isFinite(value))return "";var abs=Math.abs(value);if(abs<1000)return abs%1===0?String(value):String(Math.round(value*10)/10).replace(/\\.0$/,"");var suffixIndex=Math.floor(Math.log10(abs)/3);if(suffixIndex>=compactNumberSuffixes.length)return value.toExponential(2).replace(/\\.?0+e/,"e");var scaled=value/Math.pow(1000,suffixIndex);var formatted=formatScaledCompactNumber(scaled);if(Math.abs(Number(formatted))>=1000&&suffixIndex<compactNumberSuffixes.length-1){suffixIndex+=1;scaled=value/Math.pow(1000,suffixIndex);formatted=formatScaledCompactNumber(scaled)}return formatted+compactNumberSuffixes[suffixIndex]}
 function formatAxisTick(value){var numeric=Number(value);return Number.isFinite(numeric)?formatValue(numeric):String(value)}
-function hydrateScales(scales){if(!scales)return;Object.keys(scales).forEach(function(key){var scale=scales[key];if(!scale)return;if(scale.ticks&&scale.ticks.presentonFormat){scale.ticks.callback=formatAxisTick;delete scale.ticks.presentonFormat}if(scale.r&&scale.r.ticks&&scale.r.ticks.presentonFormat){scale.r.ticks.callback=formatAxisTick;delete scale.r.ticks.presentonFormat}})}
+function hydrateScales(scales){if(!scales)return;Object.keys(scales).forEach(function(key){var scale=scales[key];if(!scale)return;if(scale.ticks&&scale.ticks.smartSlidesFormat){scale.ticks.callback=formatAxisTick;delete scale.ticks.smartSlidesFormat}if(scale.r&&scale.r.ticks&&scale.r.ticks.smartSlidesFormat){scale.r.ticks.callback=formatAxisTick;delete scale.r.ticks.smartSlidesFormat}})}
 function barBorderRadius(rawValue,horizontal,radius){var value=chartValue(rawValue);if(horizontal){return value<0?{bottomLeft:radius,bottomRight:0,topLeft:radius,topRight:0}:{bottomLeft:0,bottomRight:radius,topLeft:0,topRight:radius}}return value<0?{bottomLeft:radius,bottomRight:radius,topLeft:0,topRight:0}:{bottomLeft:0,bottomRight:0,topLeft:radius,topRight:radius}}
-function hydrateBarBorderRadii(config){var datasets=config&&config.data&&Array.isArray(config.data.datasets)?config.data.datasets:[];datasets.forEach(function(dataset){var options=dataset&&dataset.presentonBarRadius;if(!options)return;var radius=readNumber(options.radius);dataset.borderRadius=function(context){return barBorderRadius(context&&context.raw,!!options.horizontal,radius==null?7:radius)};delete dataset.presentonBarRadius})}
+function hydrateBarBorderRadii(config){var datasets=config&&config.data&&Array.isArray(config.data.datasets)?config.data.datasets:[];datasets.forEach(function(dataset){var options=dataset&&dataset.smartSlidesBarRadius;if(!options)return;var radius=readNumber(options.radius);dataset.borderRadius=function(context){return barBorderRadius(context&&context.raw,!!options.horizontal,radius==null?7:radius)};delete dataset.smartSlidesBarRadius})}
 function datasetBackgroundColor(dataset,index){var bg=dataset&&dataset.backgroundColor;var color=Array.isArray(bg)?bg[index]:bg;return typeof color==="string"?color:null}
 function clamp(value,min,max){return Math.min(Math.max(value,min),max)}
 function parseColor(color){if(!color)return null;var hex=String(color).match(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/);if(hex){var raw=hex[1].length===3?hex[1].split("").map(function(ch){return ch+ch}).join(""):hex[1];var value=Number.parseInt(raw,16);return[(value>>16)&255,(value>>8)&255,value&255,1]}var rgb=String(color).match(/^rgba?\\(([^)]+)\\)$/i);if(!rgb)return null;var channels=rgb[1].split(",").map(function(part){return Number(part.trim())});if(channels.length<3||channels.slice(0,3).some(Number.isNaN))return null;return[clamp(channels[0],0,255),clamp(channels[1],0,255),clamp(channels[2],0,255),clamp(Number.isFinite(channels[3])?channels[3]:1,0,1)]}
@@ -1727,8 +1727,8 @@ function drawPointLabel(args){var ctx=args.ctx;var point=chartElementPoint(args.
 function drawArcLabel(args){var element=args.element;var centerX=readNumber(element&&element.x);var centerY=readNumber(element&&element.y);var startAngle=readNumber(element&&element.startAngle);var endAngle=readNumber(element&&element.endAngle);var innerRadius=Math.max(0,readNumber(element&&element.innerRadius)||0);var outerRadius=Math.max(innerRadius,readNumber(element&&element.outerRadius)||0);var point=null;if(centerX!=null&&centerY!=null&&startAngle!=null&&endAngle!=null&&outerRadius>0){var angle=(startAngle+endAngle)/2;var ringWidth=Math.max(1,outerRadius-innerRadius);var textHeight=args.fontSize*1.15;var radius=args.position==="outside"?outerRadius+textHeight/2+7:args.position==="top"?Math.max(innerRadius+textHeight/2,outerRadius-textHeight/2-5):args.position==="base"?innerRadius>0?innerRadius+Math.min(ringWidth*0.25,textHeight+5):outerRadius*0.35:innerRadius+ringWidth/2;point={x:centerX+Math.cos(angle)*radius,y:centerY+Math.sin(angle)*radius}}else if(element&&typeof element.tooltipPosition==="function"){point=element.tooltipPosition(true)}if(!point)return;args.ctx.fillStyle=args.position==="outside"?args.outsideColor:contrastTextColor(args.color,args.outsideColor);args.ctx.fillText(args.label,point.x||0,point.y||0)}
 function isPointType(type){return type==="line"||type==="scatter"||type==="bubble"||type==="radar"}
 function isArcType(type){return type==="pie"||type==="doughnut"||type==="polarArea"}
-var dataLabelPlugin={id:"presentonDataLabels",afterDatasetsDraw:function(chart,args,options){if(!options||!options.enabled)return;var ctx=chart.ctx;var fontSize=options.fontSize||11;var outsideColor=options.color||"#475467";var position=options.position==="base"||options.position==="mid"||options.position==="outside"||options.position==="top"?options.position:"top";ctx.save();ctx.font="600 "+fontSize+"px "+(options.fontFamily||"Inter, Arial, sans-serif");ctx.textAlign="center";ctx.textBaseline="middle";var occupied=[];chart.data.datasets.forEach(function(dataset,datasetIndex){var meta=chart.getDatasetMeta(datasetIndex);if(meta.hidden)return;var metaType=String(meta.type||"");meta.data.forEach(function(element,index){var raw=Array.isArray(dataset.data)?dataset.data[index]:0;var value=chartValue(raw);var label=formatValue(value);if(!label)return;if(metaType==="bar"){drawBarLabel({color:datasetBackgroundColor(dataset,index),ctx:ctx,element:element,fontSize:fontSize,horizontal:!!options.horizontal,label:label,outsideColor:outsideColor,position:position,value:value});return}if(isPointType(metaType)){drawPointLabel({chartArea:chart.chartArea,ctx:ctx,datasetIndex:datasetIndex,element:element,fontSize:fontSize,index:index,label:label,lineLike:metaType==="line"||metaType==="radar",metaElements:meta.data,occupied:occupied,outsideColor:outsideColor,position:position});return}if(isArcType(metaType)){drawArcLabel({color:datasetBackgroundColor(dataset,index),ctx:ctx,element:element,fontSize:fontSize,label:label,outsideColor:outsideColor,position:position});return}var fallbackPosition=typeof element.tooltipPosition==="function"?element.tooltipPosition(true):null;if(!fallbackPosition)return;ctx.fillStyle=outsideColor;ctx.fillText(label,fallbackPosition.x||0,fallbackPosition.y||0)})});ctx.restore()}};
-function render(){if(!window.Chart){finish("error","Chart.js failed to load");return}try{var Chart=window.Chart;Chart.register(dataLabelPlugin);document.querySelectorAll("canvas[data-presenton-chart]").forEach(function(canvas){var configText=canvas.getAttribute("data-chart-config");if(!configText)return;var config=JSON.parse(configText);config.options=config.options||{};config.options.animation=false;config.options.responsive=false;config.options.maintainAspectRatio=false;hydrateScales(config.options.scales);hydrateBarBorderRadii(config);var existing=typeof Chart.getChart==="function"?Chart.getChart(canvas):null;if(existing)existing.destroy();var chart=new Chart(canvas,config);if(typeof chart.update==="function")chart.update("none")});requestAnimationFrame(function(){finish("ready")})}catch(error){finish("error",error&&error.message?error.message:String(error))}}
+var dataLabelPlugin={id:"smartSlidesDataLabels",afterDatasetsDraw:function(chart,args,options){if(!options||!options.enabled)return;var ctx=chart.ctx;var fontSize=options.fontSize||11;var outsideColor=options.color||"#475467";var position=options.position==="base"||options.position==="mid"||options.position==="outside"||options.position==="top"?options.position:"top";ctx.save();ctx.font="600 "+fontSize+"px "+(options.fontFamily||"Inter, Arial, sans-serif");ctx.textAlign="center";ctx.textBaseline="middle";var occupied=[];chart.data.datasets.forEach(function(dataset,datasetIndex){var meta=chart.getDatasetMeta(datasetIndex);if(meta.hidden)return;var metaType=String(meta.type||"");meta.data.forEach(function(element,index){var raw=Array.isArray(dataset.data)?dataset.data[index]:0;var value=chartValue(raw);var label=formatValue(value);if(!label)return;if(metaType==="bar"){drawBarLabel({color:datasetBackgroundColor(dataset,index),ctx:ctx,element:element,fontSize:fontSize,horizontal:!!options.horizontal,label:label,outsideColor:outsideColor,position:position,value:value});return}if(isPointType(metaType)){drawPointLabel({chartArea:chart.chartArea,ctx:ctx,datasetIndex:datasetIndex,element:element,fontSize:fontSize,index:index,label:label,lineLike:metaType==="line"||metaType==="radar",metaElements:meta.data,occupied:occupied,outsideColor:outsideColor,position:position});return}if(isArcType(metaType)){drawArcLabel({color:datasetBackgroundColor(dataset,index),ctx:ctx,element:element,fontSize:fontSize,label:label,outsideColor:outsideColor,position:position});return}var fallbackPosition=typeof element.tooltipPosition==="function"?element.tooltipPosition(true):null;if(!fallbackPosition)return;ctx.fillStyle=outsideColor;ctx.fillText(label,fallbackPosition.x||0,fallbackPosition.y||0)})});ctx.restore()}};
+function render(){if(!window.Chart){finish("error","Chart.js failed to load");return}try{var Chart=window.Chart;Chart.register(dataLabelPlugin);document.querySelectorAll("canvas[data-smart-slides-chart]").forEach(function(canvas){var configText=canvas.getAttribute("data-chart-config");if(!configText)return;var config=JSON.parse(configText);config.options=config.options||{};config.options.animation=false;config.options.responsive=false;config.options.maintainAspectRatio=false;hydrateScales(config.options.scales);hydrateBarBorderRadii(config);var existing=typeof Chart.getChart==="function"?Chart.getChart(canvas):null;if(existing)existing.destroy();var chart=new Chart(canvas,config);if(typeof chart.update==="function")chart.update("none")});requestAnimationFrame(function(){finish("ready")})}catch(error){finish("error",error&&error.message?error.message:String(error))}}
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",render,{once:true})}else{render()}
 })();
 `;

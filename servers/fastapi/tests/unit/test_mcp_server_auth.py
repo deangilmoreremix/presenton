@@ -7,13 +7,13 @@ import mcp_server
 
 
 def test_is_mcp_server_enabled_in_server_deployments(monkeypatch):
-    monkeypatch.setattr(mcp_server, "is_presenton_electron_desktop", lambda: False)
+    monkeypatch.setattr(mcp_server, "is_smart_slides_electron_desktop", lambda: False)
 
     assert mcp_server.is_mcp_server_enabled() is True
 
 
 def test_is_mcp_server_disabled_in_electron_desktop(monkeypatch):
-    monkeypatch.setattr(mcp_server, "is_presenton_electron_desktop", lambda: True)
+    monkeypatch.setattr(mcp_server, "is_smart_slides_electron_desktop", lambda: True)
 
     assert mcp_server.is_mcp_server_enabled() is False
 
@@ -37,16 +37,16 @@ def test_create_mcp_auth_provider_enabled_when_auth_configured(monkeypatch):
     monkeypatch.setattr(mcp_server, "is_auth_configured", lambda: True)
 
     provider = mcp_server.create_mcp_auth_provider()
-    assert isinstance(provider, mcp_server.PresentonTokenVerifier)
+    assert isinstance(provider, mcp_server.SmartSlidesTokenVerifier)
 
 
-def test_presenton_token_verifier_accepts_valid_token(monkeypatch):
+def test_smart_slides_token_verifier_accepts_valid_token(monkeypatch):
     monkeypatch.setattr(
         mcp_server,
         "validate_session_token",
         lambda token: "admin" if token == "valid-token" else None,
     )
-    verifier = mcp_server.PresentonTokenVerifier()
+    verifier = mcp_server.SmartSlidesTokenVerifier()
 
     access_token = asyncio.run(verifier.verify_token("valid-token"))
 
@@ -56,9 +56,9 @@ def test_presenton_token_verifier_accepts_valid_token(monkeypatch):
     assert access_token.claims["u"] == "admin"
 
 
-def test_presenton_token_verifier_rejects_invalid_token(monkeypatch):
+def test_smart_slides_token_verifier_rejects_invalid_token(monkeypatch):
     monkeypatch.setattr(mcp_server, "validate_session_token", lambda _token: None)
-    verifier = mcp_server.PresentonTokenVerifier()
+    verifier = mcp_server.SmartSlidesTokenVerifier()
 
     access_token = asyncio.run(verifier.verify_token("invalid-token"))
 

@@ -69,7 +69,7 @@ class TestMem0PresentationMemoryService:
             {
                 "MEM0_ENABLED": "true",
                 "MEM0_REQUIRE_SPACY_MODEL": "false",
-                "APP_DATA_DIRECTORY": "/tmp/presenton-test",
+                "APP_DATA_DIRECTORY": "/tmp/smart-slides-test",
                 "OLLAMA_URL": "http://ollama:11434",
                 "OLLAMA_MODEL": "llama3.1:8b",
             },
@@ -97,7 +97,7 @@ class TestMem0PresentationMemoryService:
             "os.environ",
             {
                 "MEM0_ENABLED": "true",
-                "APP_DATA_DIRECTORY": "/tmp/presenton-test",
+                "APP_DATA_DIRECTORY": "/tmp/smart-slides-test",
             },
             clear=False,
         ), patch(
@@ -167,7 +167,7 @@ class TestMem0PresentationMemoryService:
             {
                 "MEM0_ENABLED": "true",
                 "MEM0_TOP_K": "5",
-                "APP_DATA_DIRECTORY": "/tmp/presenton-test",
+                "APP_DATA_DIRECTORY": "/tmp/smart-slides-test",
             },
             clear=False,
         ), patch(

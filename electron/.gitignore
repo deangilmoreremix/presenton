@@ -29,7 +29,7 @@ eng.traineddata
 .cache/
 .cache/export-runtime/
 
-# presenton-export runtime (downloaded via npm run setup:export-runtime / scripts/sync-export-runtime.cjs)
+# smart-slides-export runtime (downloaded via npm run setup:export-runtime / scripts/sync-export-runtime.cjs)
 resources/export/
 
 # Bundled export Chromium (Chrome for Testing) — npm run prepare:export-chromium

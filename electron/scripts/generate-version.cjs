@@ -18,9 +18,9 @@ const update = {
   version,
   message: process.env.UPDATE_MESSAGE || existing.message || "",
   downloads: {
-    linux: `https://github.com/presenton/presenton/releases/download/electron-v${version}/Presenton-${version}.deb`,
-    mac: `https://github.com/presenton/presenton/releases/download/electron-v${version}/Presenton-${version}.dmg`,
-    windows: `https://github.com/presenton/presenton/releases/download/electron-v${version}/Presenton-${version}.exe`,
+    linux: `https://github.com/smart-slides/smart-slides/releases/download/electron-v${version}/SmartSlides-${version}.deb`,
+    mac: `https://github.com/smart-slides/smart-slides/releases/download/electron-v${version}/SmartSlides-${version}.dmg`,
+    windows: `https://github.com/smart-slides/smart-slides/releases/download/electron-v${version}/SmartSlides-${version}.exe`,
   },
 };
 

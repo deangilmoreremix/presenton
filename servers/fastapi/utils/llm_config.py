@@ -78,7 +78,7 @@ from utils.set_env import (
 )
 
 
-CHATGPT_AUTH_REQUIRED_HEADERS = {"X-Presenton-Auth-Action": "codex-reauth"}
+CHATGPT_AUTH_REQUIRED_HEADERS = {"X-SmartSlides-Auth-Action": "codex-reauth"}
 CHATGPT_AUTH_REQUIRED_PREFIX = "CHATGPT_AUTH_REQUIRED:"
 
 

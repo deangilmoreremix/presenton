@@ -2,8 +2,8 @@ import { getApiUrl } from "@/utils/api";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
 import { syncStoreAfterCodexSignOut } from "@/utils/storeHelpers";
 
-export const CHATGPT_AUTH_REQUIRED_EVENT = "presenton:chatgpt-auth-required";
-export const CHATGPT_AUTH_ACTION_HEADER = "x-presenton-auth-action";
+export const CHATGPT_AUTH_REQUIRED_EVENT = "smart-slides:chatgpt-auth-required";
+export const CHATGPT_AUTH_ACTION_HEADER = "x-smart-slides-auth-action";
 export const CHATGPT_AUTH_ACTION_VALUE = "codex-reauth";
 export const CHATGPT_AUTH_REQUIRED_MARKER = "CHATGPT_AUTH_REQUIRED:";
 

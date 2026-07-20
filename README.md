@@ -10,29 +10,29 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/presenton/presenton/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat" alt="Apache2.0" /></a>
-  <a href="https://github.com/presenton/presenton"><img src="https://img.shields.io/github/stars/presenton/presenton?style=flat" alt="Stars" /></a>
-  <a href="https://presenton.ai/"><img src="https://img.shields.io/badge/Platform-Docker%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat" alt="Platform" /></a>
+  <a href="https://github.com/smart-slides/smart-slides/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat" alt="Apache2.0" /></a>
+  <a href="https://github.com/smart-slides/smart-slides"><img src="https://img.shields.io/github/stars/smart-slides/smart-slides?style=flat" alt="Stars" /></a>
+  <a href="https://smartslides.ai/"><img src="https://img.shields.io/badge/Platform-Docker%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat" alt="Platform" /></a>
 </p>
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/18582?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-18582" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/18582" alt="presenton%2Fpresenton | Trendshift" width="250" height="55" /></a>
+  <a href="https://trendshift.io/repositories/18582?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-18582" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/18582" alt="smart-slides%2Fsmart-slides | Trendshift" width="250" height="55" /></a>
 </p>
 
 # Open-Source AI Presentation Generator and API (Gamma, Canva, Beautiful AI, Decktopus, Presentations AI Alternative)
 
-Discover what Presenton can do from AI-powered presentation generation to editing, exporting, and flexible model providers.
+Discover what SmartSlides can do from AI-powered presentation generation to editing, exporting, and flexible model providers.
 
-[▶ Watch Presenton in Action](https://github.com/user-attachments/assets/93e541dc-8487-4dcf-a9a0-95ad5ca94453)
+[▶ Watch SmartSlides in Action](https://github.com/user-attachments/assets/93e541dc-8487-4dcf-a9a0-95ad5ca94453)
 
-### ✨ Why Presenton
+### ✨ Why SmartSlides
 
 No SaaS lock-in · No forced subscriptions · Full control over models and data
 
-What makes Presenton different?
+What makes SmartSlides different?
 
-- Use Fully **self-hosted** in Web through [Docker Package](https://docs.presenton.ai/v3/get-started/quickstart)
-- Or Download [Desktop App](https://presenton.ai/download) (Mac, Windows & Linux)
+- Use Fully **self-hosted** in Web through [Docker Package](https://docs.smartslides.ai/v3/get-started/quickstart)
+- Or Download [Desktop App](https://smartslides.ai/download) (Mac, Windows & Linux)
 - Works with Ollama, LM Studio, OpenAI, Gemini, Vertex AI, Azure OpenAI, Amazon Bedrock, Fireworks, Together AI, Anthropic, or any other OpenAI compatible providers
 - Comes with AI Presentation Generation API
 - Fully open-source (Apache 2.0)
@@ -43,7 +43,7 @@ What makes Presenton different?
 > **Star us!** A ⭐ shows your support and encourages us to keep building! 😇
 
 <p align="center">
-  <img src="./readme_assets/images/banner_bg.gif" alt="Presenton" />
+  <img src="./readme_assets/images/banner_bg.gif" alt="SmartSlides" />
 </p>
 
 #
@@ -51,7 +51,7 @@ What makes Presenton different?
 ### 🎛 Features
 
 <p align="center">
-  <img src="./readme_assets/images/features.png" alt="Presenton Features" />
+  <img src="./readme_assets/images/features.png" alt="SmartSlides Features" />
 </p>
 
 <p align="center">
@@ -60,12 +60,12 @@ What makes Presenton different?
 
 #
 
-### 💻 Presenton Desktop
+### 💻 SmartSlides Desktop
 
 Create AI-powered presentations using your own model provider (BYOK) or run everything locally on your own machine for full control and data privacy.
 
 <p align="center">
-  <a href="https://presenton.ai/download">
+  <a href="https://smartslides.ai/download">
     <img src="./readme_assets/images/banner.png" alt="Cloud deployment" />
   </a>
 </p>
@@ -84,21 +84,21 @@ Create AI-powered presentations using your own model provider (BYOK) or run ever
 <td><b>macOS</b></td>
 <td>Apple Silicon / Intel</td>
 <td><code>.dmg</code></td>
-<td><a href="https://presenton.ai/download">Download ↗</a></td>
+<td><a href="https://smartslides.ai/download">Download ↗</a></td>
 </tr>
 
 <tr>
 <td><b>Windows</b></td>
 <td>x64</td>
 <td><code>.exe</code></td>
-<td><a href="https://presenton.ai/download">Download ↗</a></td>
+<td><a href="https://smartslides.ai/download">Download ↗</a></td>
 </tr>
 
 <tr>
 <td><b>Linux</b></td>
 <td>x64</td>
 <td> <code>.deb</code></td>
-<td><a href="https://presenton.ai/download">Download ↗</a></td>
+<td><a href="https://smartslides.ai/download">Download ↗</a></td>
 </tr>
 
 </table>
@@ -107,14 +107,14 @@ Create AI-powered presentations using your own model provider (BYOK) or run ever
 **Deploy to Cloud Providers**
 
 <div style="display:flex; gap:12px; align-items:center;">
-  <a href="https://railway.com/deploy/presenton-ai-presentations">
+  <a href="https://railway.com/deploy/smart-slides-ai-presentations">
     <img
       src="https://railway.com/button.svg"
       alt="Deploy on Railway"
       style="height:38px;"
     />
   </a>
-  <a href="https://cloud.digitalocean.com/apps/new?repo=https://github.com/presenton/presenton/tree/main">
+  <a href="https://cloud.digitalocean.com/apps/new?repo=https://github.com/smart-slides/smart-slides/tree/main">
     <img
       src="https://www.deploytodo.com/do-btn-blue.svg"
       alt="Deploy to DigitalOcean"
@@ -125,7 +125,7 @@ Create AI-powered presentations using your own model provider (BYOK) or run ever
 
 #
 
-Presenton gives you complete control over your AI presentation workflow. Choose your models, customize your experience, and keep your data private.
+SmartSlides gives you complete control over your AI presentation workflow. Choose your models, customize your experience, and keep your data private.
 
 - Custom Templates & Themes — Create unlimited presentation designs with HTML and Tailwind CSS
 - AI Template Generation — Create presentation templates from existing Powerpoint documents.
@@ -142,27 +142,27 @@ Presenton gives you complete control over your AI presentation workflow. Choose 
 - API Deployment — Host as your own API service for your team
 - Fully Open-Source — Apache 2.0 licensed, inspect, modify, and contribute
 - Docker Ready — One-command deployment with GPU support for local models
-- Electron Desktop App — Run Presenton as a native desktop application on Windows, macOS, and Linux (no browser required)
+- Electron Desktop App — Run SmartSlides as a native desktop application on Windows, macOS, and Linux (no browser required)
 - Sign in with ChatGPT — Use your free or paid ChatGPT account to sign in and start creating presentations instantly — no separate API key required
 
 #
 
-### ☁️ Presenton Cloud
+### ☁️ SmartSlides Cloud
 
-Run Presenton directly in your browser — no installation, no setup required. Start creating presentations instantly from anywhere.
+Run SmartSlides directly in your browser — no installation, no setup required. Start creating presentations instantly from anywhere.
 
 <p align="center">
-  <a href="https://presenton.ai">
-    <img src="./readme_assets/images/cloud-banner.png" alt="Presenton Cloud" />
+  <a href="https://smartslides.ai">
+    <img src="./readme_assets/images/cloud-banner.png" alt="SmartSlides Cloud" />
   </a>
 </p>
 
 #
 
-### ⚡ Running Presenton
+### ⚡ Running SmartSlides
 
   <p>
-    You can run Presenton in two ways:
+    You can run SmartSlides in two ways:
     <strong>Docker</strong> for a one-command setup without installing a local dev
     stack, or the <strong>Electron desktop app</strong> for a native app
     experience (ideal for development or offline use).
@@ -171,7 +171,7 @@ Run Presenton directly in your browser — no installation, no setup required. S
 **Option 1: Electron (Desktop App)**
 
    <p>
-    Run Presenton as a native desktop application. LLM and image provider
+    Run SmartSlides as a native desktop application. LLM and image provider
     (API keys, etc.) can be configured in the app. The same environment variables
     used for Docker apply when running the bundled backend.
   </p>
@@ -206,30 +206,30 @@ Run Presenton directly in your browser — no installation, no setup required. S
   </p>
   <p>
   For a public macOS DMG outside the Mac App Store, use
-  <code>APPLE_KEYCHAIN_PROFILE="presenton-notary" npm run build:all:mac:signed</code>
+  <code>APPLE_KEYCHAIN_PROFILE="smart-slides-notary" npm run build:all:mac:signed</code>
   from <code>electron/</code> after the one-time Developer ID and notarization
   setup in <code>docs/macos/dev/direct-distribution.md</code>.
   </p>
 
 **Option 2: Docker**
 
-- Start Presenton
+- Start SmartSlides
   Linux/MacOS (Bash/Zsh Shell):
-  <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+  <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
   Windows (PowerShell):
-  <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -v "${PWD}\app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+  <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -v "${PWD}\app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
-- Open Presenton
+- Open SmartSlides
   <p>
   Open <a href="http://localhost:5001">http://localhost:5001</a> in the browser
-  of your choice to use Presenton.
+  of your choice to use SmartSlides.
   </p>
 
   <blockquote>
   <p>
     <strong>Note:</strong> You can replace <code>5001</code> with any other port
-    number of your choice to run Presenton on a different port number. If you use
+    number of your choice to run SmartSlides on a different port number. If you use
     Docker Compose, set <code>PRESENTON_HTTP_HOST_PORT</code>, for example
     <code>PRESENTON_HTTP_HOST_PORT=8080 docker compose up production</code>.
   </p>
@@ -364,7 +364,7 @@ These variables match `docker-compose.yml`. **`IMAGE_PROVIDER`** selects the bac
 
 #### Authentication (web login)
 
-Presenton uses a **single admin account** per instance. Credentials live in `app_data` (hashed; see `userConfig.json`). Pass these with `-e` or via `.env` for compose:
+SmartSlides uses a **single admin account** per instance. Credentials live in `app_data` (hashed; see `userConfig.json`). Pass these with `-e` or via `.env` for compose:
 
 - **AUTH_USERNAME** / **AUTH_PASSWORD** — Preseed the admin login on first boot (password at least 6 characters). Ignored if a user already exists unless **AUTH_OVERRIDE_FROM_ENV** is set.
 - **AUTH_OVERRIDE_FROM_ENV**=[true/false] — If **true**, replace stored credentials from the env vars on every FastAPI startup and rotate the session signing secret (invalidates existing sessions). Remove after a one-off rotation.
@@ -373,27 +373,27 @@ Presenton uses a **single admin account** per instance. Credentials live in `app
 **Examples**
 
 ```bash
-docker run -it --name presenton -p 5001:80 -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker run -it --name smart-slides -p 5001:80 -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ```bash
-docker run -it --name presenton -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker run -it --name smart-slides -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ```bash
-docker run -it --name presenton -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "${PWD}\app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker run -it --name smart-slides -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "${PWD}\app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ```bash
-docker stop presenton && docker rm presenton && docker run -it --name presenton -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=newcred456 -e AUTH_OVERRIDE_FROM_ENV=true -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker stop smart-slides && docker rm smart-slides && docker run -it --name smart-slides -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=newcred456 -e AUTH_OVERRIDE_FROM_ENV=true -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ```bash
-docker stop presenton && docker rm presenton && docker run -it --name presenton -p 5001:80 -e RESET_AUTH=true -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker stop smart-slides && docker rm smart-slides && docker run -it --name smart-slides -p 5001:80 -e RESET_AUTH=true -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 ```bash
-docker stop presenton && docker rm presenton && docker run -it --name presenton -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest
+docker stop smart-slides && docker rm smart-slides && docker run -it --name smart-slides -p 5001:80 -e AUTH_USERNAME=admin -e AUTH_PASSWORD=changeme123 -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest
 ```
 
 **Manual reset:** stop the container, edit `./app_data/userConfig.json`, delete `AUTH_USERNAME`, `AUTH_PASSWORD_HASH`, and `AUTH_SECRET_KEY`, save, and start again.
@@ -422,7 +422,7 @@ The response includes:
 ```json
 {
   "mcpServers": {
-    "presenton": {
+    "smart-slides": {
       "url": "http://localhost:5001/mcp",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -447,50 +447,50 @@ Notes:
 Same variables as compose; use `-e` instead of `.env` when running `docker run` directly.
 
 - Using OpenAI
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="openai" -e OPENAI_API_KEY="******" -e IMAGE_PROVIDER="dall-e-3" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="openai" -e OPENAI_API_KEY="******" -e IMAGE_PROVIDER="dall-e-3" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Google
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="google" -e GOOGLE_API_KEY="******" -e IMAGE_PROVIDER="gemini_flash" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="google" -e GOOGLE_API_KEY="******" -e IMAGE_PROVIDER="gemini_flash" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Vertex AI (API key mode)
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="vertex" -e VERTEX_API_KEY="******" -e VERTEX_MODEL="gemini-2.5-flash" -e IMAGE_PROVIDER="gemini_flash" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="vertex" -e VERTEX_API_KEY="******" -e VERTEX_MODEL="gemini-2.5-flash" -e IMAGE_PROVIDER="gemini_flash" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Azure OpenAI
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="azure" -e AZURE_OPENAI_API_KEY="******" -e AZURE_OPENAI_MODEL="gpt-4.1" -e AZURE_OPENAI_API_VERSION="2024-10-21" -e AZURE_OPENAI_ENDPOINT="https://YOUR-RESOURCE.openai.azure.com" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="azure" -e AZURE_OPENAI_API_KEY="******" -e AZURE_OPENAI_MODEL="gpt-4.1" -e AZURE_OPENAI_API_VERSION="2024-10-21" -e AZURE_OPENAI_ENDPOINT="https://YOUR-RESOURCE.openai.azure.com" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Amazon Bedrock (on-demand model ID) — see **[docs/amazon-bedrock.md](docs/amazon-bedrock.md)** for inference profiles, IAM, and troubleshooting.
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="bedrock" -e BEDROCK_REGION="us-east-1" -e BEDROCK_AWS_ACCESS_KEY_ID="******" -e BEDROCK_AWS_SECRET_ACCESS_KEY="******" -e BEDROCK_MODEL="us.anthropic.claude-3-5-haiku-20241022-v1:0" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="bedrock" -e BEDROCK_REGION="us-east-1" -e BEDROCK_AWS_ACCESS_KEY_ID="******" -e BEDROCK_AWS_SECRET_ACCESS_KEY="******" -e BEDROCK_MODEL="us.anthropic.claude-3-5-haiku-20241022-v1:0" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Amazon Bedrock (inference profile ARN, e.g. Claude Sonnet 4.6)
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="bedrock" -e BEDROCK_REGION="us-east-1" -e BEDROCK_AWS_ACCESS_KEY_ID="******" -e BEDROCK_AWS_SECRET_ACCESS_KEY="******" -e BEDROCK_MODEL="arn:aws:bedrock:us-east-1:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-6" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="bedrock" -e BEDROCK_REGION="us-east-1" -e BEDROCK_AWS_ACCESS_KEY_ID="******" -e BEDROCK_AWS_SECRET_ACCESS_KEY="******" -e BEDROCK_MODEL="arn:aws:bedrock:us-east-1:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-6" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Fireworks
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="fireworks" -e FIREWORKS_API_KEY="******" -e FIREWORKS_MODEL="accounts/fireworks/models/llama-v3p1-8b-instruct" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="fireworks" -e FIREWORKS_API_KEY="******" -e FIREWORKS_MODEL="accounts/fireworks/models/llama-v3p1-8b-instruct" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Together AI
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="together" -e TOGETHER_API_KEY="******" -e TOGETHER_MODEL="openai/gpt-oss-20b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="together" -e TOGETHER_API_KEY="******" -e TOGETHER_MODEL="openai/gpt-oss-20b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Ollama
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="ollama" -e OLLAMA_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="*******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="ollama" -e OLLAMA_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="*******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using Anthropic
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="anthropic" -e ANTHROPIC_API_KEY="******" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="anthropic" -e ANTHROPIC_API_KEY="******" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using LM Studio (local)
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e LLM="lmstudio" -e LMSTUDIO_BASE_URL="http://host.docker.internal:1234" -e LMSTUDIO_MODEL="openai/gpt-oss-20b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e LLM="lmstudio" -e LMSTUDIO_BASE_URL="http://host.docker.internal:1234" -e LMSTUDIO_MODEL="openai/gpt-oss-20b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using OpenAI Compatible LLM API
-    <pre><code class="language-bash">docker run -it -p 5001:80 -e CAN_CHANGE_KEYS="false"  -e LLM="custom" -e CUSTOM_LLM_URL="http://*****" -e CUSTOM_LLM_API_KEY="*****" -e CUSTOM_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e  PEXELS_API_KEY="********" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it -p 5001:80 -e CAN_CHANGE_KEYS="false"  -e LLM="custom" -e CUSTOM_LLM_URL="http://*****" -e CUSTOM_LLM_API_KEY="*****" -e CUSTOM_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e  PEXELS_API_KEY="********" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
-- Running Presenton with GPU Support
+- Running SmartSlides with GPU Support
   To use GPU acceleration with Ollama models, you need to install and configure the NVIDIA Container Toolkit. This allows Docker containers to access your NVIDIA GPU.
-  Once the NVIDIA Container Toolkit is installed and configured, you can run Presenton with GPU support by adding the `--gpus=all` flag:
-    <pre><code class="language-bash">docker run -it --name presenton --gpus=all -p 5001:80 -e LLM="ollama" -e OLLAMA_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="*******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+  Once the NVIDIA Container Toolkit is installed and configured, you can run SmartSlides with GPU support by adding the `--gpus=all` flag:
+    <pre><code class="language-bash">docker run -it --name smart-slides --gpus=all -p 5001:80 -e LLM="ollama" -e OLLAMA_MODEL="llama3.2:3b" -e IMAGE_PROVIDER="pexels" -e PEXELS_API_KEY="*******" -e CAN_CHANGE_KEYS="false" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 - Using an OpenAI-Compatible Image Provider
 
   This routes all slide image requests through your OpenAI-compatible gateway (LiteLLM, Azure, vLLM, etc.) while keeping the text LLM configuration independent:
-    <pre><code class="language-bash">docker run -it --name presenton -p 5001:80 -e IMAGE_PROVIDER="openai_compatible" -e OPENAI_COMPAT_IMAGE_BASE_URL="https://proxy.example.com/v1" -e OPENAI_COMPAT_IMAGE_API_KEY="******" -e OPENAI_COMPAT_IMAGE_MODEL="gpt-image-1" -v "./app_data:/app_data" ghcr.io/presenton/presenton:latest</code></pre>
+    <pre><code class="language-bash">docker run -it --name smart-slides -p 5001:80 -e IMAGE_PROVIDER="openai_compatible" -e OPENAI_COMPAT_IMAGE_BASE_URL="https://proxy.example.com/v1" -e OPENAI_COMPAT_IMAGE_API_KEY="******" -e OPENAI_COMPAT_IMAGE_MODEL="gpt-image-1" -v "./app_data:/app_data" ghcr.io/smart-slides/smart-slides:latest</code></pre>
 
 #
 
@@ -506,7 +506,7 @@ Same variables as compose; use `-e` instead of `.env` when running `docker run` 
 
 <p>
 <strong>Authentication (HTTP Basic):</strong><br>
-All <code>/api/v1/</code> routes except <code>/api/v1/auth/*</code> require authentication. Send your Presenton admin username and password (same as the web UI, or <strong>AUTH_USERNAME</strong> / <strong>AUTH_PASSWORD</strong> when preseeding Docker). With <code>curl</code>, put them right after <code>-u</code> as <code>-u USERNAME:PASSWORD</code> — that is HTTP Basic auth and sets <code>Authorization: Basic …</code> for you. Replace the sample <code>username:password</code> below with your real credentials.
+All <code>/api/v1/</code> routes except <code>/api/v1/auth/*</code> require authentication. Send your SmartSlides admin username and password (same as the web UI, or <strong>AUTH_USERNAME</strong> / <strong>AUTH_PASSWORD</strong> when preseeding Docker). With <code>curl</code>, put them right after <code>-u</code> as <code>-u USERNAME:PASSWORD</code> — that is HTTP Basic auth and sets <code>Authorization: Basic …</code> for you. Replace the sample <code>username:password</code> below with your real credentials.
 </p>
 
 **Request Body**
@@ -668,27 +668,27 @@ Prepend your server’s root URL to <code>path</code> and
 
 <ul>
   <li>
-    <a href="https://docs.presenton.ai/v3/get-started/quickstart">
-      Deploy Presenton
+    <a href="https://docs.smartslides.ai/v3/get-started/quickstart">
+      Deploy SmartSlides
     </a>
   </li>
   <li>
-    <a href="https://docs.presenton.ai/v3/get-started/api-introduction">
+    <a href="https://docs.smartslides.ai/v3/get-started/api-introduction">
       Full API Documentation
     </a>
   </li>
   <li>
-    <a href="https://docs.presenton.ai/v3/guide/using-presenton-api">
+    <a href="https://docs.smartslides.ai/v3/guide/using-smart-slides-api">
       Generate Presentations via API in 5 Minutes
     </a>
   </li>
   <li>
-    <a href="https://docs.presenton.ai/tutorial/generate-presentation-from-csv">
+    <a href="https://docs.smartslides.ai/tutorial/generate-presentation-from-csv">
       Create Presentations from CSV using AI
     </a>
   </li>
   <li>
-    <a href="https://docs.presenton.ai/tutorial/create-data-reports-using-ai">
+    <a href="https://docs.smartslides.ai/tutorial/create-data-reports-using-ai">
       Create Data Reports Using AI
     </a>
   </li>
@@ -698,4 +698,4 @@ Prepend your server’s root URL to <code>path</code> and
 
 ### 🚀 Roadmap
 
-Track the public roadmap on GitHub Projects: [https://github.com/orgs/presenton/projects/2](https://github.com/orgs/presenton/projects/2)
+Track the public roadmap on GitHub Projects: [https://github.com/orgs/smart-slides/projects/2](https://github.com/orgs/smart-slides/projects/2)

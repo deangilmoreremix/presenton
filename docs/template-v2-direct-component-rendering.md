@@ -124,7 +124,7 @@ Interaction behavior:
 - a selected element can be dragged, resized, and rotated;
 - the first pointer interaction on an unselected child continues to select or
   move its component; a selected child receives its own drag;
-- layout-managed children receive `__presenton_manual_position` after a manual
+- layout-managed children receive `__smart-slides_manual_position` after a manual
   transform so the layout engine does not immediately overwrite the edit;
 - text, text-list, table, and SVG values use inline overlays;
 - images use the upload API and save the returned source in the raw element;

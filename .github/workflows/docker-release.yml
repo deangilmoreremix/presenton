@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_NAME: ghcr.io/presenton/presenton
+  IMAGE_NAME: ghcr.io/smart-slides/smart-slides
   MOVING_TAG: dev
 
 jobs:

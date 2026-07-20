@@ -68,7 +68,7 @@ def test_export_node_env_recreates_puppeteer_directories(monkeypatch, tmp_path):
     monkeypatch.delenv("NEXT_PUBLIC_FAST_API", raising=False)
     monkeypatch.setenv("PUPPETEER_TMP_DIR", str(puppeteer_temp))
     monkeypatch.setenv("PUPPETEER_CACHE_DIR", str(puppeteer_cache))
-    monkeypatch.delenv("PRESENTON_ELECTRON", raising=False)
+    monkeypatch.delenv("SMART_SLIDES_ELECTRON", raising=False)
 
     service = ExportTaskService(timeout_seconds=10)
     env = service._build_node_env()
@@ -91,7 +91,7 @@ def test_export_node_env_recreates_puppeteer_directories(monkeypatch, tmp_path):
 def test_electron_export_requires_pinned_chromium(monkeypatch, tmp_path):
     monkeypatch.setenv("APP_DATA_DIRECTORY", str(tmp_path / "app-data"))
     monkeypatch.setenv("TEMP_DIRECTORY", str(tmp_path / "temp"))
-    monkeypatch.setenv("PRESENTON_ELECTRON", "true")
+    monkeypatch.setenv("SMART_SLIDES_ELECTRON", "true")
     monkeypatch.delenv("PUPPETEER_EXECUTABLE_PATH", raising=False)
 
     service = ExportTaskService(timeout_seconds=10)
@@ -109,7 +109,7 @@ def test_electron_export_preserves_valid_pinned_chromium(monkeypatch, tmp_path):
     chromium.write_bytes(b"chrome")
     monkeypatch.setenv("APP_DATA_DIRECTORY", str(tmp_path / "app-data"))
     monkeypatch.setenv("TEMP_DIRECTORY", str(tmp_path / "temp"))
-    monkeypatch.setenv("PRESENTON_ELECTRON", "true")
+    monkeypatch.setenv("SMART_SLIDES_ELECTRON", "true")
     monkeypatch.setenv("PUPPETEER_EXECUTABLE_PATH", str(chromium))
 
     env = ExportTaskService(timeout_seconds=10)._build_node_env()

@@ -20,9 +20,9 @@ const REFRESH_CW_ICON_PATHS = [
   "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
   "M8 16H3v5",
 ];
-const SHADOW_EVENT_NAMESPACE = ".presentonSelectionShadows";
+const SHADOW_EVENT_NAMESPACE = ".smartSlidesSelectionShadows";
 const BOTTOM_CENTER_ROTATION_ANCHOR_EVENT_NAMESPACE =
-  ".presentonBottomCenterRotationAnchor";
+  ".smartSlidesBottomCenterRotationAnchor";
 const MULTI_SELECTION_GROUP_DASH = [5, 5];
 const MULTI_SELECTION_MEMBER_DASH = [7, 4];
 const HORIZONTAL_ONLY_ANCHORS = ["middle-left", "middle-right"];
@@ -377,7 +377,7 @@ export function TemplateV2SelectionTransformers({
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       Object.assign(window, {
-        __presentonResizeProbeTransformer: selectedTransformerRef.current,
+        __smartSlidesResizeProbeTransformer: selectedTransformerRef.current,
       });
     }
   });
@@ -448,7 +448,7 @@ export function TemplateV2SelectionTransformers({
       selectedTransformer.nodes(selectedNodes);
       if (process.env.NODE_ENV === "development") {
         Object.assign(window, {
-          __presentonResizeProbeTransformer: selectedTransformer,
+          __smartSlidesResizeProbeTransformer: selectedTransformer,
         });
       }
     }

@@ -10,7 +10,7 @@ import {
   templateV2UiToHtmlFragment,
 } from "@/lib/template-v2-json-to-html";
 
-type PresentonDataLabelOptions = {
+type SmartSlidesDataLabelOptions = {
   enabled?: boolean;
   color?: string;
   fontFamily?: string;
@@ -21,7 +21,7 @@ type PresentonDataLabelOptions = {
 
 type DataLabelPosition = "base" | "mid" | "top" | "outside";
 
-type PresentonChartGlobalState = {
+type SmartSlidesChartGlobalState = {
   status: "pending" | "ready" | "error";
   pending: number;
   rendered: number;
@@ -33,27 +33,27 @@ type Bounds = { left: number; right: number; top: number; bottom: number };
 
 declare global {
   interface Window {
-    __PRESENTON_JSON_CHARTS__?: PresentonChartGlobalState;
+    __SMARTSLIDES_JSON_CHARTS__?: SmartSlidesChartGlobalState;
   }
 }
 
 const useChartLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
-let didRegisterPresentonDataLabelPlugin = false;
+let didRegisterSmartSlidesDataLabelPlugin = false;
 
-function registerPresentonDataLabelPlugin(): void {
-  if (didRegisterPresentonDataLabelPlugin) return;
-  Chart.register(presentonDataLabelPlugin);
-  didRegisterPresentonDataLabelPlugin = true;
+function registerSmartSlidesDataLabelPlugin(): void {
+  if (didRegisterSmartSlidesDataLabelPlugin) return;
+
+  didRegisterSmartSlidesDataLabelPlugin = true;
 }
 
-function chartGlobalState(): PresentonChartGlobalState | null {
+function smartSlidesChartGlobalState(): SmartSlidesChartGlobalState | null {
   if (typeof window === "undefined") return null;
 
   const existing = window.__PRESENTON_JSON_CHARTS__;
   if (existing) return existing;
 
-  const state: PresentonChartGlobalState = {
+  const state: SmartSlidesChartGlobalState = {
     status: "ready",
     pending: 0,
     rendered: 0,
@@ -64,7 +64,7 @@ function chartGlobalState(): PresentonChartGlobalState | null {
 
 function markChartsPending(count: number): void {
   if (count <= 0) return;
-  const state = chartGlobalState();
+  const state = smartSlidesChartGlobalState();
   if (!state) return;
   state.pending += count;
   state.status = "pending";
@@ -73,7 +73,7 @@ function markChartsPending(count: number): void {
 
 function markChartsReady(count: number): void {
   if (count <= 0) return;
-  const state = chartGlobalState();
+  const state = smartSlidesChartGlobalState();
   if (!state || state.status === "error") return;
   state.pending = Math.max(0, state.pending - count);
   state.rendered += count;
@@ -83,7 +83,7 @@ function markChartsReady(count: number): void {
 }
 
 function markChartsError(message: string): void {
-  const state = chartGlobalState();
+  const state = smartSlidesChartGlobalState();
   if (!state) return;
   state.pending = 0;
   state.status = "error";
@@ -139,16 +139,16 @@ function hydrateScales(scales: unknown): void {
   Object.values(scaleRecords).forEach((scaleValue) => {
     const scale = readRecord(scaleValue);
     const ticks = readRecord(scale.ticks);
-    if (ticks.presentonFormat) {
+    if (ticks.smartSlidesFormat) {
       ticks.callback = formatAxisTick;
-      delete ticks.presentonFormat;
+      delete ticks.smartSlidesFormat;
     }
 
     const radial = readRecord(scale.r);
     const radialTicks = readRecord(radial.ticks);
-    if (radialTicks.presentonFormat) {
+    if (radialTicks.smartSlidesFormat) {
       radialTicks.callback = formatAxisTick;
-      delete radialTicks.presentonFormat;
+      delete radialTicks.smartSlidesFormat;
     }
   });
 }
@@ -195,16 +195,16 @@ function hydrateBarBorderRadii(config: ChartConfiguration): void {
   datasets.forEach((dataset) => {
     const record = dataset as {
       borderRadius?: unknown;
-      presentonBarRadius?: unknown;
+      smartSlidesBarRadius?: unknown;
     };
-    const options = readRecord(record.presentonBarRadius);
+    const options = readRecord(record.smartSlidesBarRadius);
     if (!Object.keys(options).length) return;
 
     const horizontal = Boolean(options.horizontal);
     const radius = readNumber(options.radius) ?? 7;
     record.borderRadius = (context: { raw?: unknown }) =>
       barBorderRadius(context?.raw, horizontal, radius);
-    delete record.presentonBarRadius;
+    delete record.smartSlidesBarRadius;
   });
 }
 
@@ -589,10 +589,10 @@ function readDataLabelPosition(value: unknown): DataLabelPosition {
     : "top";
 }
 
-const presentonDataLabelPlugin: Plugin = {
-  id: "presentonDataLabels",
+const smartSlidesDataLabelPlugin: Plugin = {
+  id: "smartSlidesDataLabels",
   afterDatasetsDraw(chart, _args, options) {
-    const labelOptions = options as PresentonDataLabelOptions | undefined;
+    const labelOptions = options as SmartSlidesDataLabelOptions | undefined;
     if (!labelOptions?.enabled) return;
 
     const ctx = chart.ctx;
@@ -748,33 +748,33 @@ export function TemplateV2HtmlSlidePreview({
     const finishReady = () => {
       if (completed) return;
       completed = true;
-      element.dataset.presentonCharts = "ready";
+      element.dataset.smartSlidesCharts = "ready";
       markChartsReady(registeredPendingCount);
     };
 
     const finishError = (message: string) => {
       if (completed) return;
       completed = true;
-      element.dataset.presentonCharts = "error";
+      element.dataset.smartSlidesCharts = "error";
       markChartsError(message);
     };
 
     const renderCharts = () => {
       const canvases = Array.from(
-        element.querySelectorAll<HTMLCanvasElement>("canvas[data-presenton-chart]")
+        element.querySelectorAll<HTMLCanvasElement>("canvas[data-smart-slides-chart]")
       ).filter((canvas) => canvas.getAttribute("data-chart-config"));
 
       if (!canvases.length) {
-        element.dataset.presentonCharts = "ready";
+        element.dataset.smartSlidesCharts = "ready";
         return;
       }
 
       registeredPendingCount = canvases.length;
-      element.dataset.presentonCharts = "pending";
+      element.dataset.smartSlidesCharts = "pending";
       markChartsPending(registeredPendingCount);
 
       try {
-        registerPresentonDataLabelPlugin();
+        registerSmartSlidesDataLabelPlugin();
 
         canvases.forEach((canvas) => {
           const configText = canvas.getAttribute("data-chart-config");
@@ -797,7 +797,7 @@ export function TemplateV2HtmlSlidePreview({
 
           const chart = new Chart(canvas, config);
           chart.update("none");
-          canvas.dataset.presentonChartRendered = "true";
+          canvas.dataset.smartSlidesChartRendered = "true";
           charts.push(chart);
         });
 

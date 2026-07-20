@@ -1,7 +1,7 @@
 # Electron Dependency Strategy
 
 This is the working strategy for reducing first-run dependency installers in
-the Electron app while keeping Presenton Apache-2.0.
+the Electron app while keeping SmartSlides Apache-2.0.
 
 ## Recommendation
 
@@ -38,7 +38,7 @@ Bundled Chromium:
 
 ```text
 electron/resources/chromium/
-  presenton-runtime.json
+  smart-slides-runtime.json
   chromium/<mac-platform-snapshot-id>/...  # macOS
   chrome/<platform-version>/...            # non-mac Electron
 ```
@@ -56,7 +56,7 @@ Bundled ImageMagick:
 
 ```text
 electron/resources/imagemagick/<platform>-<arch>/
-  presenton-runtime.json
+  smart-slides-runtime.json
   ...
 ```
 

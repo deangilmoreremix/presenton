@@ -1,6 +1,6 @@
 # Mac App Store Setup
 
-Presenton’s Electron app is configured for Mac App Store (MAS) distribution with App Sandbox. MAS builds must be produced on macOS because Apple’s signing tools are required.
+SmartSlides’s Electron app is configured for Mac App Store (MAS) distribution with App Sandbox. MAS builds must be produced on macOS because Apple’s signing tools are required.
 
 This guide covers Apple Developer setup, local provisioning files, and the npm scripts in `electron/package.json` on `main`.
 
@@ -14,7 +14,7 @@ This guide covers Apple Developer setup, local provisioning files, and the npm s
 
 Build configuration lives in `electron/build.js`. Key identifiers:
 
-- **Bundle ID:** `com.presenton.presenton`
+- **Bundle ID:** `com.smart-slides.smart-slides`
 - **Team ID:** `S6W5C54KL6` (set in `extendInfo.ElectronTeamID`)
 
 ## MAS files in the repo
@@ -47,7 +47,7 @@ Used for `mas` (App Store submission) builds.
 
 [Apple Developer Portal](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** → **Identifiers** → **App IDs**.
 
-Create a macOS App ID that matches `com.presenton.presenton` (or update `APP_ID` in `electron/build.js` if you use a different ID).
+Create a macOS App ID that matches `com.smart-slides.smart-slides` (or update `APP_ID` in `electron/build.js` if you use a different ID).
 
 ### 4. Provisioning profiles
 
@@ -57,7 +57,7 @@ Create **two** macOS profiles and download each `.provisionprofile` file into `e
 
 - Portal → **Profiles** → **+**
 - Type: **macOS App Development**
-- App ID: your Presenton app ID
+- App ID: your SmartSlides app ID
 - Certificate: **Apple Development**
 - Save as `electron/build/AppleDevelopment.provisionprofile`
 
@@ -67,7 +67,7 @@ Create **two** macOS profiles and download each `.provisionprofile` file into `e
 
 - Portal → **Profiles** → **+**
 - Type: **Mac App Store**
-- App ID: your Presenton app ID
+- App ID: your SmartSlides app ID
 - Certificate: **Apple Distribution**
 - Save as `electron/build/MacAppStore.provisionprofile`
 
@@ -152,15 +152,15 @@ Exact paths depend on architecture (`arm64` vs `x64`). Typical layouts:
 electron/dist/
   mas-dev-arm64/          # unsigned or dev-signed .app (mas-dev)
   mas-arm64/              # distribution-signed .app (mas)
-  Presenton-<version>.pkg # MAS installer for upload
-  Presenton-<version>.dmg # signed and notarized direct distribution DMG
+  SmartSlides-<version>.pkg # MAS installer for upload
+  SmartSlides-<version>.dmg # signed and notarized direct distribution DMG
 ```
 
 Upload the `.pkg` from the `mas` build to [App Store Connect](https://appstoreconnect.apple.com).
 
 ## Icons
 
-The default macOS icon is `electron/resources/ui/assets/images/presenton_short_filled.png`.
+The default macOS icon is `electron/resources/ui/assets/images/smart-slides_short_filled.png`.
 
 For App Store packaging you can provide a proper `.icns` at `electron/build/icon.icns` and update the `mac.icon` field in `electron/build.js` if you want a custom store icon.
 

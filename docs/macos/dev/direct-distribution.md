@@ -1,6 +1,6 @@
 # macOS Direct Distribution
 
-Use this guide to ship Presenton as a signed and notarized macOS app outside the Mac App Store. This is the correct path for a downloadable DMG from GitHub Releases or presenton.ai.
+Use this guide to ship SmartSlides as a signed and notarized macOS app outside the Mac App Store. This is the correct path for a downloadable DMG from GitHub Releases or smartslides.ai.
 
 This is not a Mac App Store build. Do not use MAS provisioning profiles, App Store Connect upload, or App Review for this flow.
 
@@ -12,10 +12,10 @@ The signed release build creates:
 
 ```text
 electron/dist/
-  Presenton-<version>.dmg
+  SmartSlides-<version>.dmg
 ```
 
-Users should be able to open the DMG and launch Presenton without macOS warning that the app is from an unidentified developer.
+Users should be able to open the DMG and launch SmartSlides without macOS warning that the app is from an unidentified developer.
 
 ## How This Differs From MAS
 
@@ -97,7 +97,7 @@ export PRESENTON_MAC_SIGN_IDENTITY="Developer ID Application: Your Company Name 
 Create an app-specific password for the Apple ID, then store notarization credentials in the local Keychain:
 
 ```bash
-xcrun notarytool store-credentials "presenton-notary" \
+xcrun notarytool store-credentials "smart-slides-notary" \
   --apple-id "apple-id@example.com" \
   --team-id "TEAMID" \
   --password "app-specific-password"
@@ -106,13 +106,13 @@ xcrun notarytool store-credentials "presenton-notary" \
 After that, the only notarization environment variable needed for normal local release builds is:
 
 ```bash
-export APPLE_KEYCHAIN_PROFILE="presenton-notary"
+export APPLE_KEYCHAIN_PROFILE="smart-slides-notary"
 ```
 
 To avoid exporting it manually every shell session, add it to your shell profile:
 
 ```bash
-echo 'export APPLE_KEYCHAIN_PROFILE="presenton-notary"' >> ~/.zshrc
+echo 'export APPLE_KEYCHAIN_PROFILE="smart-slides-notary"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -137,7 +137,7 @@ If `APPLE_KEYCHAIN_PROFILE` is not in your shell profile, run it inline:
 
 ```bash
 cd electron
-APPLE_KEYCHAIN_PROFILE="presenton-notary" npm run build:all:mac:signed
+APPLE_KEYCHAIN_PROFILE="smart-slides-notary" npm run build:all:mac:signed
 ```
 
 For the very first build on a fresh checkout, run setup first:
@@ -200,8 +200,8 @@ Run these checks before publishing the DMG.
 Replace the app path if the architecture-specific output folder differs.
 
 ```bash
-codesign --verify --deep --strict --verbose=2 "dist/mac/Presenton.app"
-codesign -dv --verbose=4 "dist/mac/Presenton.app" 2>&1 | grep -E "Authority|TeamIdentifier|Runtime"
+codesign --verify --deep --strict --verbose=2 "dist/mac/SmartSlides.app"
+codesign -dv --verbose=4 "dist/mac/SmartSlides.app" 2>&1 | grep -E "Authority|TeamIdentifier|Runtime"
 ```
 
 Expected:
@@ -213,7 +213,7 @@ Expected:
 ### 2. Check Notarization Stapling
 
 ```bash
-xcrun stapler validate "dist/mac/Presenton.app"
+xcrun stapler validate "dist/mac/SmartSlides.app"
 ```
 
 Expected:
@@ -225,8 +225,8 @@ The validate action worked!
 ### 3. Check Gatekeeper
 
 ```bash
-spctl --assess --type execute --verbose=4 "dist/mac/Presenton.app"
-spctl --assess --type open --verbose=4 "dist/Presenton-0.8.8-beta.dmg"
+spctl --assess --type execute --verbose=4 "dist/mac/SmartSlides.app"
+spctl --assess --type open --verbose=4 "dist/SmartSlides-0.8.8-beta.dmg"
 ```
 
 Expected shape:
@@ -238,7 +238,7 @@ source=Notarized Developer ID
 
 ### 4. Test On Another Mac
 
-Download the DMG on a Mac that did not build it, mount it, drag Presenton to `/Applications`, and launch it normally. This catches quarantine and Gatekeeper behavior that local build machines can hide.
+Download the DMG on a Mac that did not build it, mount it, drag SmartSlides to `/Applications`, and launch it normally. This catches quarantine and Gatekeeper behavior that local build machines can hide.
 
 ## Troubleshooting
 
@@ -255,7 +255,7 @@ export PRESENTON_MAC_SIGN_IDENTITY="Developer ID Application: Your Company Name 
 Set one complete credential group:
 
 ```bash
-export APPLE_KEYCHAIN_PROFILE="presenton-notary"
+export APPLE_KEYCHAIN_PROFILE="smart-slides-notary"
 ```
 
 or:

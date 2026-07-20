@@ -14,7 +14,7 @@ const browserConfig = resolveExportBrowserConfig();
 const browser = browserConfig.browser;
 const buildId = browserConfig.buildId;
 const cacheDir = path.join(__dirname, "..", "resources", "chromium");
-const manifestPath = path.join(cacheDir, "presenton-runtime.json");
+const manifestPath = path.join(cacheDir, "smart-slides-runtime.json");
 const windowsRequiredRuntimeFiles = [
   "chrome.dll",
   "chrome_100_percent.pak",
@@ -183,7 +183,7 @@ function validateExecutable(executablePath) {
     return { ok: true };
   }
 
-  const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "presenton-chromium-probe-"));
+  const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "smart-slides-chromium-probe-"));
   try {
     const result = spawnSync(
       executablePath,

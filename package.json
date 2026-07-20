@@ -1,5 +1,5 @@
 {
-  "name": "presenton",
+  "name": "smart-slides",
   "version": "0.9.1-beta",
   "presentationExportVersion": "v0.4.2",
   "type": "module",
@@ -11,7 +11,11 @@
     "test:template-converter": "node --test scripts/convert-template.test.mjs scripts/convert-presentation-template.test.mjs",
     "sync:presentation-export": "node scripts/sync-presentation-export.cjs",
     "sync:presentation-export:force": "node scripts/sync-presentation-export.cjs --force",
-    "check:presentation-export": "node scripts/sync-presentation-export.cjs --check-only"
+    "check:presentation-export": "node scripts/sync-presentation-export.cjs --check-only",
+    "build": "npm run build:nextjs",
+    "build:nextjs": "npm --prefix servers/nextjs ci && npm --prefix servers/nextjs run build",
+    "dev": "APP_DATA_DIRECTORY=${APP_DATA_DIRECTORY:-./app_data} TEMP_DIRECTORY=${TEMP_DIRECTORY:-./temp} node start.js --dev",
+    "electron:dev": "npm --prefix electron run dev"
   },
   "dependencies": {
     "@llamaindex/liteparse": "^1.5.2",

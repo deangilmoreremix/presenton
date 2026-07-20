@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import OnBoardingSlidebar from "./OnBoarding/OnBoardingSlidebar";
 import OnBoardingHeader from "./OnBoarding/OnBoardingHeader";
-import PresentonMode from "./OnBoarding/PresentonMode";
+import SmartSlidesMode from "./OnBoarding/SmartSlidesMode";
 import FinalStep from "./OnBoarding/FinalStep";
 
 export default function Home() {
@@ -33,7 +33,7 @@ export default function Home() {
       <main className="w-full pl-20 pr-8 max-w-[1440px] mx-auto relative z-10">
 
         <OnBoardingHeader currentStep={step} providerStep={providerStep} setStep={setStep} setProviderStep={setProviderStep} />
-        {step === 2 && <PresentonMode providerStep={providerStep} setStep={setStep} setProviderStep={setProviderStep} />}
+        {step === 2 && <SmartSlidesMode providerStep={providerStep} setStep={setStep} setProviderStep={setProviderStep} />}
         {step === 3 && <FinalStep />}
       </main>
     </div>

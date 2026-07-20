@@ -11,7 +11,7 @@ from fastmcp.server.auth import AccessToken, TokenVerifier
 from fastmcp.server.dependencies import get_access_token, get_http_headers
 from fastmcp.server.providers.openapi import MCPType, RouteMap
 
-from utils.get_env import is_disable_auth_enabled, is_presenton_electron_desktop
+from utils.get_env import is_disable_auth_enabled, is_smart_slides_electron_desktop
 from utils.simple_auth import is_auth_configured, validate_session_token
 
 OPENAPI_SPEC_PATH = Path(__file__).with_name("openai_spec.json")
@@ -65,8 +65,8 @@ with OPENAPI_SPEC_PATH.open("r", encoding="utf-8") as f:
     openapi_spec = json.load(f)
 
 
-class PresentonTokenVerifier(TokenVerifier):
-    """Validate Presenton session tokens for MCP HTTP auth."""
+class SmartSlidesTokenVerifier(TokenVerifier):
+    """Validate SmartSlides session tokens for MCP HTTP auth."""
 
     async def verify_token(self, token: str) -> AccessToken | None:
         username = validate_session_token(token)
@@ -83,14 +83,14 @@ class PresentonTokenVerifier(TokenVerifier):
 
 def is_mcp_server_enabled() -> bool:
     """MCP is only supported in server/Docker deployments, not the Electron app."""
-    return not is_presenton_electron_desktop()
+    return not is_smart_slides_electron_desktop()
 
 
 def create_mcp_auth_provider() -> TokenVerifier | None:
     """Enable MCP bearer auth only when app auth is configured."""
     if is_disable_auth_enabled() or not is_auth_configured():
         return None
-    return PresentonTokenVerifier()
+    return SmartSlidesTokenVerifier()
 
 
 def get_mcp_api_timeout() -> httpx.Timeout:
@@ -146,8 +146,8 @@ async def main():
     try:
         if not is_mcp_server_enabled():
             print(
-                "INFO: MCP server is disabled in the Presenton Electron desktop app "
-                "(PRESENTON_ELECTRON=true)."
+                "INFO: MCP server is disabled in the SmartSlides Electron desktop app "
+                "(SMART_SLIDES_ELECTRON=true)."
             )
             return
 

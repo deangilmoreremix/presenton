@@ -1,5 +1,5 @@
 /**
- * Download presenton-export release into repo-root `presentation-export/`.
+ * Download smart-slides-export release into repo-root `presentation-export/`.
  * Same release host as Electron (`electron/scripts/sync-export-runtime.cjs`); Docker uses this at build time.
  *
  * Version resolution defaults to package.json → presentationExportVersion.
@@ -25,12 +25,12 @@ const targetIndexJs = path.join(targetRoot, "index.js");
 const targetIndexCjs = path.join(targetRoot, "index.cjs");
 const versionManifestPath = path.join(
   targetRoot,
-  "presenton-export-version.json"
+  "smart-slides-export-version.json"
 );
 const packageJsonFile = path.join(repoRoot, "package.json");
 const cacheDir = path.join(repoRoot, ".cache", "presentation-export");
 const exportRepoBase =
-  "https://github.com/presenton/presenton-export/releases/download";
+  "https://github.com/smart-slides/smart-slides-export/releases/download";
 
 const cliArgs = new Set(process.argv.slice(2));
 const forceDownload = cliArgs.has("--force");
@@ -122,7 +122,7 @@ function requestJson(url, redirects = 5) {
       url,
       {
         headers: {
-          "User-Agent": "presenton-presentation-export-sync",
+          "User-Agent": "smart-slides-presentation-export-sync",
           Accept: "application/vnd.github+json",
         },
       },
@@ -159,7 +159,7 @@ function requestJson(url, redirects = 5) {
 
 async function resolveLatestTag() {
   const apiUrl =
-    "https://api.github.com/repos/presenton/presenton-export/releases/latest";
+    "https://api.github.com/repos/smart-slides/smart-slides-export/releases/latest";
   const latest = await requestJson(apiUrl);
   if (!latest.tag_name) {
     throw new Error(`Could not resolve latest tag from ${apiUrl}`);
@@ -310,7 +310,7 @@ function downloadFile(url, outputPath, redirects = 5) {
       url,
       {
         headers: {
-          "User-Agent": "presenton-presentation-export-sync",
+          "User-Agent": "smart-slides-presentation-export-sync",
           Accept: "application/octet-stream",
         },
       },

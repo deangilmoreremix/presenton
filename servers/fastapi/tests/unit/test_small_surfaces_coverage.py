@@ -442,7 +442,7 @@ def test_handle_llm_client_exceptions(monkeypatch):
     )
     assert codex_auth.status_code == 401
     assert "CHATGPT_AUTH_REQUIRED:" in codex_auth.detail
-    assert codex_auth.headers == {"X-Presenton-Auth-Action": "codex-reauth"}
+    assert codex_auth.headers == {"X-SmartSlides-Auth-Action": "codex-reauth"}
 
     generic = handle_llm_client_exceptions(ValueError("oops"))
     assert generic.detail.startswith("LLM API error")
@@ -485,17 +485,17 @@ def test_export_includes_optional_fastapi_param():
                 dummy,
                 title="safe",
                 export_as="pdf",
-                cookie_header="presenton_session=abc; theme=dark",
+                cookie_header="smart-slides_session=abc; theme=dark",
             )
 
         pdf_call = mock_pdf.await_args.kwargs
         assert "pdf-maker" in pdf_call["url"]
         assert (
-            "#exportCookie=presenton_session%3Dabc%3B+theme%3Ddark"
+            "#exportCookie=smart-slides_session%3Dabc%3B+theme%3Ddark"
             in pdf_call["url"]
         )
         assert pdf_call["fastapi_url"] == "https://fast.example"
-        assert pdf_call["cookie_header"] == "presenton_session=abc; theme=dark"
+        assert pdf_call["cookie_header"] == "smart-slides_session=abc; theme=dark"
 
         mock_pptx = AsyncMock(return_value=fake_result)
         with patch.dict(

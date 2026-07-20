@@ -5,8 +5,8 @@ This document records the exact flow used to build a signed, notarized, and stap
 The flow starts from the `electron/` directory and produces:
 
 ```text
-electron/dist/Presenton-<version>.dmg
-electron/dist/Presenton-<version>.dmg.blockmap
+electron/dist/SmartSlides-<version>.dmg
+electron/dist/SmartSlides-<version>.dmg.blockmap
 electron/dist/latest-mac.yml
 ```
 
@@ -33,13 +33,13 @@ This confirms that `codesign` can see the certificate used for public, non-Mac-A
 Expected identity shape:
 
 ```text
-Developer ID Application: Presenton Inc. (S6W5C54KL6)
+Developer ID Application: SmartSlides Inc. (S6W5C54KL6)
 ```
 
 If more than one Developer ID Application certificate is installed, pin the intended one:
 
 ```bash
-export PRESENTON_MAC_SIGN_IDENTITY="Developer ID Application: Presenton Inc. (S6W5C54KL6)"
+export PRESENTON_MAC_SIGN_IDENTITY="Developer ID Application: SmartSlides Inc. (S6W5C54KL6)"
 ```
 
 ## 3. Confirm The Notarytool Profile
@@ -47,7 +47,7 @@ export PRESENTON_MAC_SIGN_IDENTITY="Developer ID Application: Presenton Inc. (S6
 Check that the local Keychain has the stored Apple notarization profile:
 
 ```bash
-xcrun notarytool history --keychain-profile presenton-notary
+xcrun notarytool history --keychain-profile smart-slides-notary
 ```
 
 This verifies that Apple notarization credentials are available without exposing the Apple ID password or app-specific password in the shell.
@@ -55,7 +55,7 @@ This verifies that Apple notarization credentials are available without exposing
 For this build, the profile name was:
 
 ```bash
-presenton-notary
+smart-slides-notary
 ```
 
 ## 4. Choose The Build Script
@@ -63,7 +63,7 @@ presenton-notary
 Use the full build when app resources need to be rebuilt:
 
 ```bash
-APPLE_KEYCHAIN_PROFILE=presenton-notary npm run build:all:mac:signed
+APPLE_KEYCHAIN_PROFILE=smart-slides-notary npm run build:all:mac:signed
 ```
 
 This performs setup cleanup, dependency setup, TypeScript build, Next.js resource build, FastAPI binary build, Electron packaging, signing, and notarization.
@@ -71,7 +71,7 @@ This performs setup cleanup, dependency setup, TypeScript build, Next.js resourc
 Use the packaging-only build when `resources/` and `app_dist/` are already current:
 
 ```bash
-APPLE_KEYCHAIN_PROFILE=presenton-notary npm run dist:mac:signed
+APPLE_KEYCHAIN_PROFILE=smart-slides-notary npm run dist:mac:signed
 ```
 
 This runs Electron Builder directly through `electron/build.js` and reuses the existing built resources.
@@ -81,7 +81,7 @@ This runs Electron Builder directly through `electron/build.js` and reuses the e
 The command used for the final packaging pass was:
 
 ```bash
-APPLE_KEYCHAIN_PROFILE=presenton-notary npm run dist:mac:signed
+APPLE_KEYCHAIN_PROFILE=smart-slides-notary npm run dist:mac:signed
 ```
 
 The script expands to:
@@ -102,7 +102,7 @@ This performs the required release preflight:
 Electron Builder packages the app into:
 
 ```text
-electron/dist/mac-arm64/Presenton.app
+electron/dist/mac-arm64/SmartSlides.app
 ```
 
 During `afterPack`, `build.js` also:
@@ -121,7 +121,7 @@ Electron Builder calls the custom `signDirectMacApp` function from `build.js`.
 That function signs the app bundle with:
 
 ```text
-Developer ID Application: Presenton Inc. (S6W5C54KL6)
+Developer ID Application: SmartSlides Inc. (S6W5C54KL6)
 ```
 
 It also installs retry handling around Apple timestamp failures. A retry message like this can appear:
@@ -139,7 +139,7 @@ After the app bundle is signed, Electron Builder submits the app for Apple notar
 When Apple accepts the submission, Electron Builder staples the ticket to:
 
 ```text
-electron/dist/mac-arm64/Presenton.app
+electron/dist/mac-arm64/SmartSlides.app
 ```
 
 Expected build output includes:
@@ -153,8 +153,8 @@ notarization successful
 After app notarization succeeds, Electron Builder creates:
 
 ```text
-electron/dist/Presenton-<version>.dmg
-electron/dist/Presenton-<version>.dmg.blockmap
+electron/dist/SmartSlides-<version>.dmg
+electron/dist/SmartSlides-<version>.dmg.blockmap
 electron/dist/latest-mac.yml
 ```
 
@@ -168,9 +168,9 @@ Sign the generated DMG with the Developer ID Application certificate:
 
 ```bash
 codesign --force \
-  --sign "Developer ID Application: Presenton Inc. (S6W5C54KL6)" \
+  --sign "Developer ID Application: SmartSlides Inc. (S6W5C54KL6)" \
   --timestamp \
-  dist/Presenton-0.9.0-beta.dmg
+  dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 This adds a Developer ID code signature and timestamp to the disk image itself.
@@ -180,8 +180,8 @@ This adds a Developer ID code signature and timestamp to the disk image itself.
 Submit the signed DMG to Apple:
 
 ```bash
-xcrun notarytool submit dist/Presenton-0.9.0-beta.dmg \
-  --keychain-profile presenton-notary \
+xcrun notarytool submit dist/SmartSlides-0.9.0-beta.dmg \
+  --keychain-profile smart-slides-notary \
   --wait
 ```
 
@@ -198,7 +198,7 @@ status: Accepted
 Staple the accepted notarization ticket to the DMG:
 
 ```bash
-xcrun stapler staple dist/Presenton-0.9.0-beta.dmg
+xcrun stapler staple dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 This embeds the notarization ticket in the DMG so Gatekeeper can validate it without needing to query Apple at first launch.
@@ -217,8 +217,8 @@ Regenerate it from the final DMG:
 
 ```bash
 node_modules/app-builder-bin/mac/app-builder_arm64 blockmap \
-  --input dist/Presenton-0.9.0-beta.dmg \
-  --output dist/Presenton-0.9.0-beta.dmg.blockmap
+  --input dist/SmartSlides-0.9.0-beta.dmg \
+  --output dist/SmartSlides-0.9.0-beta.dmg.blockmap
 ```
 
 The command prints the final DMG `size` and base64 `sha512`. Keep those values for the next step.
@@ -231,10 +231,10 @@ Set both top-level and file-level values:
 
 ```yaml
 files:
-  - url: Presenton-0.9.0-beta.dmg
+  - url: SmartSlides-0.9.0-beta.dmg
     sha512: <final-dmg-sha512>
     size: <final-dmg-size>
-path: Presenton-0.9.0-beta.dmg
+path: SmartSlides-0.9.0-beta.dmg
 sha512: <final-dmg-sha512>
 releaseDate: '<current-utc-release-date>'
 ```
@@ -246,19 +246,19 @@ This keeps update metadata consistent with the final artifact.
 Verify the app bundle signature:
 
 ```bash
-codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Presenton.app
+codesign --verify --deep --strict --verbose=2 dist/mac-arm64/SmartSlides.app
 ```
 
 Inspect the signing metadata:
 
 ```bash
-codesign -dv --verbose=4 dist/mac-arm64/Presenton.app
+codesign -dv --verbose=4 dist/mac-arm64/SmartSlides.app
 ```
 
 Expected metadata includes:
 
 ```text
-Authority=Developer ID Application: Presenton Inc. (S6W5C54KL6)
+Authority=Developer ID Application: SmartSlides Inc. (S6W5C54KL6)
 TeamIdentifier=S6W5C54KL6
 Runtime
 Timestamp
@@ -268,13 +268,13 @@ Notarization Ticket=stapled
 Validate the stapled app ticket:
 
 ```bash
-xcrun stapler validate dist/mac-arm64/Presenton.app
+xcrun stapler validate dist/mac-arm64/SmartSlides.app
 ```
 
 Assess the app with Gatekeeper:
 
 ```bash
-spctl --assess --type execute --verbose=4 dist/mac-arm64/Presenton.app
+spctl --assess --type execute --verbose=4 dist/mac-arm64/SmartSlides.app
 ```
 
 Expected result:
@@ -289,20 +289,20 @@ source=Notarized Developer ID
 Verify the DMG code signature:
 
 ```bash
-codesign --verify --verbose=2 dist/Presenton-0.9.0-beta.dmg
+codesign --verify --verbose=2 dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 Inspect the DMG signing metadata:
 
 ```bash
-codesign -dv --verbose=4 dist/Presenton-0.9.0-beta.dmg
+codesign -dv --verbose=4 dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 Expected metadata includes:
 
 ```text
 Format=disk image
-Authority=Developer ID Application: Presenton Inc. (S6W5C54KL6)
+Authority=Developer ID Application: SmartSlides Inc. (S6W5C54KL6)
 TeamIdentifier=S6W5C54KL6
 Timestamp
 Notarization Ticket=stapled
@@ -311,7 +311,7 @@ Notarization Ticket=stapled
 Validate the stapled DMG ticket:
 
 ```bash
-xcrun stapler validate dist/Presenton-0.9.0-beta.dmg
+xcrun stapler validate dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 Assess the DMG with Gatekeeper using disk-image context:
@@ -321,13 +321,13 @@ spctl --assess \
   --type open \
   --context context:primary-signature \
   --verbose=4 \
-  dist/Presenton-0.9.0-beta.dmg
+  dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 You can also assess it as an install artifact:
 
 ```bash
-spctl --assess --type install --verbose=4 dist/Presenton-0.9.0-beta.dmg
+spctl --assess --type install --verbose=4 dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 Expected result:
@@ -340,13 +340,13 @@ source=Notarized Developer ID
 Verify the DMG image checksum structure:
 
 ```bash
-hdiutil verify dist/Presenton-0.9.0-beta.dmg
+hdiutil verify dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 Expected result:
 
 ```text
-hdiutil: verify: checksum of "dist/Presenton-0.9.0-beta.dmg" is VALID
+hdiutil: verify: checksum of "dist/SmartSlides-0.9.0-beta.dmg" is VALID
 ```
 
 ## 17. Record The Final SHA-256
@@ -354,7 +354,7 @@ hdiutil: verify: checksum of "dist/Presenton-0.9.0-beta.dmg" is VALID
 Generate a release checksum:
 
 ```bash
-shasum -a 256 dist/Presenton-0.9.0-beta.dmg
+shasum -a 256 dist/SmartSlides-0.9.0-beta.dmg
 ```
 
 For the signed and stapled `0.9.0-beta` DMG built in this flow, the SHA-256 was:
@@ -367,8 +367,8 @@ For the signed and stapled `0.9.0-beta` DMG built in this flow, the SHA-256 was:
 
 Before publishing, confirm:
 
-- `dist/Presenton-<version>.dmg` exists.
-- `dist/Presenton-<version>.dmg.blockmap` was regenerated after DMG stapling.
+- `dist/SmartSlides-<version>.dmg` exists.
+- `dist/SmartSlides-<version>.dmg.blockmap` was regenerated after DMG stapling.
 - `dist/latest-mac.yml` matches the final DMG `sha512` and `size`.
 - `codesign --verify` passes for both app and DMG.
 - `xcrun stapler validate` passes for both app and DMG.

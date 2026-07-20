@@ -10,7 +10,7 @@ from utils.llm_provider import get_llm_provider
 from utils.provider_error_messages import safe_llm_provider_error_detail
 
 
-CHATGPT_AUTH_REQUIRED_HEADER = {"X-Presenton-Auth-Action": "codex-reauth"}
+CHATGPT_AUTH_REQUIRED_HEADER = {"X-SmartSlides-Auth-Action": "codex-reauth"}
 CHATGPT_AUTH_REQUIRED_PREFIX = "CHATGPT_AUTH_REQUIRED:"
 
 

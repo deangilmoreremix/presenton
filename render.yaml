@@ -1,4 +1,4 @@
-# Render Blueprint for SmartSlides (formerly Presenton)
+# Render Blueprint for SmartSlides
 # Deploy via: Render Dashboard -> New+ -> Blueprint -> select this repo.
 # The container runs FastAPI (:8000) + MCP (:8001) + Next.js (:3000) behind
 # nginx (:80). Only port 80 is host-facing, so PORT must stay 80.

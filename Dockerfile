@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --python /opt/venv/bin/python \
     "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 ENV HF_HOME=/root/.cache/huggingface \
-    PRESENTON_FASTEMBED_ICON_CACHE_DIR=/root/.cache/presenton/fastembed-icons
+    SMART_SLIDES_FASTEMBED_ICON_CACHE_DIR=/root/.cache/smart-slides/fastembed-icons
 # Warm FastEmbed caches into the image (not a BuildKit cache mount, or HF weights would be missing).
 RUN /opt/venv/bin/python scripts/warm_fastembed_cache.py
 
@@ -83,13 +83,13 @@ ARG CHROMIUM_SNAPSHOT=20260625T180000Z
 
 # LiteParse uses Node + @llamaindex/liteparse (same runner as Electron); OCR uses Tesseract.
 ENV APP_DATA_DIRECTORY=/app_data \
-    TEMP_DIRECTORY=/tmp/presenton \
+    TEMP_DIRECTORY=/tmp/smart-slides \
     EXPORT_PACKAGE_ROOT=/app/presentation-export \
     EXPORT_RUNTIME_DIR=/app/presentation-export \
     BUILT_PYTHON_MODULE_PATH=/app/presentation-export/py/convert-linux-current \
-    PRESENTON_APP_ROOT=/app \
+    SMART_SLIDES_APP_ROOT=/app \
     HF_HOME=/root/.cache/huggingface \
-    PRESENTON_FASTEMBED_ICON_CACHE_DIR=/root/.cache/presenton/fastembed-icons \
+    SMART_SLIDES_FASTEMBED_ICON_CACHE_DIR=/root/.cache/smart-slides/fastembed-icons \
     PATH="/opt/venv/bin:${PATH}" \
     NODE_ENV=production \
     START_OLLAMA=false \
@@ -130,7 +130,7 @@ RUN mkdir -p /app_data/exports /app_data/images /app_data/uploads /app_data/font
 COPY --from=fastapi-builder /opt/venv /opt/venv
 COPY --from=fastapi-builder /app/servers/fastapi /app/servers/fastapi
 COPY --from=fastapi-builder /root/.cache/huggingface /root/.cache/huggingface
-COPY --from=fastapi-builder /root/.cache/presenton/fastembed-icons /root/.cache/presenton/fastembed-icons
+COPY --from=fastapi-builder /root/.cache/smart-slides/fastembed-icons /root/.cache/smart-slides/fastembed-icons
 COPY templates /app/templates
 
 COPY --from=assets-builder /app/package.json /app/package.json
@@ -155,7 +155,7 @@ COPY --from=nextjs-builder /app/servers/nextjs/public /app/servers/nextjs/public
 COPY --from=nextjs-builder /app/servers/nextjs/.next-build/static /app/servers/nextjs/.next-build/static
 
 COPY start.js LICENSE NOTICE ./
-COPY scripts/presenton-terminal-banner.mjs /app/scripts/presenton-terminal-banner.mjs
+COPY scripts/smart-slides-terminal-banner.mjs /app/scripts/smart-slides-terminal-banner.mjs
 COPY scripts/user-config-env.cjs /app/scripts/user-config-env.cjs
 COPY nginx.conf /etc/nginx/nginx.conf
 

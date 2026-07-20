@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import type { TemplateV2ClipboardPayload } from "@/components/slide-editor/clipboard/clipboard";
 
-const CLIPBOARD_MIME = "application/x-presenton-template-v2";
-const CLIPBOARD_PREFIX = "PRESENTON_TEMPLATE_V2:";
-const CLIPBOARD_STORAGE_KEY = "presenton:template-v2-clipboard";
+const CLIPBOARD_MIME = "application/x-smart-slides-template-v2";
+const CLIPBOARD_PREFIX = "SMART_SLIDES_TEMPLATE_V2:";
+const CLIPBOARD_STORAGE_KEY = "smart-slides:template-v2-clipboard";
 const PASTE_OFFSET = 16;
 let pasteSequence = 0;
 let cachedSerializedPayload: string | null = null;
@@ -216,7 +216,7 @@ function parsePayload(serialized: string): TemplateV2ClipboardPayload | null {
           isValidBox(item.absoluteBox),
       );
     if (
-      parsed.format !== "presenton/template-v2" ||
+      parsed.format !== "smart-slides/template-v2" ||
       parsed.version !== 1 ||
       !isValidBox(box) ||
       (!hasLegacySingleComponent && !hasComponents)

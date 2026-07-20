@@ -6,7 +6,7 @@
   <true/>
   <key>com.apple.security.application-groups</key>
   <array>
-    <string>S6W5C54KL6.com.presenton.presenton</string>
+    <string>S6W5C54KL6.com.smart-slides.smart-slides</string>
   </array>
   <key>com.apple.security.cs.allow-jit</key>
   <true/>

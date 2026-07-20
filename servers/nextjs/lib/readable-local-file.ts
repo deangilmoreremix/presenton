@@ -25,7 +25,7 @@ function allowedReadableFileBaseDirs(): string[] {
   const appDataDirectory =
     process.env.APP_DATA_DIRECTORY?.trim() || "/app/user_data";
   const tempDirectory =
-    process.env.TEMP_DIRECTORY?.trim() || path.join(os.tmpdir(), "presenton");
+    process.env.TEMP_DIRECTORY?.trim() || path.join(os.tmpdir(), "smart-slides");
 
   return [appDataDirectory, tempDirectory].map(resolveBaseDir);
 }

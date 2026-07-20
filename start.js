@@ -19,7 +19,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { printPresentonStartupBanner } from "./scripts/presenton-terminal-banner.mjs";
+import { printSmartSlidesStartupBanner } from "./scripts/smart-slides-terminal-banner.mjs";
 import userConfigEnv from "./scripts/user-config-env.cjs";
 
 const { buildUserConfigFromEnv, readUserConfigEnv } = userConfigEnv;
@@ -35,7 +35,12 @@ const nextjsStandaloneServer = join(nextjsDir, "server.js");
 const nextjsCli = join(nextjsDir, "node_modules/next/dist/bin/next");
 const exportSyncScript = join(__dirname, "scripts/sync-presentation-export.cjs");
 const nginxSourceConfigPath = join(__dirname, "nginx.conf");
-const nginxRuntimeConfigPath = "/etc/nginx/nginx.conf";
+// Linux/Docker keeps nginx at its default path. On macOS (local web dev) the
+// default /etc/nginx/nginx.conf is not writable, so stage it under the repo dir.
+const isLinux = process.platform === "linux";
+const nginxRuntimeConfigPath = isLinux
+  ? "/etc/nginx/nginx.conf"
+  : join(__dirname, "nginx.dev.conf");
 
 const args = process.argv.slice(2);
 const hasDevArg = args.includes("--dev") || args.includes("-d");
@@ -483,6 +488,104 @@ const syncNginxConfigForDev = () => {
     return;
   }
 
+  // On Linux/Docker the production config is copied as-is. For local web
+  // development on macOS the container paths (/app, /app_data, www-data,
+  // system mime.types) don't exist, so write a minimal dev proxy config:
+  // host port -> Next.js (3000) and /api -> FastAPI (8000). The host-facing
+  // port defaults to 5001 on macOS (non-root can't bind 80); set
+  // SMART_SLIDES_HTTP_HOST_PORT to override.
+  if (!isLinux) {
+    const hostPort = process.env.SMART_SLIDES_HTTP_HOST_PORT || "5001";
+    const devNginxConfig = `worker_processes 1;
+error_log stderr;
+pid ${join(__dirname, "nginx.dev.pid")};
+
+events {
+  worker_connections 1024;
+}
+
+http {
+  include ${__dirname}/nginx.mime.types;
+  default_type application/octet-stream;
+  client_max_body_size 100M;
+
+    server {
+    listen ${hostPort};
+    server_name localhost;
+
+    location / {
+      proxy_pass http://localhost:${nextjsPort};
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_read_timeout 30m;
+      proxy_connect_timeout 30m;
+    }
+
+    location /api/v1/ {
+      client_max_body_size 110M;
+      proxy_pass http://localhost:${fastapiPort};
+      proxy_read_timeout 30m;
+      proxy_send_timeout 30m;
+      proxy_connect_timeout 30m;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/v2/ {
+      proxy_pass http://localhost:${fastapiPort};
+      proxy_read_timeout 30m;
+      proxy_send_timeout 30m;
+      proxy_connect_timeout 30m;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /docs {
+      proxy_pass http://localhost:${fastapiPort}/docs;
+      proxy_read_timeout 30m;
+      proxy_connect_timeout 30m;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /openapi.json {
+      proxy_pass http://localhost:${fastapiPort}/openapi.json;
+      proxy_read_timeout 30m;
+      proxy_connect_timeout 30m;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /mcp/ {
+      proxy_pass http://localhost:${appmcpPort}/mcp/;
+      proxy_read_timeout 30m;
+      proxy_connect_timeout 30m;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+  }
+}
+`;
+    writeFileSync(nginxRuntimeConfigPath, devNginxConfig);
+    console.log("Wrote local development nginx config");
+    return;
+  }
+
   try {
     copyFileSync(nginxSourceConfigPath, nginxRuntimeConfigPath);
     console.log("Synced nginx config from development bind mount");
@@ -557,7 +660,7 @@ const startServers = async (nginxReadyPromise) => {
         : [
             nextjsCli,
             isDev ? "dev" : "start",
-            ...(isDev ? ["--webpack"] : []),
+            ...(isDev ? ["--turbopack"] : []),
             "-H",
             "127.0.0.1",
             "-p",
@@ -693,7 +796,7 @@ const startServers = async (nginxReadyPromise) => {
 
   try {
     await Promise.all([fastApiReadyPromise, nextjsReadyPromise, nginxReadyPromise]);
-    printPresentonStartupBanner({
+    printSmartSlidesStartupBanner({
       mode: isDev ? "development" : "production",
       nextPort: nextjsPort,
       fastapiPort,
@@ -708,13 +811,25 @@ const startServers = async (nginxReadyPromise) => {
 // Start nginx service (reverse proxy: see nginx.conf listen + upstream ports)
 const startNginx = () => {
   return new Promise((resolve) => {
-    const nginxProcess = spawn("service", ["nginx", "start"], {
+    // Linux/Docker uses the init-style service command; locally (macOS) we
+    // invoke the nginx binary directly with the staged dev config.
+    const nginxCommand = isLinux ? "service" : "nginx";
+    const nginxArgs = isLinux
+      ? ["nginx", "start"]
+      : ["-c", nginxRuntimeConfigPath, "-p", __dirname + "/"];
+    const nginxProcess = spawn(nginxCommand, nginxArgs, {
       stdio: "inherit",
       env: process.env,
     });
 
     nginxProcess.on("error", (err) => {
-      console.error("Nginx process failed to start:", err);
+      console.error(
+        "Nginx process failed to start:",
+        err.message,
+        isLinux
+          ? ""
+          : "(install nginx locally, e.g. `brew install nginx`, or run the app behind the_DEV_ env without proxy)"
+      );
       resolve(false);
     });
 

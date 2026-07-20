@@ -34,7 +34,7 @@ import { ImagesApi } from "../../services/api/images";
 import { PresentationGenerationApi } from "../../services/api/presentation-generation";
 import { PresentationChatApi } from "../../services/api/chat";
 import {
-  PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+  SMART_SLIDES_BLANK_SLIDE_PROMPT_EVENT,
   type BlankSlidePromptEventDetail,
 } from "../../_shared/blank-slide-prompt-event";
 import type {
@@ -614,7 +614,7 @@ async function readDecomposedFile(filePath: string) {
 }
 
 const conversationStorageKey = (scope: string, resourceId: string) =>
-  `presenton:chat:${scope}:conversationId:${resourceId}`;
+  `smart-slides:chat:${scope}:conversationId:${resourceId}`;
 
 const readStoredConversationId = (key: string) => {
   if (typeof window === "undefined") return null;
@@ -2460,12 +2460,12 @@ const Chat = ({
     };
 
     window.addEventListener(
-      PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+      SMART_SLIDES_BLANK_SLIDE_PROMPT_EVENT,
       handleBlankSlidePrompt,
     );
     return () => {
       window.removeEventListener(
-        PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+        SMART_SLIDES_BLANK_SLIDE_PROMPT_EVENT,
         handleBlankSlidePrompt,
       );
     };

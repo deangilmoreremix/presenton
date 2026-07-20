@@ -1,7 +1,7 @@
 import { notify } from "@/components/ui/sonner";
 import type { LLMConfig } from "@/types/llm_config";
 
-const NON_SOTA_TEMPLATE_TOAST_KEY = "presenton.nonSotaTemplateToastDismissed";
+const NON_SOTA_TEMPLATE_TOAST_KEY = "smart-slides.nonSotaTemplateToastDismissed";
 const NON_SOTA_TEMPLATE_TOAST_ID = "non-sota-template-generation";
 
 const OPENAI_SOTA_VISION_MODELS = [

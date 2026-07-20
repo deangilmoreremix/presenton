@@ -25,7 +25,7 @@ jobs:
       - name: Extract version from filename
         run: |
           FILE=$(ls assets/ | head -n 1)
-          VERSION=$(echo "$FILE" | sed -E 's/^Presenton-(.+)\.(deb|dmg|exe)$/\1/')
+          VERSION=$(echo "$FILE" | sed -E 's/^SmartSlides-(.+)\.(deb|dmg|exe)$/\1/')
           echo "Extracted version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -50,4 +50,4 @@ jobs:
       # 6. Upload to R2 (FINAL STEP)
       - name: Upload files to R2
         run: |
-          rclone copy assets r2:presenton-desktop/${{ env.VERSION }} --progress --transfers=8
+          rclone copy assets r2:smart-slides-desktop/${{ env.VERSION }} --progress --transfers=8

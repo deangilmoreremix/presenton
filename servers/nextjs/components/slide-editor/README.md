@@ -574,8 +574,8 @@ Primary files:
 
 `useClipboard.ts` handles browser integration:
 
-- Uses custom MIME: `application/x-presenton-template-v2`.
-- Also writes plain text with prefix `PRESENTON_TEMPLATE_V2:`.
+- Uses custom MIME: `application/x-smart-slides-template-v2`.
+- Also writes plain text with prefix `SMART_SLIDES_TEMPLATE_V2:`.
 - Stores fallback in `localStorage`.
 - Handles browser paste events and keyboard shortcut fallback.
 

@@ -58,10 +58,10 @@ test("normalizes Windows drive paths from file URL pathnames", async () => {
 
   assert.equal(
     normalizeExportFileUrlPathname(
-      "/D:/www/web/presenton/app_data/exports/deck.pdf",
+      "/D:/www/web/smart-slides/app_data/exports/deck.pdf",
       "win32"
     ),
-    "D:/www/web/presenton/app_data/exports/deck.pdf"
+    "D:/www/web/smart-slides/app_data/exports/deck.pdf"
   );
 });
 
@@ -70,10 +70,10 @@ test("leaves non-Windows drive-looking pathnames unchanged", async () => {
 
   assert.equal(
     normalizeExportFileUrlPathname(
-      "/D:/www/web/presenton/app_data/exports/deck.pdf",
+      "/D:/www/web/smart-slides/app_data/exports/deck.pdf",
       "linux"
     ),
-    "/D:/www/web/presenton/app_data/exports/deck.pdf"
+    "/D:/www/web/smart-slides/app_data/exports/deck.pdf"
   );
 });
 

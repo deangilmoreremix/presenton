@@ -91,8 +91,8 @@ def test_format_web_search_context_excludes_source_urls():
     context = web_search.format_web_search_context(
         [
             web_search.WebSearchResult(
-                title="Presenton",
-                url="https://example.com/presenton",
+                title="SmartSlides",
+                url="https://example.com/smart-slides",
                 snippet=(
                     "Presentation generation [6][7] with "
                     "[documentation](https://example.com/docs)"
@@ -102,7 +102,7 @@ def test_format_web_search_context_excludes_source_urls():
     )
 
     assert "Web search results" in context
-    assert "https://example.com/presenton" not in context
+    assert "https://example.com/smart-slides" not in context
     assert "https://example.com/docs" not in context
     assert "URL:" not in context
     assert "[6]" not in context
@@ -178,8 +178,8 @@ def test_search_web_logs_provider_and_clamps_max_results(monkeypatch, caplog):
         captured.update(query=query, limit=limit)
         return [
             web_search.WebSearchResult(
-                title="Presenton",
-                url="https://example.com/presenton",
+                title="SmartSlides",
+                url="https://example.com/smart-slides",
             )
     ]
 
@@ -216,8 +216,8 @@ def test_exa_search_requests_highlights_and_maps_results(monkeypatch):
             return {
                 "results": [
                     {
-                        "title": "Presenton",
-                        "url": "https://example.com/presenton",
+                        "title": "SmartSlides",
+                        "url": "https://example.com/smart-slides",
                         "highlights": ["AI presentations.", "Open source."],
                     },
                     {
@@ -251,8 +251,8 @@ def test_exa_search_requests_highlights_and_maps_results(monkeypatch):
     }
     assert results == [
         web_search.WebSearchResult(
-            title="Presenton",
-            url="https://example.com/presenton",
+            title="SmartSlides",
+            url="https://example.com/smart-slides",
             snippet="AI presentations. Open source.",
         ),
         web_search.WebSearchResult(

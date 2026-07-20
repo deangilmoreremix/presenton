@@ -15,7 +15,7 @@ import {
     isTemplateV2Slide as isTemplateV2PresentationSlide,
 } from "../_shared/blank-slide";
 import {
-    PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+    SMART_SLIDES_BLANK_SLIDE_PROMPT_EVENT,
     type BlankSlidePromptEventDetail,
 } from "../_shared/blank-slide-prompt-event";
 
@@ -61,7 +61,7 @@ function TemplateV2PromptOverlay({
 
         window.dispatchEvent(
             new CustomEvent<BlankSlidePromptEventDetail>(
-                PRESENTON_BLANK_SLIDE_PROMPT_EVENT,
+                SMART_SLIDES_BLANK_SLIDE_PROMPT_EVENT,
                 {
                     detail: {
                         prompt: trimmedPrompt,

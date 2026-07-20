@@ -15,7 +15,7 @@ def _icon_fastembed_cache_directory() -> str:
     """ONNX weights for icon search (MiniLM). Prefer a path outside ``APP_DATA_DIRECTORY``
     in Docker: ``./app_data`` is often bind-mounted and would hide weights baked at image build.
     """
-    override = (os.getenv("PRESENTON_FASTEMBED_ICON_CACHE_DIR") or "").strip()
+    override = (os.getenv("SMART_SLIDES_FASTEMBED_ICON_CACHE_DIR") or "").strip()
     if override:
         path = os.path.abspath(override)
         os.makedirs(path, exist_ok=True)

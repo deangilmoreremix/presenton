@@ -238,7 +238,7 @@ class ExportTaskService:
         env["APP_DATA_DIRECTORY"] = app_data_directory
 
         temp_directory = get_temp_directory_env() or os.path.join(
-            tempfile.gettempdir(), "presenton"
+            tempfile.gettempdir(), "smart-slides
         )
         os.makedirs(temp_directory, exist_ok=True)
         env["TEMP_DIRECTORY"] = temp_directory
@@ -255,7 +255,7 @@ class ExportTaskService:
         os.makedirs(puppeteer_cache_directory, exist_ok=True)
         env["PUPPETEER_CACHE_DIR"] = puppeteer_cache_directory
 
-        if env.get("PRESENTON_ELECTRON", "").lower() == "true":
+        if env.get("SMART_SLIDES_ELECTRON", "").lower() == "true":
             chromium_executable = (env.get("PUPPETEER_EXECUTABLE_PATH") or "").strip()
             if not chromium_executable or not os.path.isfile(chromium_executable):
                 raise HTTPException(
@@ -320,7 +320,7 @@ class ExportTaskService:
     @staticmethod
     def _create_task_paths() -> tuple[str, str, str]:
         temp_root = get_temp_directory_env() or os.path.join(
-            tempfile.gettempdir(), "presenton"
+            tempfile.gettempdir(), "smart-slides
         )
         os.makedirs(temp_root, exist_ok=True)
         temp_dir = tempfile.mkdtemp(prefix="export-task-", dir=temp_root)

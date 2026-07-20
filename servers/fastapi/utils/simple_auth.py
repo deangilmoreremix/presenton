@@ -12,7 +12,7 @@ from starlette.responses import Response
 from utils.get_env import get_user_config_path_env, is_disable_auth_enabled
 from utils.user_config_store import read_user_config_file, update_user_config_file
 
-SESSION_COOKIE_NAME = "presenton_session"
+SESSION_COOKIE_NAME = "smart-slides_session"
 PBKDF2_ITERATIONS = 200_000
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
 AUTH_CONFIG_FIELDS = ("AUTH_USERNAME", "AUTH_PASSWORD_HASH", "AUTH_SECRET_KEY")
